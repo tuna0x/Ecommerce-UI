@@ -33,6 +33,9 @@ import { mockCoupons } from "../../data/mockCoupons";
 import type { Coupon } from "../../data/mockCoupons";
 import { toast } from "sonner";
 
+import { usePagination } from "../../hooks/usePagination";
+import PaginationControl from "../../components/PaginationControl";
+
 const CouponsManagement: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>(mockCoupons);
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,6 +61,11 @@ const CouponsManagement: React.FC = () => {
     (coupon) =>
       coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       coupon.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
+    filteredCoupons,
+    10,
   );
 
   const isExpired = (endDate: string) => new Date(endDate) < new Date();
@@ -306,6 +314,11 @@ const CouponsManagement: React.FC = () => {
             })}
           </TableBody>
         </Table>
+        <PaginationControl
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={goToPage}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { usePagination } from "../../hooks/usePagination";
+import PaginationControl from "../../components/PaginationControl";
 import { Search, Shield, ShieldOff, UserCog } from "lucide-react";
 import {
   Card,
@@ -26,8 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { mockUsers } from "../../data/mockUsers";
 import type { AdminUser } from "../../data/mockUsers";
+import { mockUsers } from "../../data/mockUsers";
 import { toast } from "sonner";
 
 const UsersManagement: React.FC = () => {
@@ -45,6 +47,11 @@ const UsersManagement: React.FC = () => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
+    filteredUsers,
+    10,
+  );
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -193,7 +200,7 @@ const UsersManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {paginatedItems.map((user) => (
                   <tr key={user.id} className="border-b last:border-0">
                     <td className="py-3 px-2">
                       <div>
@@ -268,6 +275,11 @@ const UsersManagement: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            <PaginationControl
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+            />
           </div>
         </CardContent>
       </Card>

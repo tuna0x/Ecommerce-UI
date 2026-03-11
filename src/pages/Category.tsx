@@ -9,6 +9,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Checkbox } from "../components/ui/Checkbox";
 import { Slider } from "../components/ui/slider";
+import { Input } from "../components/ui/input";
 import {
   Select,
   SelectContent,
@@ -150,21 +151,65 @@ const Category = () => {
     priceRange[0] > 0 ||
     priceRange[1] < 2000000;
 
-  const FilterContent = () => (
+  const filterContent = (
     <div className="space-y-6">
       {/* Price Range */}
       <div>
         <h3 className="font-semibold mb-3">Khoảng giá</h3>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1">
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Từ
+            </label>
+            <Input
+              type="number"
+              value={priceRange[0]}
+              onChange={(e) => {
+                const val = Math.max(
+                  0,
+                  Math.min(Number(e.target.value), priceRange[1]),
+                );
+                setPriceRange([val, priceRange[1]]);
+              }}
+              className="h-8 text-xs"
+              min={0}
+              max={priceRange[1]}
+              step={10000}
+            />
+          </div>
+          <span className="text-muted-foreground mt-5">—</span>
+          <div className="flex-1">
+            <label className="text-xs text-muted-foreground mb-1 block">
+              Đến
+            </label>
+            <Input
+              type="number"
+              value={priceRange[1]}
+              onChange={(e) => {
+                const val = Math.min(
+                  2000000,
+                  Math.max(Number(e.target.value), priceRange[0]),
+                );
+                setPriceRange([priceRange[0], val]);
+              }}
+              className="h-8 text-xs"
+              min={priceRange[0]}
+              max={2000000}
+              step={10000}
+            />
+          </div>
+        </div>
         <Slider
           value={priceRange}
           onValueChange={setPriceRange}
           max={2000000}
-          step={50000}
+          step={10000}
+          minStepsBetweenThumbs={1}
           className="mb-2"
         />
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>{formatPrice(priceRange[0])}</span>
-          <span>{formatPrice(priceRange[1])}</span>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>0₫</span>
+          <span>2.000.000₫</span>
         </div>
       </div>
 
@@ -273,9 +318,7 @@ const Category = () => {
                 <SheetHeader>
                   <SheetTitle>Bộ lọc sản phẩm</SheetTitle>
                 </SheetHeader>
-                <div className="mt-6">
-                  <FilterContent />
-                </div>
+                <div className="mt-6">{filterContent}</div>
               </SheetContent>
             </Sheet>
 
@@ -305,7 +348,7 @@ const Category = () => {
                   <Filter className="w-5 h-5" />
                   Bộ lọc
                 </h2>
-                <FilterContent />
+                {filterContent}
               </CardContent>
             </Card>
 

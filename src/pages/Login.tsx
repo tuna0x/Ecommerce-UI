@@ -21,24 +21,53 @@ const Login: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const success = await login(email, password);
+    try {
+      const res = await login({ username: email, password: password });
 
-    if (success) {
-      toast({
-        title: "Đăng nhập thành công!",
-        description: "Chào mừng bạn quay trở lại.",
-      });
-      navigate("/");
-    } else {
-      toast({
-        title: "Đăng nhập thất bại",
-        description: "Email hoặc mật khẩu không đúng.",
-        variant: "destructive",
-      });
+      console.log(res);
+      if (res) {
+        toast({
+          title: "Đăng nhập thành công!",
+          description: "Chào mừng bạn quay trở lại.",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Đăng nhập thất bại",
+          description: "Email hoặc mật khẩu không đúng.",
+          variant: "destructive",
+        });
+      }
+
+      setIsLoading(false);
+    } catch (err) {
+      alert("Đăng nhập thất bại!");
+      console.error(err);
     }
-
-    setIsLoading(false);
   };
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setIsLoading(true);
+
+  //   const success = await login(email, password);
+
+  //   if (success) {
+  //     toast({
+  //       title: "Đăng nhập thành công!",
+  //       description: "Chào mừng bạn quay trở lại.",
+  //     });
+  //     navigate("/");
+  //   } else {
+  //     toast({
+  //       title: "Đăng nhập thất bại",
+  //       description: "Email hoặc mật khẩu không đúng.",
+  //       variant: "destructive",
+  //     });
+  //   }
+
+  //   setIsLoading(false);
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/20 flex items-center justify-center p-4">

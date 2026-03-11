@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
+import { useEffect } from "react";
 
 import ProductDetail from "./pages/ProductDetail";
 import Login from "./pages/Login";
@@ -27,9 +28,16 @@ import PromotionsManagement from "./pages/admin/PromotionsManagement";
 import CouponsManagement from "./pages/admin/CouponsManagement";
 import Statistics from "./pages/admin/Statistics";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import AdminRoute from "./routes/AdminRoute";
 
 const queryClient = new QueryClient();
 function App() {
+  // useEffect(()=>{
+  //   const handleUnauthorized = ()=>{
+  //     native
+  //   }
+  // })
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -44,25 +52,55 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/search" element={<SearchResults />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/account" element={<Account />} />
-                <Route path="/orders" element={<Orders />} />
+                <Route
+                  path="/checkout"
+                  element={
+                    <ProtectedRoute>
+                      <Checkout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/account"
+                  element={
+                    <ProtectedRoute>
+                      <Account />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/orders"
+                  element={
+                    <ProtectedRoute>
+                      <Orders />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route path="/category/:slug" element={<Category />} />
                 <Route path="/flash-sale" element={<Category />} />
                 <Route path="/brands" element={<Category />} />
-              </Routes>
 
-              <Routes>
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="products" element={<ProductsManagement />} />
-                  <Route path="categories" element={<CategoriesManagement />} />
-                  <Route path="attributes" element={<AttributesManagement />} />
-                  <Route path="orders" element={<OrdersManagement />} />
-                  <Route path="users" element={<UsersManagement />} />
-                  <Route path="promotions" element={<PromotionsManagement />} />
-                  <Route path="coupons" element={<CouponsManagement />} />
-                  <Route path="statistics" element={<Statistics />} />
+                <Route path="/admin" element={<AdminRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="products" element={<ProductsManagement />} />
+                    <Route
+                      path="categories"
+                      element={<CategoriesManagement />}
+                    />
+                    <Route
+                      path="attributes"
+                      element={<AttributesManagement />}
+                    />
+                    <Route path="orders" element={<OrdersManagement />} />
+                    <Route path="users" element={<UsersManagement />} />
+                    <Route
+                      path="promotions"
+                      element={<PromotionsManagement />}
+                    />
+                    <Route path="coupons" element={<CouponsManagement />} />
+                    <Route path="statistics" element={<Statistics />} />
+                  </Route>
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

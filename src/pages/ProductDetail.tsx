@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import { products } from "../data/products";
 import { useCart } from "../context/CartContext";
+// import { useWishlist } from '../context/WishlistContext';
 import ProductCard from "../components/ProductCard";
+import ProductReviews from "../components/ProductReviews";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import CartSidebar from "../components/CartSidebar";
@@ -26,7 +28,7 @@ const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const product = products.find((p) => p.id === Number(id));
   const { addToCart } = useCart();
-  //   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+  // const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -34,7 +36,7 @@ const ProductDetail: React.FC = () => {
     "description" | "usage" | "reviews"
   >("description");
 
-  //   const inWishlist = product ? isInWishlist(product.id) : false;
+  // const inWishlist = product ? isInWishlist(product.id) : false;
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -69,13 +71,13 @@ const ProductDetail: React.FC = () => {
     }
   };
 
-  //   const handleWishlistToggle = () => {
-  //     if (inWishlist) {
-  //       removeFromWishlist(product.id);
-  //     } else {
-  //       addToWishlist(product);
-  //     }
-  //   };
+  // const handleWishlistToggle = () => {
+  //   if (inWishlist) {
+  //     removeFromWishlist(product.id);
+  //   } else {
+  //     addToWishlist(product);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -274,7 +276,7 @@ const ProductDetail: React.FC = () => {
             ))}
           </div>
 
-          <div className="max-w-3xl">
+          <div className={activeTab === "reviews" ? "" : "max-w-3xl"}>
             {activeTab === "description" && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -329,35 +331,12 @@ const ProductDetail: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
               >
-                {[1, 2, 3].map((review) => (
-                  <div key={review} className="p-4 bg-secondary/30 rounded-xl">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                        <span className="text-primary font-medium">N</span>
-                      </div>
-                      <div>
-                        <p className="font-medium">Nguyễn Thị A</p>
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className="w-3 h-3 fill-yellow-400 text-yellow-400"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        2 ngày trước
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Sản phẩm rất tốt, da mình cải thiện rõ rệt sau 2 tuần sử
-                      dụng. Đóng gói cẩn thận, giao hàng nhanh. Sẽ mua lại!
-                    </p>
-                  </div>
-                ))}
+                <ProductReviews
+                  productId={product.id}
+                  productRating={product.rating}
+                  reviewCount={product.reviewCount}
+                />
               </motion.div>
             )}
           </div>

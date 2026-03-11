@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { usePagination } from "../../hooks/usePagination";
+import PaginationControl from "../../components/PaginationControl";
 import { Search, Eye, ChevronDown } from "lucide-react";
 import {
   Card,
@@ -76,6 +78,11 @@ const OrdersManagement: React.FC = () => {
       statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
+    filteredOrders,
+    10,
+  );
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -186,7 +193,7 @@ const OrdersManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => (
+                {paginatedItems.map((order) => (
                   <tr key={order.id} className="border-b last:border-0">
                     <td className="py-3 px-2 text-sm font-medium">
                       {order.id}
@@ -247,6 +254,11 @@ const OrdersManagement: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            <PaginationControl
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={goToPage}
+            />
           </div>
         </CardContent>
       </Card>

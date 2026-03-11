@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Search, FolderTree } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -28,111 +28,116 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
-import { mockCategories } from "../../data/mockCategories";
-import type { Category } from "../../data/mockCategories";
 import { toast } from "sonner";
 
+import PaginationControl from "../../components/PaginationControl";
+import type {
+  ICategory,
+  ICreateCategory,
+  IUpdateCategory,
+} from "../../types/category.type";
+import { categoryService } from "../../service/categoryService";
+
 const CategoriesManagement: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [category, setCategory] = useState<ICategory[] | undefined>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(8);
+  const [totalPages, setTotalPages] = useState(0);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<ICreateCategory>({
     name: "",
-    slug: "",
     description: "",
-    parentId: "",
-    isActive: true,
+    parentId: null,
+    active: true,
   });
 
-  const filteredCategories = categories.filter(
-    (cat) =>
-      cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cat.slug.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const fetchCategories = async () => {
+    const res = await categoryService.getAll(
+      currentPage - 1,
+      pageSize,
+      search,
+      sort,
+    );
 
-  const parentCategories = categories.filter((cat) => !cat.parentId);
-
-  const getParentName = (parentId?: string) => {
-    if (!parentId) return "—";
-    const parent = categories.find((c) => c.id === parentId);
-    return parent?.name || "—";
-  };
-
-  const handleOpenDialog = (category?: Category) => {
-    if (category) {
-      setEditingCategory(category);
-      setFormData({
-        name: category.name,
-        slug: category.slug,
-        description: category.description,
-        parentId: category.parentId || "",
-        isActive: category.isActive,
-      });
-    } else {
-      setEditingCategory(null);
-      setFormData({
-        name: "",
-        slug: "",
-        description: "",
-        parentId: "",
-        isActive: true,
-      });
+    if (!res.error) {
+      setCategory(res.data?.result || []);
+      setTotalPages(res.data?.meta.pages || 0);
     }
-    setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formData.name || !formData.slug) {
+  useEffect(() => {
+    fetchCategories();
+  }, [currentPage, search, sort]);
+
+  const handleSubmit = async () => {
+    if (!formData.name) {
       toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
+    if (editingId) {
+      const updateData: IUpdateCategory = {
+        id: editingId,
+        name: formData.name,
+        description: formData.description,
+        active: !!formData.active,
+        parentId: formData.parentId,
+      };
 
-    if (editingCategory) {
-      setCategories(
-        categories.map((cat) =>
-          cat.id === editingCategory.id
-            ? {
-                ...cat,
-                ...formData,
-                parentId: formData.parentId || undefined,
-              }
-            : cat,
-        ),
-      );
+      await categoryService.update(updateData);
       toast.success("Đã cập nhật thể loại");
     } else {
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        ...formData,
-        parentId: formData.parentId || undefined,
-        productCount: 0,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setCategories([...categories, newCategory]);
-      toast.success("Đã thêm thể loại mới");
+      await categoryService.create(formData);
+      toast.success("Đã thêm mới thể loại");
     }
-    setIsDialogOpen(false);
+    resetForm();
+    fetchCategories();
   };
 
-  const handleDelete = (id: string) => {
-    const hasChildren = categories.some((cat) => cat.parentId === id);
-    if (hasChildren) {
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      description: "",
+      active: formData.active,
+      parentId: null,
+    });
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id: number) => {
+    const haschildren = category?.some((cate) => cate.parentCategory?.id);
+    if (haschildren) {
       toast.error("Không thể xóa thể loại có thể loại con");
       return;
     }
-    setCategories(categories.filter((cat) => cat.id !== id));
-    toast.success("Đã xóa thể loại");
+    if (window.confirm("Delete this category?")) {
+      await categoryService.remove(Number(id));
+      toast.success("Đã xóa thể loại");
+      fetchCategories();
+    }
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
+  const handleOpenDialog = (category?: ICategory) => {
+    if (category) {
+      setEditingId(category.id);
+      setFormData({
+        name: category.name,
+        description: category.description,
+        active: category.active,
+        parentId: category.parentCategory?.id || null,
+      });
+    } else {
+      setEditingId(null);
+      setFormData({
+        name: "",
+        description: "",
+        active: formData.active,
+        parentId: null,
+      });
+    }
+    setIsDialogOpen(true);
   };
 
   return (
@@ -153,8 +158,11 @@ const CategoriesManagement: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Tìm kiếm thể loại..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             className="pl-10"
           />
         </div>
@@ -167,18 +175,18 @@ const CategoriesManagement: React.FC = () => {
               <TableHead>Tên thể loại</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead>Thể loại cha</TableHead>
-              <TableHead>Số sản phẩm</TableHead>
+              {/* <TableHead>Số sản phẩm</TableHead> */}
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCategories.map((category) => (
+            {category?.map((category) => (
               <TableRow key={category.id}>
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-2">
-                    {category.parentId && (
+                    {category.parentCategory?.id && (
                       <FolderTree className="h-4 w-4 text-muted-foreground" />
                     )}
                     {category.name}
@@ -187,11 +195,15 @@ const CategoriesManagement: React.FC = () => {
                 <TableCell className="text-muted-foreground">
                   {category.slug}
                 </TableCell>
-                <TableCell>{getParentName(category.parentId)}</TableCell>
-                <TableCell>{category.productCount}</TableCell>
                 <TableCell>
-                  <Badge variant={category.isActive ? "default" : "secondary"}>
-                    {category.isActive ? "Hoạt động" : "Ẩn"}
+                  {category.parentCategory
+                    ? category.parentCategory.name
+                    : "Danh mục gốc"}
+                </TableCell>
+                {/* <TableCell>{category.productCount}</TableCell> */}
+                <TableCell>
+                  <Badge variant={category.active ? "default" : "secondary"}>
+                    {category.active ? "Hoạt động" : "Ẩn"}
                   </Badge>
                 </TableCell>
                 <TableCell>{category.createdAt}</TableCell>
@@ -217,13 +229,18 @@ const CategoriesManagement: React.FC = () => {
             ))}
           </TableBody>
         </Table>
+        <PaginationControl
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingCategory ? "Sửa thể loại" : "Thêm thể loại mới"}
+              {editingId ? "Sửa thể loại" : "Thêm thể loại mới"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -235,22 +252,12 @@ const CategoriesManagement: React.FC = () => {
                   setFormData({
                     ...formData,
                     name: e.target.value,
-                    slug: generateSlug(e.target.value),
                   });
                 }}
                 placeholder="Nhập tên thể loại"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Slug *</Label>
-              <Input
-                value={formData.slug}
-                onChange={(e) =>
-                  setFormData({ ...formData, slug: e.target.value })
-                }
-                placeholder="ten-the-loai"
-              />
-            </div>
+
             <div className="space-y-2">
               <Label>Mô tả</Label>
               <Textarea
@@ -265,11 +272,15 @@ const CategoriesManagement: React.FC = () => {
             <div className="space-y-2">
               <Label>Thể loại cha</Label>
               <Select
-                value={formData.parentId}
+                value={
+                  formData.parentId === null || formData.parentId === undefined
+                    ? "none"
+                    : formData.parentId.toString()
+                }
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
-                    parentId: value === "none" ? "" : value,
+                    parentId: value === "none" ? null : Number(value),
                   })
                 }
               >
@@ -278,10 +289,10 @@ const CategoriesManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Không có</SelectItem>
-                  {parentCategories
-                    .filter((cat) => cat.id !== editingCategory?.id)
+                  {category
+                    ?.filter((cat) => cat.id !== editingId)
                     .map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name}
                       </SelectItem>
                     ))}
@@ -291,9 +302,9 @@ const CategoriesManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <Label>Trạng thái hoạt động</Label>
               <Switch
-                checked={formData.isActive}
+                checked={formData.active}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked })
+                  setFormData({ ...formData, active: checked })
                 }
               />
             </div>
@@ -302,8 +313,8 @@ const CategoriesManagement: React.FC = () => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSave}>
-              {editingCategory ? "Cập nhật" : "Thêm mới"}
+            <Button onClick={handleSubmit}>
+              {editingId ? "Cập nhật" : "Thêm mới"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Search, X, ChevronRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -27,371 +27,519 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
-import { mockAttributes } from "../../data/mockAttributes";
-import type { Attribute, AttributeValue } from "../../data/mockAttributes";
 import { toast } from "sonner";
+import type {
+  IAttribute,
+  IAttributeValue,
+  ICreateAttribute,
+  ICreateAttributeValue,
+  IUpdateAttribute,
+  IUpdateAttributeValue,
+} from "../../types/attribute.type";
+import {
+  attributeService,
+  attributeValueService,
+} from "../../service/attributeService";
+import type { ICategory } from "../../types/category.type";
+import { categoryService } from "../../service/categoryService";
+import PaginationControl from "../../components/PaginationControl";
 
 const AttributesManagement: React.FC = () => {
-  const [attributes, setAttributes] = useState<Attribute[]>(mockAttributes);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAttribute, setEditingAttribute] = useState<Attribute | null>(
+  const [attributes, setAttributes] = useState<IAttribute[] | undefined>([]);
+  const [selectedAttribute, setSelectedAttribute] = useState<any>(null);
+  const [attributeValues, setAttributesValues] = useState<
+    IAttributeValue[] | undefined
+  >([]);
+
+  const [categories, setCategories] = useState<ICategory[] | undefined>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(8);
+  const [totalPages, setTotalPages] = useState(0);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("");
+
+  // Attribute dialog
+  const [isAttrDialogOpen, setIsAttrDialogOpen] = useState(false);
+  const [editingAttributeId, setEditingAttributeId] = useState<number | null>(
     null,
   );
-  const [formData, setFormData] = useState({
+  const [attrForm, setAttrForm] = useState<ICreateAttribute>({
     name: "",
-    code: "",
-    type: "select" as Attribute["type"],
-    isActive: true,
+    categoryId: null,
+    active: true,
   });
-  const [values, setValues] = useState<AttributeValue[]>([]);
-  const [newValue, setNewValue] = useState("");
-  const [newDisplayValue, setNewDisplayValue] = useState("");
 
-  const filteredAttributes = attributes.filter(
-    (attr) =>
-      attr.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      attr.code.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Value dialog
+  const [isValueDialogOpen, setIsValueDialogOpen] = useState(false);
+  const [editingValueId, setEditingValueId] = useState<number | null>(null);
+  const [valueForm, setValueForm] = useState<ICreateAttributeValue>({
+    value: "",
+    attributeId: null,
+  });
 
-  const getTypeLabel = (type: Attribute["type"]) => {
-    const labels = {
-      select: "Dropdown",
-      color: "Màu sắc",
-      size: "Kích thước",
-      text: "Văn bản",
-    };
-    return labels[type];
-  };
+  const fetchAttributes = async () => {
+    const res = await attributeService.getAll(
+      currentPage - 1,
+      pageSize,
+      search,
+      sort,
+    );
 
-  const handleOpenDialog = (attribute?: Attribute) => {
-    if (attribute) {
-      setEditingAttribute(attribute);
-      setFormData({
-        name: attribute.name,
-        code: attribute.code,
-        type: attribute.type,
-        isActive: attribute.isActive,
-      });
-      setValues([...attribute.values]);
-    } else {
-      setEditingAttribute(null);
-      setFormData({
-        name: "",
-        code: "",
-        type: "select",
-        isActive: true,
-      });
-      setValues([]);
+    if (!res.error) {
+      setAttributes(res.data?.result);
+      setTotalPages(res.data?.meta.pages || 0);
     }
-    setNewValue("");
-    setNewDisplayValue("");
-    setIsDialogOpen(true);
   };
 
-  const handleAddValue = () => {
-    if (!newValue.trim()) return;
-    const newVal: AttributeValue = {
-      id: Date.now().toString(),
-      value: newValue.trim(),
-      displayValue: newDisplayValue.trim() || undefined,
-    };
-    setValues([...values, newVal]);
-    setNewValue("");
-    setNewDisplayValue("");
+  const fetchCategory = async () => {
+    const res = await categoryService.getAll();
+
+    if (!res.error) {
+      setCategories(res.data?.result);
+    }
   };
 
-  const handleRemoveValue = (id: string) => {
-    setValues(values.filter((v) => v.id !== id));
+  useEffect(() => {
+    fetchAttributes();
+  }, [currentPage, search]);
+
+  useEffect(() => {
+    fetchCategory();
+  }, []);
+
+  // ---- Attribute CRUD ----
+  const handleOpenAttrDialog = (attribute?: IAttribute) => {
+    if (attribute) {
+      setEditingAttributeId(attribute.id);
+      setAttrForm({
+        name: attribute.name,
+        categoryId: attribute.category.id,
+        active: attribute.active,
+      });
+    } else {
+      setEditingAttributeId(null);
+      setAttrForm({ name: "", categoryId: null, active: true });
+    }
+    setIsAttrDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formData.name || !formData.code) {
+  const handleDeleteAttr = async (id: number) => {
+    if (window.confirm("Delete this attribute?")) {
+      await attributeService.remove(Number(id));
+      toast.success("Đã xóa thuộc tính");
+      fetchAttributes();
+    }
+  };
+
+  const handleSaveAttr = async () => {
+    if (!attrForm.name) {
       toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
-
-    if (values.length === 0) {
-      toast.error("Vui lòng thêm ít nhất một giá trị");
-      return;
-    }
-
-    if (editingAttribute) {
-      setAttributes(
-        attributes.map((attr) =>
-          attr.id === editingAttribute.id
-            ? { ...attr, ...formData, values }
-            : attr,
-        ),
-      );
+    if (editingAttributeId) {
+      const updateData: IUpdateAttribute = {
+        id: editingAttributeId,
+        name: attrForm.name,
+        active: attrForm.active,
+        categoryId: attrForm.categoryId,
+      };
+      await attributeService.update(updateData);
       toast.success("Đã cập nhật thuộc tính");
     } else {
-      const newAttribute: Attribute = {
-        id: Date.now().toString(),
-        ...formData,
-        values,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setAttributes([...attributes, newAttribute]);
+      await attributeService.create(attrForm);
       toast.success("Đã thêm thuộc tính mới");
     }
-    setIsDialogOpen(false);
+    setIsAttrDialogOpen(false);
+    fetchAttributes();
   };
 
-  const handleDelete = (id: string) => {
-    setAttributes(attributes.filter((attr) => attr.id !== id));
-    toast.success("Đã xóa thuộc tính");
+  // ---- Value CRUD ----
+
+  const fetchAttributeValues = async (attributeId: number) => {
+    const res = await attributeValueService.getAll(attributeId.toString());
+
+    if (!res.error) {
+      setAttributesValues(res.data?.result);
+    }
   };
 
-  const generateCode = (name: string) => {
-    return name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/đ/g, "d")
-      .replace(/[^a-z0-9]+/g, "_")
-      .replace(/(^_|_$)/g, "");
+  useEffect(() => {
+    if (!selectedAttribute?.id) return;
+    fetchAttributeValues(selectedAttribute.id);
+  }, [selectedAttribute?.id]);
+
+  const handleOpenValueDialog = (value?: IAttributeValue) => {
+    if (value) {
+      setEditingValueId(value.id);
+      setValueForm({ value: value.value, attributeId: value.attribute.id });
+    } else {
+      setEditingValueId(null);
+      setValueForm({ value: "", attributeId: selectedAttribute.id ?? null });
+    }
+    setIsValueDialogOpen(true);
+  };
+
+  const handleDeleteValue = async (id: string) => {
+    if (window.confirm("Delete this attribute value?")) {
+      await attributeValueService.remove(Number(id));
+      toast.success("Đã xóa giá trị");
+      fetchAttributeValues(selectedAttribute.id);
+    }
+  };
+
+  const handleSaveValue = async () => {
+    if (!selectedAttribute) return;
+    if (!valueForm.value.trim()) {
+      toast.error("Vui lòng nhập giá trị");
+      return;
+    }
+    if (editingValueId) {
+      const updateData: IUpdateAttributeValue = {
+        id: editingValueId,
+        value: valueForm.value,
+        attributeId: selectedAttribute.id,
+      };
+      await attributeValueService.update(updateData);
+      toast.success("Đã cập nhật giá trị");
+    } else {
+      const createData: ICreateAttributeValue = {
+        value: valueForm.value,
+        attributeId: selectedAttribute.id,
+      };
+      await attributeValueService.create(createData);
+      toast.success("Đã thêm giá trị mới");
+    }
+
+    fetchAttributeValues(selectedAttribute.id);
+    setIsValueDialogOpen(false);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Quản lý Thuộc tính</h1>
-          <p className="text-muted-foreground">
-            Quản lý các thuộc tính sản phẩm
-          </p>
-        </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Thêm thuộc tính
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Quản lý Thuộc tính</h1>
+        <p className="text-muted-foreground">
+          Tạo thuộc tính trước, sau đó thêm các giá trị cho thuộc tính
+        </p>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Tìm kiếm thuộc tính..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tên thuộc tính</TableHead>
-              <TableHead>Mã</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Giá trị</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày tạo</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAttributes.map((attribute) => (
-              <TableRow key={attribute.id}>
-                <TableCell className="font-medium">{attribute.name}</TableCell>
-                <TableCell className="text-muted-foreground font-mono text-sm">
-                  {attribute.code}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {getTypeLabel(attribute.type)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1 max-w-xs">
-                    {attribute.values.slice(0, 3).map((val) => (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* === LEFT: Attributes List === */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Thuộc tính</h2>
+            <Button size="sm" onClick={() => handleOpenAttrDialog()}>
+              <Plus className="h-4 w-4 mr-1" /> Thêm
+            </Button>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Tìm kiếm thuộc tính..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên</TableHead>
+                  <TableHead>Thể Loại</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attributes?.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      Chưa có thuộc tính nào
+                    </TableCell>
+                  </TableRow>
+                )}
+                {attributes?.map((attr) => (
+                  <TableRow
+                    key={attr.id}
+                    className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
+                    onClick={() => setSelectedAttribute(attr)}
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{attr.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {attr.name + " của " + attr.category.name}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {attr.category.name}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <Badge
-                        key={val.id}
-                        variant="secondary"
+                        variant={attr.active ? "default" : "secondary"}
                         className="text-xs"
                       >
-                        {attribute.type === "color" ? (
-                          <span className="flex items-center gap-1">
-                            <span
-                              className="w-3 h-3 rounded-full border"
-                              style={{ backgroundColor: val.value }}
-                            />
-                            {val.displayValue}
-                          </span>
-                        ) : (
-                          val.value
-                        )}
+                        {attr.active ? "Hoạt động" : "Ẩn"}
                       </Badge>
-                    ))}
-                    {attribute.values.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{attribute.values.length - 3}
-                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAttrDialog(attr);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAttr(attr.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <PaginationControl
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setCurrentPage(page)}
+          />
+        </div>
+
+        {/* === RIGHT: Attribute Values === */}
+        <div className="space-y-4">
+          {selectedAttribute ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    Giá trị của:{" "}
+                    <span className="text-primary">
+                      {selectedAttribute.name}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {selectedAttribute.name}
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => handleOpenValueDialog()}>
+                  <Plus className="h-4 w-4 mr-1" /> Thêm giá trị
+                </Button>
+              </div>
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Giá trị</TableHead>
+                      {selectedAttribute.name === "Màu sắc" && (
+                        <TableHead>Tên hiển thị</TableHead>
+                      )}
+                      <TableHead className="text-right">Thao tác</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attributeValues?.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={selectedAttribute.name === "Màu sắc" ? 3 : 2}
+                          className="text-center text-muted-foreground py-8"
+                        >
+                          Chưa có giá trị nào. Nhấn "Thêm giá trị" để bắt đầu.
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={attribute.isActive ? "default" : "secondary"}>
-                    {attribute.isActive ? "Hoạt động" : "Ẩn"}
-                  </Badge>
-                </TableCell>
-                <TableCell>{attribute.createdAt}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenDialog(attribute)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(attribute.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+
+                    {attributeValues?.map((val) => (
+                      <TableRow key={val.id}>
+                        <TableCell>
+                          {selectedAttribute?.name === "Màu sắc" ? (
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="w-5 h-5 rounded-full border"
+                                style={{ backgroundColor: val.value }}
+                              />
+                              <span className="font-mono text-sm">
+                                {val.value}
+                              </span>
+                            </span>
+                          ) : (
+                            <span>{val.value}</span>
+                          )}
+                        </TableCell>
+                        {selectedAttribute?.name === "Màu sắc" && (
+                          <TableCell>{val.value || "—"}</TableCell>
+                        )}
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleOpenValueDialog(val)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                handleDeleteValue(val.id.toString())
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <PaginationControl
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full min-h-[300px] border rounded-lg bg-muted/30">
+              <div className="text-center text-muted-foreground">
+                <ChevronRight className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                <p className="font-medium">Chọn một thuộc tính</p>
+                <p className="text-sm">để xem và quản lý các giá trị</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
+      {/* === Attribute Dialog === */}
+      <Dialog open={isAttrDialogOpen} onOpenChange={setIsAttrDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingAttribute ? "Sửa thuộc tính" : "Thêm thuộc tính mới"}
+              {editingAttributeId ? "Sửa thuộc tính" : "Thêm thuộc tính mới"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tên thuộc tính *</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => {
-                    setFormData({
-                      ...formData,
-                      name: e.target.value,
-                      code: generateCode(e.target.value),
-                    });
-                  }}
-                  placeholder="VD: Dung tích"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Mã thuộc tính *</Label>
-                <Input
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                  placeholder="VD: volume"
-                  className="font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Loại thuộc tính</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value: Attribute["type"]) =>
-                    setFormData({ ...formData, type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="select">Dropdown</SelectItem>
-                    <SelectItem value="color">Màu sắc</SelectItem>
-                    <SelectItem value="size">Kích thước</SelectItem>
-                    <SelectItem value="text">Văn bản</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-end">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isActive: checked })
-                    }
-                  />
-                  <Label htmlFor="isActive">Hoạt động</Label>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label>Giá trị thuộc tính</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newValue}
-                  onChange={(e) => setNewValue(e.target.value)}
-                  placeholder={
-                    formData.type === "color" ? "#FF6B6B" : "Giá trị"
-                  }
-                  className="flex-1"
-                />
-                {formData.type === "color" && (
-                  <Input
-                    value={newDisplayValue}
-                    onChange={(e) => setNewDisplayValue(e.target.value)}
-                    placeholder="Tên hiển thị"
-                    className="flex-1"
-                  />
-                )}
-                <Button type="button" onClick={handleAddValue} size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {values.map((val) => (
-                  <Badge
-                    key={val.id}
-                    variant="secondary"
-                    className="gap-1 pr-1"
-                  >
-                    {formData.type === "color" ? (
-                      <span className="flex items-center gap-1">
-                        <span
-                          className="w-3 h-3 rounded-full border"
-                          style={{ backgroundColor: val.value }}
-                        />
-                        {val.displayValue || val.value}
-                      </span>
-                    ) : (
-                      val.value
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveValue(val.id)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+              <Label>Tên thuộc tính *</Label>
+              <Input
+                value={attrForm.name}
+                onChange={(e) =>
+                  setAttrForm({ ...attrForm, name: e.target.value })
+                }
+                placeholder="VD: Dung tích"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Thể loại </Label>
+              <Select
+                value={
+                  attrForm.categoryId === null ||
+                  attrForm.categoryId === undefined
+                    ? "none"
+                    : attrForm.categoryId.toString()
+                }
+                onValueChange={(value) =>
+                  setAttrForm({
+                    ...attrForm,
+                    categoryId: value === "none" ? null : Number(value),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn thể loại " />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Không có</SelectItem>
+                  {categories?.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id.toString()}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="isActive"
+                checked={attrForm.active}
+                onCheckedChange={(c) => setAttrForm({ ...attrForm, active: c })}
+              />
+              <Label htmlFor="isActive">Hoạt động</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsAttrDialogOpen(false)}
+            >
               Hủy
             </Button>
-            <Button onClick={handleSave}>
-              {editingAttribute ? "Cập nhật" : "Thêm mới"}
+            <Button onClick={handleSaveAttr}>
+              {editingAttributeId ? "Cập nhật" : "Thêm mới"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Value Dialog === */}
+      <Dialog open={isValueDialogOpen} onOpenChange={setIsValueDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {editingValueId ? "Sửa giá trị" : "Thêm giá trị mới"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Giá trị *</Label>
+              <Input
+                value={valueForm.value}
+                onChange={(e) =>
+                  setValueForm({ ...valueForm, value: e.target.value })
+                }
+                placeholder={
+                  selectedAttribute?.name === "Màu sắc"
+                    ? "Đỏ san hô"
+                    : "Nhập giá trị"
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsValueDialogOpen(false)}
+            >
+              Hủy
+            </Button>
+            <Button onClick={handleSaveValue}>
+              {editingValueId ? "Cập nhật" : "Thêm mới"}
             </Button>
           </DialogFooter>
         </DialogContent>

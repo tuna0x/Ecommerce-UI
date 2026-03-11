@@ -42,14 +42,14 @@ const Register: React.FC = () => {
 
     setIsLoading(true);
 
-    const success = await register(name, email, password);
+    const success = await register({ name, email, password });
 
     if (success) {
       toast({
         title: "Đăng ký thành công!",
-        description: "Chào mừng bạn đến với BeautyLux.",
+        description: "Chào mừng bạn đến với TUNAHOUSE.",
       });
-      navigate("/");
+      navigate("/login");
     } else {
       toast({
         title: "Đăng ký thất bại",

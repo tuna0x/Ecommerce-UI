@@ -50,7 +50,7 @@ function Header() {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-              tunaduck<span className="text-primary">HOUSE</span>
+              tuna<span className="text-primary">HOUSE</span>
             </h1>
           </Link>
 
@@ -80,6 +80,18 @@ function Header() {
                     </p>
                   </div>
                   <DropdownMenuSeparator />
+                  {user?.role?.name === "SUPER_ADMIN" && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to="/admin"
+                        className="flex items-center cursor-pointer text-primary font-medium"
+                      >
+                        <ShoppingBag className="w-4 h-4 mr-2" />
+                        Quản trị Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem asChild>
                     <Link
                       to="/account"
