@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, Search, FolderTree } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -20,15 +21,16 @@ import {
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Textarea } from "../../components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
+import { Skeleton } from "../../components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/tooltip";
+import { SearchableSelect } from "../../components/SearchableSelect";
 
 import PaginationControl from "../../components/PaginationControl";
 import type {
@@ -39,12 +41,14 @@ import type {
 import { categoryService } from "../../service/categoryService";
 
 const CategoriesManagement: React.FC = () => {
-  const [category, setCategory] = useState<ICategory[] | undefined>([]);
+  const navigate = useNavigate();
+  const [category, setCategory] = useState<ICategory[]>([]);
+  const [allCategories, setAllCategories] = useState<ICategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ICreateCategory>({
@@ -54,23 +58,44 @@ const CategoriesManagement: React.FC = () => {
     active: true,
   });
 
-  const fetchCategories = async () => {
-    const res = await categoryService.getAll(
-      currentPage - 1,
-      pageSize,
-      search,
-      sort,
-    );
-
-    if (!res.error) {
-      setCategory(res.data?.result || []);
-      setTotalPages(res.data?.meta.pages || 0);
+  const fetchCategories = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await categoryService.getAll(
+        currentPage - 1,
+        10,
+        search,
+        "updatedAt,desc",
+      );
+      if (res.data) {
+        setCategory(res.data.result);
+        setTotalPages(res.data.meta.pages);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách thể loại");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [currentPage, search]);
+
+  const fetchAllCategories = useCallback(async () => {
+    try {
+      const res = await categoryService.getAll(0, 1000, "", "name,asc");
+      if (res.data) {
+        setAllCategories(res.data.result);
+      }
+    } catch {
+      console.error("Error fetching all categories");
+    }
+  }, []);
 
   useEffect(() => {
     fetchCategories();
-  }, [currentPage, search, sort]);
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchAllCategories();
+  }, [fetchAllCategories]);
 
   const handleSubmit = async () => {
     if (!formData.name) {
@@ -112,9 +137,9 @@ const CategoriesManagement: React.FC = () => {
       toast.error("Không thể xóa thể loại có thể loại con");
       return;
     }
-    if (window.confirm("Delete this category?")) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa thể loại này?")) {
       await categoryService.remove(Number(id));
-      toast.success("Đã xóa thể loại");
+      toast.success("Đã xóa thể loại thành công");
       fetchCategories();
     }
   };
@@ -182,51 +207,95 @@ const CategoriesManagement: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {category?.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {category.parentCategory?.id && (
-                      <FolderTree className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    {category.name}
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {category.slug}
-                </TableCell>
-                <TableCell>
-                  {category.parentCategory
-                    ? category.parentCategory.name
-                    : "Danh mục gốc"}
-                </TableCell>
-                {/* <TableCell>{category.productCount}</TableCell> */}
-                <TableCell>
-                  <Badge variant={category.active ? "default" : "secondary"}>
-                    {category.active ? "Hoạt động" : "Ẩn"}
-                  </Badge>
-                </TableCell>
-                <TableCell>{category.createdAt}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenDialog(category)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(category.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+            {isLoading ? (
+              Array.from({ length: pageSize }).map((_, idx) => (
+                <TableRow key={idx}>
+                  <TableCell><Skeleton className="h-5 w-[150px]" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-[100px] ml-auto" /></TableCell>
+                </TableRow>
+              ))
+            ) : category?.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                  Không tìm thấy thể loại nào.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              category?.map((category) => (
+                <TableRow key={category.id} className="group hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {category.parentCategory?.id ? (
+                        <FolderTree className="h-4 w-4 text-muted-foreground opacity-70" />
+                      ) : (
+                        <div className="w-4" />
+                      )}
+                      {category.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">
+                    {category.slug}
+                  </TableCell>
+                  <TableCell>
+                    {category.parentCategory ? (
+                      <Badge variant="outline" className="font-normal">
+                        {category.parentCategory.name}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm italic">Gốc</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={category.active ? "default" : "secondary"} className="rounded-full">
+                      {category.active ? "Hoạt động" : "Ẩn"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(category.createdAt).toLocaleDateString("vi-VN")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => navigate(`/admin/attributes?categoryId=${category.id}`)}
+                            >
+                              <ListChecks className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Xem thuộc tính</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleOpenDialog(category)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => handleDelete(category.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         <PaginationControl
@@ -271,7 +340,16 @@ const CategoriesManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Thể loại cha</Label>
-              <Select
+              <SearchableSelect
+                options={[
+                  { value: "none", label: "Danh mục gốc" },
+                  ...(allCategories
+                    ?.filter((cat) => cat.id !== editingId)
+                    .map((cat) => ({
+                      value: cat.id.toString(),
+                      label: cat.name,
+                    })) || []),
+                ]}
                 value={
                   formData.parentId === null || formData.parentId === undefined
                     ? "none"
@@ -283,24 +361,24 @@ const CategoriesManagement: React.FC = () => {
                     parentId: value === "none" ? null : Number(value),
                   })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn thể loại cha (nếu có)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Không có</SelectItem>
-                  {category
-                    ?.filter((cat) => cat.id !== editingId)
-                    .map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                placeholder="Chọn thể loại cha"
+                searchPlaceholder="Tìm tên thể loại..."
+              />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Trạng thái hoạt động</Label>
+              <div className="flex items-center gap-2">
+                <Label>Trạng thái hoạt động</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Nếu tắt, thể loại này và các sản phẩm thuộc về nó sẽ không hiển thị trên cửa hàng.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Switch
                 checked={formData.active}
                 onCheckedChange={(checked) =>

@@ -17,11 +17,16 @@ export const attributeService = {
     size: number,
     search?: string,
     sort?: string,
+    categoryId?: string,
   ): Promise<IApiResponse<IPagination<IAttribute>>> => {
-    const params: any = {
+    const filters = [];
+    if (search) filters.push(`name~'${search}'`);
+    if (categoryId) filters.push(`category.id='${categoryId}'`);
+
+    const params: Record<string, unknown> = {
       page,
       size,
-      filer: search ? `name~'${search}'` : undefined,
+      filter: filters.length > 0 ? filters.join(" and ") : undefined,
       sort: sort,
     };
 
@@ -35,7 +40,7 @@ export const attributeService = {
   },
 
   getByName: async (name: string): Promise<IApiResponse<IAttribute>> => {
-    const params: any = { name };
+    const params: Record<string, unknown> = { name };
     const res = await axiosInstance.get(ATTRIBUTE_URL, { params });
     return res.data;
   },
@@ -59,7 +64,7 @@ export const attributeValueService = {
   getAll: async (
     search?: string,
   ): Promise<IApiResponse<IPagination<IAttributeValue>>> => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       filter: search ? `attribute.id='${search}'` : undefined,
     };
 
@@ -73,7 +78,7 @@ export const attributeValueService = {
   },
 
   getByName: async (name: string): Promise<IApiResponse<IAttributeValue>> => {
-    const params: any = { name };
+    const params: Record<string, unknown> = { name };
     const res = await axiosInstance.get(ATTRIBUTE_VALUE_URL, { params });
     return res.data;
   },

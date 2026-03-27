@@ -14,10 +14,10 @@ export const categoryService = {
     search?: string,
     sort?: string,
   ): Promise<IApiResponse<IPagination<ICategory>>> => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       page,
       size,
-      filer: search ? `name~'${search}'` : undefined,
+      filter: search ? `name~'${search}'` : undefined,
       sort: sort,
     };
 
@@ -31,7 +31,7 @@ export const categoryService = {
   },
 
   getByName: async (name: string): Promise<IApiResponse<ICategory>> => {
-    const params: any = { name };
+    const params: Record<string, unknown> = { name };
     const res = await axiosInstance.get(BASE_URL, { params });
     return res.data;
   },
