@@ -20,7 +20,7 @@ import {
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
-import { SearchableSelect } from "../../components/SearchableSelect";
+import { MultiSearchableSelect } from "../../components/MultiSearchableSelect";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 import type {
@@ -66,7 +66,7 @@ const AttributesManagement: React.FC = () => {
   );
   const [attrForm, setAttrForm] = useState<ICreateAttribute>({
     name: "",
-    categoryId: null,
+    categoryIds: [],
     active: true,
   });
 
@@ -124,12 +124,12 @@ const AttributesManagement: React.FC = () => {
       setEditingAttributeId(attribute.id);
       setAttrForm({
         name: attribute.name,
-        categoryId: attribute.category.id,
+        categoryIds: attribute.categories.map((c) => c.id),
         active: attribute.active,
       });
     } else {
       setEditingAttributeId(null);
-      setAttrForm({ name: "", categoryId: null, active: true });
+      setAttrForm({ name: "", categoryIds: [], active: true });
     }
     setIsAttrDialogOpen(true);
   };
@@ -152,7 +152,7 @@ const AttributesManagement: React.FC = () => {
         id: editingAttributeId,
         name: attrForm.name,
         active: attrForm.active,
-        categoryId: attrForm.categoryId,
+        categoryIds: attrForm.categoryIds,
       };
       await attributeService.update(updateData);
       toast.success("Đã cập nhật thuộc tính");
@@ -307,14 +307,18 @@ const AttributesManagement: React.FC = () => {
                       <div>
                         <p className="font-medium">{attr.name}</p>
                         <p className="text-xs text-muted-foreground font-mono">
-                          {attr.name + " của " + attr.category.name}
+                          {attr.name + " (" + attr.categories.length + " thể loại)"}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {attr.category.name}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1 max-w-[200px]">
+                        {attr.categories.map((cat) => (
+                          <Badge key={cat.id} variant="outline" className="text-[10px] px-1 h-5">
+                            {cat.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -493,27 +497,19 @@ const AttributesManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Thể loại </Label>
-              <SearchableSelect
-                options={[
-                  { value: "none", label: "Không có" },
-                  ...(allCategories?.map((cat) => ({
+              <MultiSearchableSelect
+                options={allCategories?.map((cat) => ({
                     value: cat.id.toString(),
                     label: cat.name,
-                  })) || []),
-                ]}
-                value={
-                  attrForm.categoryId === null ||
-                  attrForm.categoryId === undefined
-                    ? "none"
-                    : attrForm.categoryId.toString()
-                }
-                onValueChange={(value) =>
+                })) || []}
+                value={attrForm.categoryIds.map(String)}
+                onValueChange={(values) =>
                   setAttrForm({
                     ...attrForm,
-                    categoryId: value === "none" ? null : Number(value),
+                    categoryIds: values.map(Number),
                   })
                 }
-                placeholder="Chọn thể loại"
+                placeholder="Chọn các thể loại"
                 searchPlaceholder="Tìm tên thể loại..."
               />
             </div>

@@ -1,5 +1,4 @@
-import React, { useState, useRef } from "react";
-import { usePagination } from "../../hooks/usePagination";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import PaginationControl from "../../components/PaginationControl";
 import {
   Plus,
@@ -9,10 +8,9 @@ import {
   Upload,
   ImageIcon,
   X,
-  GripVertical,
-  Eye,
-  EyeOff,
+  Loader2,
 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -26,6 +24,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "../../components/ui/dialog";
 import {
@@ -39,89 +38,72 @@ import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
+import { BannerService } from "../../service/bannerService";
+import type { IBanner, ICreateBanner, IUpdateBanner } from "../../types/banner.type";
+import { Skeleton } from "../../components/ui/skeleton";
 
-interface Banner {
-  id: number;
-  title: string;
-  image: string;
-  link: string;
-  position: "hero" | "sub" | "popup" | "category";
-  order: number;
-  isActive: boolean;
-  startDate: string;
-  endDate: string;
-}
-
-const positionLabels: Record<Banner["position"], string> = {
+const positionLabels: Record<IBanner["position"], string> = {
   hero: "Banner chính (Hero)",
   sub: "Banner phụ",
   popup: "Popup",
   category: "Banner danh mục",
 };
 
-const initialBanners: Banner[] = [
-  {
-    id: 1,
-    title: "Flash Sale Mùa Hè",
-    image:
-      "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=1200&q=80",
-    link: "/flash-sale",
-    position: "hero",
-    order: 1,
-    isActive: true,
-    startDate: "2026-03-01",
-    endDate: "2026-03-31",
-  },
-  {
-    id: 2,
-    title: "Bộ sưu tập mới",
-    image:
-      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1200&q=80",
-    link: "/category/trang-diem",
-    position: "hero",
-    order: 2,
-    isActive: true,
-    startDate: "2026-03-01",
-    endDate: "2026-04-30",
-  },
-  {
-    id: 3,
-    title: "Ưu đãi thương hiệu",
-    image:
-      "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80",
-    link: "/brands",
-    position: "sub",
-    order: 1,
-    isActive: true,
-    startDate: "2026-03-01",
-    endDate: "2026-03-15",
-  },
-];
-
 const BannersManagement: React.FC = () => {
-  const [bannerList, setBannerList] = useState<Banner[]>(initialBanners);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [bannerList, setBannerList] = useState<IBanner[]>([]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
-  const [formData, setFormData] = useState({
+  const [editingBanner, setEditingBanner] = useState<IBanner | null>(null);
+  const [formData, setFormData] = useState<ICreateBanner>({
     title: "",
     link: "",
-    position: "hero" as Banner["position"],
-    order: "1",
+    position: "hero",
+    order: 1,
+    isActive: true,
     startDate: "",
     endDate: "",
   });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredBanners = bannerList.filter((b) =>
-    b.title.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const fetchBanners = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await BannerService.getAll(
+        currentPage - 1,
+        pageSize,
+        debouncedSearch,
+        "createdAt,desc"
+      );
+      if (!res.error) {
+        setBannerList(res.data?.result || []);
+        setTotalPages(res.data?.meta.pages || 0);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách banner");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch]);
 
-  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
-    filteredBanners,
-    10,
-  );
+  useEffect(() => {
+    fetchBanners();
+  }, [fetchBanners]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,6 +113,7 @@ const BannersManagement: React.FC = () => {
       return;
     }
     setImagePreview(URL.createObjectURL(file));
+    setFiles(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -140,29 +123,33 @@ const BannersManagement: React.FC = () => {
       title: "",
       link: "",
       position: "hero",
-      order: "1",
+      order: 1,
+      isActive: true,
       startDate: "",
       endDate: "",
     });
     setImagePreview(null);
+    setFiles(null);
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (banner: Banner) => {
+  const openEditDialog = (banner: IBanner) => {
     setEditingBanner(banner);
     setFormData({
       title: banner.title,
-      link: banner.link,
+      link: banner.link || "",
       position: banner.position,
-      order: banner.order.toString(),
-      startDate: banner.startDate,
-      endDate: banner.endDate,
+      order: banner.order,
+      isActive: banner.isActive,
+      startDate: banner.startDate || "",
+      endDate: banner.endDate || "",
     });
     setImagePreview(banner.image);
+    setFiles(null);
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.title.trim()) {
       toast.error("Vui lòng nhập tiêu đề banner");
       return;
@@ -172,53 +159,50 @@ const BannersManagement: React.FC = () => {
       return;
     }
 
-    if (editingBanner) {
-      setBannerList((prev) =>
-        prev.map((b) =>
-          b.id === editingBanner.id
-            ? {
-                ...b,
-                title: formData.title,
-                link: formData.link,
-                position: formData.position,
-                order: parseInt(formData.order) || 1,
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-                image: imagePreview || b.image,
-              }
-            : b,
-        ),
-      );
-      toast.success("Cập nhật banner thành công");
-    } else {
-      const newBanner: Banner = {
-        id: Date.now(),
-        title: formData.title,
-        image: imagePreview!,
-        link: formData.link,
-        position: formData.position,
-        order: parseInt(formData.order) || 1,
-        isActive: true,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-      };
-      setBannerList((prev) => [newBanner, ...prev]);
-      toast.success("Thêm banner thành công");
+    try {
+      setIsSubmitting(true);
+      if (editingBanner) {
+        const updateData: IUpdateBanner = {
+          ...formData,
+          id: editingBanner.id,
+        };
+        await BannerService.update(updateData, files || undefined);
+        toast.success("Cập nhật banner thành công");
+      } else {
+        await BannerService.create(formData, files || undefined);
+        toast.success("Thêm banner thành công");
+      }
+      setIsDialogOpen(false);
+      fetchBanners();
+    } catch {
+      toast.error("Đã xảy ra lỗi khi lưu banner");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa banner này?")) {
-      setBannerList((prev) => prev.filter((b) => b.id !== id));
-      toast.success("Xóa banner thành công");
+      try {
+        await BannerService.remove(id);
+        toast.success("Xóa banner thành công");
+        fetchBanners();
+      } catch {
+        toast.error("Không thể xóa banner");
+      }
     }
   };
 
-  const toggleActive = (id: number) => {
-    setBannerList((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)),
-    );
+  const toggleActive = async (banner: IBanner) => {
+    try {
+      if (!banner.id) return;
+      await BannerService.toggleActive(banner.id, !banner.isActive);
+      toast.success(`Banner ${!banner.isActive ? "đã kích hoạt" : "đã tạm dừng"}`);
+      fetchBanners();
+    } catch (error) {
+      console.error("Lỗi toggle status:", error);
+      toast.error("Không thể thay đổi trạng thái banner");
+    }
   };
 
   const isExpired = (endDate: string) => {
@@ -228,7 +212,6 @@ const BannersManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Quản lý banner</h1>
@@ -242,194 +225,124 @@ const BannersManagement: React.FC = () => {
         </Button>
       </div>
 
-      {/* Search */}
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm banner..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Banners Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách banner ({filteredBanners.length})</CardTitle>
+          <CardTitle>Danh sách banner ({bannerList.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Ảnh
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Tiêu đề
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Vị trí
-                  </th>
-                  <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Thứ tự
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Thời gian
-                  </th>
-                  <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Trạng thái
-                  </th>
-                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hành động
-                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Ảnh</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Tiêu đề</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Vị trí</th>
+                  <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Thứ tự</th>
+                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Thời gian</th>
+                  <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Trạng thái</th>
+                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">Hành động</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedItems.map((banner) => (
-                  <tr key={banner.id} className="border-b last:border-0">
-                    <td className="py-3 px-2">
-                      <img
-                        src={banner.image}
-                        alt={banner.title}
-                        className="w-24 h-14 object-cover rounded-lg border border-border"
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="text-sm font-medium">{banner.title}</div>
-                      {banner.link && (
-                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                          {banner.link}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {positionLabels[banner.position]}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-2 text-center text-sm">
-                      {banner.order}
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="text-xs space-y-0.5">
-                        {banner.startDate && <div>Từ: {banner.startDate}</div>}
-                        {banner.endDate && (
-                          <div
-                            className={
-                              isExpired(banner.endDate)
-                                ? "text-destructive"
-                                : ""
-                            }
-                          >
-                            Đến: {banner.endDate}{" "}
-                            {isExpired(banner.endDate) && "(Hết hạn)"}
-                          </div>
-                        )}
-                        {!banner.startDate && !banner.endDate && (
-                          <span className="text-muted-foreground">
-                            Không giới hạn
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <Switch
-                        checked={banner.isActive}
-                        onCheckedChange={() => toggleActive(banner.id)}
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(banner)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(banner.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {paginatedItems.length === 0 && (
+                {isLoading ? (
+                  Array.from({ length: pageSize }).map((_, idx) => (
+                    <tr key={idx} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-4 px-2"><Skeleton className="w-24 h-14 rounded-lg" /></td>
+                      <td className="py-4 px-2"><Skeleton className="h-4 w-32 mb-2" /><Skeleton className="h-3 w-24" /></td>
+                      <td className="py-4 px-2 text-center"><Skeleton className="h-5 w-16 mx-auto rounded-full" /></td>
+                      <td className="py-4 px-2 text-center text-sm font-medium"><Skeleton className="h-4 w-6 mx-auto" /></td>
+                      <td className="py-3 px-2"><Skeleton className="h-4 w-32 mb-1" /><Skeleton className="h-4 w-24" /></td>
+                      <td className="py-3 px-2 text-center"><Skeleton className="h-5 w-10 mx-auto rounded-full" /></td>
+                      <td className="py-3 px-2"><div className="flex items-center justify-end gap-1"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div></td>
+                    </tr>
+                  ))
+                ) : bannerList.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="py-8 text-center text-muted-foreground"
-                    >
-                      Không tìm thấy banner nào
-                    </td>
+                    <td colSpan={7} className="py-12 text-center text-muted-foreground italic">Không tìm thấy banner nào</td>
                   </tr>
+                ) : (
+                  bannerList.map((banner) => (
+                    <tr key={banner.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-2">
+                        <div className="relative group/img overflow-hidden rounded-lg w-24 h-14 border border-border">
+                          <img src={banner.image || "/no-image.png"} alt={banner.title} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300" />
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="text-sm font-semibold">{banner.title}</div>
+                        {banner.link && <div className="text-xs text-muted-foreground truncate max-w-[150px] opacity-70">{banner.link}</div>}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wider">{positionLabels[banner.position]}</Badge>
+                      </td>
+                      <td className="py-3 px-2 text-center text-sm font-medium">{banner.order}</td>
+                      <td className="py-3 px-2">
+                        <div className="text-[11px] leading-relaxed">
+                          {banner.startDate && <div className="flex items-center gap-1"><span className="text-muted-foreground">Từ:</span><span>{banner.startDate}</span></div>}
+                          {banner.endDate && (
+                            <div className={cn("flex items-center gap-1", isExpired(banner.endDate) ? "text-destructive font-medium" : "")}>
+                              <span className="text-muted-foreground">Đến:</span><span>{banner.endDate}</span>
+                              {isExpired(banner.endDate) && <span className="text-[10px] uppercase">(Hết hạn)</span>}
+                            </div>
+                          )}
+                          {!banner.startDate && !banner.endDate && <span className="text-muted-foreground italic">Không giới hạn</span>}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <Switch checked={banner.isActive} onCheckedChange={() => toggleActive(banner)} />
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors" onClick={() => openEditDialog(banner)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors" onClick={() => handleDelete(banner.id)}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
-            <PaginationControl
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={goToPage}
-            />
+            <PaginationControl currentPage={currentPage} totalPages={totalPages} onPageChange={(p) => setCurrentPage(p)} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>
-              {editingBanner ? "Sửa banner" : "Thêm banner mới"}
-            </DialogTitle>
+            <DialogTitle>{editingBanner ? "Sửa banner" : "Thêm banner mới"}</DialogTitle>
+            <DialogDescription>
+              {editingBanner ? "Cập nhật thông tin chi tiết cho banner quảng cáo này" : "Tạo banner mới để hiển thị trên trang chủ"}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Tiêu đề banner</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                placeholder="Nhập tiêu đề banner"
-              />
+              <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Nhập tiêu đề banner" />
             </div>
             <div className="grid gap-2">
               <Label>Liên kết (URL)</Label>
-              <Input
-                value={formData.link}
-                onChange={(e) =>
-                  setFormData({ ...formData, link: e.target.value })
-                }
-                placeholder="/flash-sale hoặc https://..."
-              />
+              <Input value={formData.link} onChange={(e) => setFormData({ ...formData, link: e.target.value })} placeholder="/flash-sale hoặc https://..." />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Vị trí hiển thị</Label>
-                <Select
-                  value={formData.position}
-                  onValueChange={(v) =>
-                    setFormData({
-                      ...formData,
-                      position: v as Banner["position"],
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={formData.position} onValueChange={(v) => setFormData({ ...formData, position: v as IBanner["position"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="hero">Banner chính (Hero)</SelectItem>
                     <SelectItem value="sub">Banner phụ</SelectItem>
@@ -440,96 +353,50 @@ const BannersManagement: React.FC = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Thứ tự</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={formData.order}
-                  onChange={(e) =>
-                    setFormData({ ...formData, order: e.target.value })
-                  }
-                />
+                <Input type="number" min="1" value={formData.order} onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Ngày bắt đầu</Label>
-                <Input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
-                  }
-                />
+                <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
               </div>
               <div className="grid gap-2">
                 <Label>Ngày kết thúc</Label>
-                <Input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
-                  }
-                />
+                <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
               </div>
             </div>
             <div className="grid gap-2">
               <Label>Hình ảnh banner</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               {imagePreview ? (
                 <div className="relative w-full aspect-[21/9] rounded-lg border border-border overflow-hidden group">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-1" />
-                      Đổi ảnh
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setImagePreview(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => fileInputRef.current?.click()}><Upload className="h-4 w-4 mr-1" />Đổi ảnh</Button>
+                    <Button type="button" size="sm" variant="destructive" onClick={() => setImagePreview(null)}><X className="h-4 w-4" /></Button>
                   </div>
                 </div>
               ) : (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full aspect-[21/9] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground"
-                >
+                <div onClick={() => fileInputRef.current?.click()} className="w-full aspect-[21/9] rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground">
                   <ImageIcon className="h-8 w-8" />
-                  <span className="text-sm font-medium">
-                    Nhấn để tải ảnh banner
-                  </span>
-                  <span className="text-xs">
-                    Tỷ lệ khuyến nghị 21:9 (tối đa 5MB)
-                  </span>
+                  <span className="text-sm font-medium">Nhấn để tải ảnh banner</span>
+                  <span className="text-xs">Tỷ lệ khuyến nghị 21:9 (tối đa 5MB)</span>
                 </div>
               )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleSave}>
-              {editingBanner ? "Cập nhật" : "Thêm"}
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Hủy</Button>
+            <Button onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                editingBanner ? "Cập nhật" : "Thêm"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -21,7 +21,7 @@ export const attributeService = {
   ): Promise<IApiResponse<IPagination<IAttribute>>> => {
     const filters = [];
     if (search) filters.push(`name~'${search}'`);
-    if (categoryId) filters.push(`category.id='${categoryId}'`);
+    if (categoryId) filters.push(`categories.id='${categoryId}'`);
 
     const params: Record<string, unknown> = {
       page,

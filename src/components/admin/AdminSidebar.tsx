@@ -12,6 +12,8 @@ import {
   Palette,
   Percent,
   Ticket,
+  Image,
+  Store,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
@@ -30,6 +32,8 @@ const menuItems = [
   { title: "Người dùng", url: "/admin/users", icon: Users },
   { title: "Khuyến mãi", url: "/admin/promotions", icon: Percent },
   { title: "Mã giảm giá", url: "/admin/coupons", icon: Ticket },
+  { title: "Banner Quảng cáo", url: "/admin/banners", icon: Image },
+  { title: "Thương hiệu", url: "/admin/brands", icon: Store },
   { title: "Thống kê", url: "/admin/statistics", icon: BarChart3 },
 ];
 

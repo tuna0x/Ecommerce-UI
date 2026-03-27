@@ -16,10 +16,10 @@ export const ProductService = {
     search?: string,
     sort?: string,
   ): Promise<IApiResponse<IPagination<IProduct>>> => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       page,
       size,
-      filer: search ? `name~'${search}'` : undefined,
+      filter: search ? `name~'${search}'` : undefined,
       sort: sort,
     };
 
@@ -33,7 +33,7 @@ export const ProductService = {
   },
 
   getByName: async (name: string): Promise<IApiResponse<IProduct>> => {
-    const params: any = { name };
+    const params: Record<string, unknown> = { name };
     const res = await axiosInstance.get(BASE_URL, { params });
     return res.data;
   },

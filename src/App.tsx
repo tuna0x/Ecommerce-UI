@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
-import { useEffect } from "react";
 
 import ProductDetail from "./pages/ProductDetail";
 import Login from "./pages/Login";
@@ -30,6 +29,8 @@ import Statistics from "./pages/admin/Statistics";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
+import BrandsManagement from "./pages/admin/BrandsManagement";
+import BannersManagement from "./pages/admin/BannersManagement";
 
 const queryClient = new QueryClient();
 function App() {
@@ -91,6 +92,14 @@ function App() {
                     <Route
                       path="attributes"
                       element={<AttributesManagement />}
+                    />
+                    <Route
+                      path="banners"
+                      element={<BannersManagement />}
+                    />
+                    <Route
+                      path="brands"
+                      element={<BrandsManagement />}
                     />
                     <Route path="orders" element={<OrdersManagement />} />
                     <Route path="users" element={<UsersManagement />} />

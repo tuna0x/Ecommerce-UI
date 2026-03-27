@@ -1,13 +1,13 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import PaginationControl from "../../components/PaginationControl";
 import {
   Plus,
   Pencil,
   Trash2,
   Search,
-  Upload,
   ImageIcon,
   X,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -15,8 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { MultiSearchableSelect } from "../../components/MultiSearchableSelect";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Badge } from "../../components/ui/badge";
+import { Skeleton } from "../../components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -24,17 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../../components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
-import { Label } from "../../components/ui/label";
-import { Textarea } from "../../components/ui/textarea";
-import { Badge } from "../../components/ui/badge";
-import { ScrollArea } from "../../components/ui/scroll-area";
 import { toast } from "sonner";
 import type {
   ICreateProduct,
@@ -44,12 +38,9 @@ import type {
 } from "../../types/product.type";
 import type {
   IBrand,
-  ICreateBrand,
-  IUpdateBrand,
 } from "../../types/brand.type";
-import { ProductService } from "../../service/productService";
-import { number } from "framer-motion";
 import type { ICategory } from "../../types/category.type";
+import { ProductService } from "../../service/productService";
 import { BrandService } from "../../service/brandService";
 import { categoryService } from "../../service/categoryService";
 import type { IAttributeValue } from "../../types/attribute.type";
@@ -58,10 +49,13 @@ import { attributeValueService } from "../../service/attributeService";
 const ProductsManagement: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
-  const [sort, setSort] = useState("");
+  const [sort] = useState("createdAt,desc");
   const [price, setPrice] = useState<Record<number, IPrice>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -93,7 +87,7 @@ const ProductsManagement: React.FC = () => {
         weight: product.weight,
         categoryId: product.category.id,
         brandId: product.brand.id || null,
-        attributeValue: product.attributeValue?.map((attr) => attr.id) ?? [],
+        attributeValue: product.attributeValue?.map((attr: IAttributeValue) => attr.id) ?? [],
       });
     } else {
       setEditingProductId(null);
@@ -144,24 +138,31 @@ const ProductsManagement: React.FC = () => {
     }));
   };
 
-  const fetchProducts = async () => {
-    const res = await ProductService.getAll(
-      currentPage - 1,
-      pageSize,
-      search,
-      sort,
-    );
-    if (!res.error) {
-      setProducts(res.data?.result || []);
-      setTotalPages(res.data?.meta.pages || 0);
+  const fetchProducts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await ProductService.getAll(
+        currentPage - 1,
+        pageSize,
+        debouncedSearch,
+        sort,
+      );
+      if (!res.error) {
+        setProducts(res.data?.result || []);
+        setTotalPages(res.data?.meta.pages || 0);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách sản phẩm");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize, debouncedSearch, sort]);
 
   useEffect(() => {
     const fetchData = async () => {
       const [brandRes, categoryRes, valueRes] = await Promise.all([
-        BrandService.getAll(),
-        categoryService.getAll(),
+        BrandService.getAll(0, 1000),
+        categoryService.getAll(0, 1000),
         attributeValueService.getAll(),
       ]);
 
@@ -189,7 +190,16 @@ const ProductsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, search, sort]);
+  }, [currentPage, debouncedSearch, sort, fetchProducts]);
+
+  // Handle search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -198,49 +208,56 @@ const ProductsManagement: React.FC = () => {
     }).format(value);
   };
   const handleSave = async () => {
-    if (
-      !formData.name ||
-      !formData.brandId ||
-      !formData.originalPrice ||
-      !formData.categoryId
-    ) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
-      return;
-    }
+    try {
+      setIsSubmitting(true);
+      if (
+        !formData.name ||
+        !formData.originalPrice ||
+        !formData.categoryId
+      ) {
+        toast.error("Vui lòng điền đầy đủ thông tin");
+        return;
+      }
 
-    const attributeValue = Object.values(selectedAttributes)
-      .flat()
-      .map((id) => Number(id));
+      const attributeValue = Object.values(selectedAttributes)
+        .flat()
+        .map((id) => Number(id));
 
-    const payload = {
-      ...formData,
-      attributeValue,
-    };
-
-    if (editingProductId) {
-      const updateData: IUpdateProduct = {
-        id: editingProductId,
-        name: formData.name,
-        originalPrice: formData.originalPrice,
-        stock: formData.stock,
-        weight: formData.weight,
-        brandId: formData.brandId,
-        categoryId: formData.categoryId,
-        attributeValue: attributeValue || [],
+      const payload = {
+        ...formData,
+        attributeValue,
       };
 
-      await ProductService.update(updateData, files);
-      toast.success("Cập nhật sản phẩm thành công");
-    } else {
-      console.log(formData);
+      if (editingProductId) {
+        const updateData: IUpdateProduct = {
+          id: editingProductId,
+          name: formData.name,
+          originalPrice: formData.originalPrice,
+          stock: formData.stock,
+          weight: formData.weight,
+          brandId: formData.brandId,
+          categoryId: formData.categoryId,
+          image: formData.image,
+          attributeValue: attributeValue || [],
+        };
 
-      await ProductService.create(payload, files);
-      toast.success("Thêm mới sản phẩm thành công");
+        await ProductService.update(updateData, files);
+        toast.success("Cập nhật sản phẩm thành công");
+      } else {
+        console.log(formData);
+
+        await ProductService.create(payload, files);
+        toast.success("Thêm mới sản phẩm thành công");
+      }
+      setFiles([]);
+      setImagePreviews([]);
+      fetchProducts();
+      resetForm();
+    } catch {
+      toast.error("Đã xảy ra lỗi khi lưu sản phẩm");
+    } finally {
+      setIsSubmitting(false);
     }
-    setFiles([]);
-    setImagePreviews([]);
-    fetchProducts();
-    resetForm();
   };
 
   const resetForm = () => {
@@ -252,7 +269,7 @@ const ProductsManagement: React.FC = () => {
       image: null,
       categoryId: null,
       brandId: null,
-      attributeValue: undefined,
+      attributeValue: [],
     });
     setEditingProductId(null);
   };
@@ -273,23 +290,10 @@ const ProductsManagement: React.FC = () => {
     Record<string, string[]>
   >({});
 
-  const handleAttributeValueToggle = (attributeId: string, valueId: string) => {
-    setSelectedAttributes((prev) => {
-      const current = prev[attributeId] || [];
-      const updated = current.includes(valueId)
-        ? current.filter((id) => id !== valueId)
-        : [...current, valueId];
 
-      if (updated.length === 0) {
-        const { [attributeId]: _, ...rest } = prev;
-        return rest;
-      }
-      return { ...prev, [attributeId]: updated };
-    });
-  };
 
   const filteredAttributes = value.filter(
-    (v) => v.attribute?.category?.id === formData.categoryId,
+    (v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId),
   );
 
   type AttributeValue = {
@@ -304,8 +308,8 @@ const ProductsManagement: React.FC = () => {
   };
   const groupedAttributes: GroupedAttribute[] = Object.values(
     value
-      .filter((v) => v.attribute.category.id === formData.categoryId)
-      .reduce((acc: any, item: any) => {
+      .filter((v) => v.attribute.categories.some((cat) => cat.id === formData.categoryId))
+      .reduce((acc: Record<number, GroupedAttribute>, item: IAttributeValue) => {
         const attrId = item.attribute.id;
 
         if (!acc[attrId]) {
@@ -402,90 +406,148 @@ const ProductsManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => {
-                  const attrBadges = product.attributeValue;
-                  return (
-                    <tr key={product.id} className="border-b last:border-0">
-                      <td className="py-3 px-2">
-                        <img
-                          src={product.image?.[0] || "/no-image.png"}
-                          alt={product.name}
-                          className="w-12 h-12 object-cover rounded"
-                        />
+                {isLoading ? (
+                  Array.from({ length: pageSize }).map((_, idx) => (
+                    <tr key={idx} className="border-b last:border-0">
+                      <td className="py-4 px-2">
+                        <Skeleton className="w-12 h-12 rounded" />
                       </td>
-                      <td className="py-3 px-2 text-sm font-medium max-w-[200px] truncate">
-                        {product.name}
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-4 w-32 mb-2" />
+                        <Skeleton className="h-3 w-20 opacity-60" />
                       </td>
-                      <td className="py-3 px-2 text-sm">
-                        {product.brand.name}
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-4 w-20" />
                       </td>
-                      <td className="py-3 px-2 text-sm">
-                        {product.category.name}
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-6 w-20 rounded-full" />
                       </td>
-                      <td className="py-3 px-2">
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {(attrBadges ?? [])?.length > 0 ? (
-                            attrBadges?.map((attr, index) => (
-                              <span
-                                key={index}
-                                className="text-xs px-2 py-1 rounded bg-muted border"
-                              >
-                                {attr.value}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              /
-                            </span>
-                          )}
+                      <td className="py-4 px-2">
+                        <div className="flex gap-1 flex-wrap w-24">
+                          <Skeleton className="h-5 w-10" />
+                          <Skeleton className="h-5 w-10" />
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-sm font-medium max-w-[200px] truncate">
-                        {product.stock}
+                      <td className="py-4 px-2 text-center">
+                        <Skeleton className="h-4 w-8 mx-auto" />
                       </td>
-                      <td className="py-3 px-2 text-sm font-medium max-w-[200px] truncate">
-                        {product.weight}
+                      <td className="py-4 px-2 text-center">
+                        <Skeleton className="h-4 w-12 mx-auto" />
                       </td>
-                      <td className="py-3 px-2 text-sm">
-                        {formatCurrency(price[product.id]?.originalPrice || 0)}
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-4 w-20" />
                       </td>
-                      <td className="py-3 px-2">
-                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                          -
-                          {price[product.id]?.originalPrice &&
-                          price[product.id]?.discountPrice
-                            ? Math.round(
-                                (1 -
-                                  price[product.id].discountPrice /
-                                    price[product.id].originalPrice) *
-                                  100,
-                              )
-                            : 0}
-                          %
-                        </span>
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-5 w-12 rounded-full mx-auto" />
                       </td>
-                      <td className="py-3 px-2">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDialog(product)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      <td className="py-4 px-2">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                ) : products.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-10 text-center text-muted-foreground italic">
+                      Không tìm thấy sản phẩm nào.
+                    </td>
+                  </tr>
+                ) : (
+                  products.map((product) => {
+                    const attrBadges = product.attributeValue;
+                    return (
+                      <tr key={product.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-2">
+                          <div className="relative group/img w-12 h-12">
+                            <img
+                              src={product.image?.[0] || "/no-image.png"}
+                              alt={product.name}
+                              className="w-12 h-12 object-cover rounded shadow-sm group-hover/img:scale-105 transition-transform"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-3 px-2">
+                          <p className="text-sm font-semibold text-foreground max-w-[200px] truncate">
+                            {product.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-mono">ID: {product.id}</p>
+                        </td>
+                        <td className="py-3 px-2 text-sm text-muted-foreground font-medium">
+                          {product.brand.name}
+                        </td>
+                        <td className="py-3 px-2">
+                          <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none font-normal text-[11px]">
+                            {product.category.name}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex flex-wrap gap-1 max-w-[150px]">
+                            {(attrBadges ?? [])?.length > 0 ? (
+                              attrBadges?.map((attr: IAttributeValue, index: number) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 h-5 font-normal bg-background"
+                                >
+                                  {attr.value}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground italic">
+                                Trống
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-sm text-center font-medium">
+                          {product.stock}
+                        </td>
+                        <td className="py-3 px-2 text-sm text-center text-muted-foreground whitespace-nowrap">
+                          {product.weight}g
+                        </td>
+                        <td className="py-3 px-2 text-sm font-bold text-primary">
+                          {formatCurrency(price[product.id]?.originalPrice || 0)}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="px-1.5 py-0.5 bg-destructive/10 text-destructive text-[10px] font-bold rounded">
+                            -{price[product.id]?.originalPrice &&
+                              price[product.id]?.discountPrice
+                              ? Math.round(
+                                (1 -
+                                  price[product.id].discountPrice /
+                                  price[product.id].originalPrice) *
+                                100,
+                              )
+                              : 0}
+                            %
+                          </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                              onClick={() => openDialog(product)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+                              onClick={() => handleDelete(product.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
             <PaginationControl
@@ -498,7 +560,7 @@ const ProductsManagement: React.FC = () => {
       </Card>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -519,24 +581,18 @@ const ProductsManagement: React.FC = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="brand">Thương hiệu</Label>
-              <Select
-                value={formData.brandId?.toString()}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, brandId: Number(value) });
-                  // setSelectedAttributes({});
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  {brand.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id.toString()}>
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={brand.map((b) => ({
+                  value: b.id.toString(),
+                  label: b.name,
+                }))}
+                value={formData.brandId?.toString() || "none"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, brandId: value === "none" ? null : Number(value) })
+                }
+                placeholder="Chọn thương hiệu"
+                searchPlaceholder="Tìm thương hiệu..."
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="originalPrice">Giá gốc (VNĐ)</Label>
@@ -581,23 +637,18 @@ const ProductsManagement: React.FC = () => {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Danh mục</Label>
-              <Select
-                value={formData.categoryId?.toString()}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, categoryId: Number(value) });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  {category.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={category.map((cat) => ({
+                  value: cat.id.toString(),
+                  label: cat.name,
+                }))}
+                value={formData.categoryId?.toString() || "none"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, categoryId: value === "none" ? null : Number(value) })
+                }
+                placeholder="Chọn danh mục"
+                searchPlaceholder="Tìm danh mục..."
+              />
             </div>
 
             {/* Attribute Values Section */}
@@ -615,34 +666,21 @@ const ProductsManagement: React.FC = () => {
                         <Label className="text-sm font-medium">
                           {attr.attributeName}
                         </Label>
-                        <ScrollArea className="max-h-32">
-                          <div className="flex flex-wrap gap-2">
-                            {attr.values.map((val) => {
-                              const isSelected = selectedVals.includes(
-                                val.id.toString(),
-                              );
-                              return (
-                                <button
-                                  key={val.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleAttributeValueToggle(
-                                      attr.attributeId.toString(),
-                                      val.id.toString(),
-                                    )
-                                  }
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors ${
-                                    isSelected
-                                      ? "border-primary bg-primary/10 text-primary font-medium"
-                                      : "border-border bg-background text-muted-foreground hover:border-primary/50"
-                                  }`}
-                                >
-                                  {val.value}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </ScrollArea>
+                        <MultiSearchableSelect
+                          options={attr.values.map((v) => ({
+                            value: v.id.toString(),
+                            label: v.value,
+                          }))}
+                          value={selectedVals}
+                          onValueChange={(values) =>
+                            setSelectedAttributes((prev) => ({
+                              ...prev,
+                              [attr.attributeId]: values,
+                            }))
+                          }
+                          placeholder={`Chọn ${attr.attributeName}...`}
+                          searchPlaceholder={`Tìm ${attr.attributeName}...`}
+                        />
                       </div>
                     );
                   })}
@@ -713,11 +751,18 @@ const ProductsManagement: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button onClick={handleSave}>
-              {editingProductId ? "Cập nhật" : "Thêm"}
+            <Button onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                editingProductId ? "Cập nhật" : "Thêm"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
