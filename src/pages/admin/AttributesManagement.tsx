@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, Search, X, ChevronRight } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -19,13 +20,7 @@ import {
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 import type {
@@ -45,18 +40,24 @@ import { categoryService } from "../../service/categoryService";
 import PaginationControl from "../../components/PaginationControl";
 
 const AttributesManagement: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryIdParam = searchParams.get("categoryId");
+
   const [attributes, setAttributes] = useState<IAttribute[] | undefined>([]);
-  const [selectedAttribute, setSelectedAttribute] = useState<any>(null);
+  const [selectedAttribute, setSelectedAttribute] = useState<IAttribute | null>(
+    null,
+  );
   const [attributeValues, setAttributesValues] = useState<
     IAttributeValue[] | undefined
   >([]);
 
-  const [categories, setCategories] = useState<ICategory[] | undefined>([]);
+  const [allCategories, setAllCategories] = useState<ICategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("");
+  const [sort] = useState("");
 
   // Attribute dialog
   const [isAttrDialogOpen, setIsAttrDialogOpen] = useState(false);
@@ -77,35 +78,45 @@ const AttributesManagement: React.FC = () => {
     attributeId: null,
   });
 
-  const fetchAttributes = async () => {
-    const res = await attributeService.getAll(
-      currentPage - 1,
-      pageSize,
-      search,
-      sort,
-    );
-
-    if (!res.error) {
-      setAttributes(res.data?.result);
-      setTotalPages(res.data?.meta.pages || 0);
+  const fetchAttributes = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await attributeService.getAll(
+        currentPage - 1,
+        pageSize,
+        search,
+        sort,
+        categoryIdParam || undefined,
+      );
+      if (res.data) {
+        setAttributes(res.data.result);
+        setTotalPages(res.data.meta.pages);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách thuộc tính");
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const fetchCategory = async () => {
-    const res = await categoryService.getAll();
-
-    if (!res.error) {
-      setCategories(res.data?.result);
-    }
-  };
+  }, [currentPage, pageSize, search, sort, categoryIdParam]);
 
   useEffect(() => {
     fetchAttributes();
-  }, [currentPage, search]);
+  }, [fetchAttributes]);
+
+  const fetchCategory = useCallback(async () => {
+    try {
+      const res = await categoryService.getAll(0, 1000, "", "name,asc");
+      if (res.data) {
+        setAllCategories(res.data.result);
+      }
+    } catch (err) {
+      console.error("Error fetching categories", err);
+    }
+  }, []);
 
   useEffect(() => {
     fetchCategory();
-  }, []);
+  }, [fetchCategory]);
 
   // ---- Attribute CRUD ----
   const handleOpenAttrDialog = (attribute?: IAttribute) => {
@@ -155,18 +166,18 @@ const AttributesManagement: React.FC = () => {
 
   // ---- Value CRUD ----
 
-  const fetchAttributeValues = async (attributeId: number) => {
+  const fetchAttributeValues = useCallback(async (attributeId: number) => {
     const res = await attributeValueService.getAll(attributeId.toString());
 
     if (!res.error) {
       setAttributesValues(res.data?.result);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedAttribute?.id) return;
     fetchAttributeValues(selectedAttribute.id);
-  }, [selectedAttribute?.id]);
+  }, [selectedAttribute?.id, fetchAttributeValues]);
 
   const handleOpenValueDialog = (value?: IAttributeValue) => {
     if (value) {
@@ -174,7 +185,7 @@ const AttributesManagement: React.FC = () => {
       setValueForm({ value: value.value, attributeId: value.attribute.id });
     } else {
       setEditingValueId(null);
-      setValueForm({ value: "", attributeId: selectedAttribute.id ?? null });
+      setValueForm({ value: "", attributeId: selectedAttribute?.id ?? null });
     }
     setIsValueDialogOpen(true);
   };
@@ -183,7 +194,7 @@ const AttributesManagement: React.FC = () => {
     if (window.confirm("Delete this attribute value?")) {
       await attributeValueService.remove(Number(id));
       toast.success("Đã xóa giá trị");
-      fetchAttributeValues(selectedAttribute.id);
+      if (selectedAttribute?.id) fetchAttributeValues(selectedAttribute.id);
     }
   };
 
@@ -232,14 +243,29 @@ const AttributesManagement: React.FC = () => {
               <Plus className="h-4 w-4 mr-1" /> Thêm
             </Button>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm thuộc tính..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm kiếm thuộc tính..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {categoryIdParam && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  searchParams.delete("categoryId");
+                  setSearchParams(searchParams);
+                }}
+                className="whitespace-nowrap"
+              >
+                <X className="h-4 w-4 mr-2" /> Xóa lọc
+              </Button>
+            )}
           </div>
           <div className="border rounded-lg">
             <Table>
@@ -251,23 +277,32 @@ const AttributesManagement: React.FC = () => {
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
-                {attributes?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={4}
-                      className="text-center text-muted-foreground py-8"
-                    >
-                      Chưa có thuộc tính nào
-                    </TableCell>
-                  </TableRow>
-                )}
-                {attributes?.map((attr) => (
-                  <TableRow
-                    key={attr.id}
-                    className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
-                    onClick={() => setSelectedAttribute(attr)}
-                  >
+                  <TableBody>
+                    {isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell><div className="h-6 w-24 animate-pulse bg-muted rounded" /></TableCell>
+                          <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
+                          <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
+                          <TableCell><div className="h-6 w-20 animate-pulse bg-muted rounded ml-auto" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : attributes?.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={4}
+                          className="text-center text-muted-foreground py-8"
+                        >
+                          Chưa có thuộc tính nào
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      attributes?.map((attr) => (
+                        <TableRow
+                          key={attr.id}
+                          className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
+                          onClick={() => setSelectedAttribute(attr)}
+                        >
                     <TableCell>
                       <div>
                         <p className="font-medium">{attr.name}</p>
@@ -317,8 +352,9 @@ const AttributesManagement: React.FC = () => {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
+                ))
+              )}
+            </TableBody>
             </Table>
           </div>
           <PaginationControl
@@ -457,7 +493,14 @@ const AttributesManagement: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Thể loại </Label>
-              <Select
+              <SearchableSelect
+                options={[
+                  { value: "none", label: "Không có" },
+                  ...(allCategories?.map((cat) => ({
+                    value: cat.id.toString(),
+                    label: cat.name,
+                  })) || []),
+                ]}
                 value={
                   attrForm.categoryId === null ||
                   attrForm.categoryId === undefined
@@ -470,19 +513,9 @@ const AttributesManagement: React.FC = () => {
                     categoryId: value === "none" ? null : Number(value),
                   })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn thể loại " />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Không có</SelectItem>
-                  {categories?.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Chọn thể loại"
+                searchPlaceholder="Tìm tên thể loại..."
+              />
             </div>
             <div className="flex items-center gap-2">
               <Switch
