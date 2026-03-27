@@ -1,5 +1,4 @@
-import React, { useState, useRef } from "react";
-import { usePagination } from "../../hooks/usePagination";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import PaginationControl from "../../components/PaginationControl";
 import {
   Plus,
@@ -9,6 +8,7 @@ import {
   Upload,
   ImageIcon,
   X,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -23,41 +23,65 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
-import { Switch } from "../../components/ui/switch";
-import { brands as initialBrands } from "../../data/products";
+import { BrandService } from "../../service/brandService";
+import type { IBrand, ICreateBrand, IUpdateBrand } from "../../types/brand.type";
+import { Skeleton } from "../../components/ui/skeleton";
+import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 
-interface Brand {
-  id: number;
-  name: string;
-  logo: string;
-  description?: string;
-  isActive?: boolean;
-}
-
 const BrandsManagement: React.FC = () => {
-  const [brandList, setBrandList] = useState<Brand[]>(
-    initialBrands.map((b) => ({ ...b, description: "", isActive: true })),
-  );
-  const [searchTerm, setSearchTerm] = useState("");
+  const [brandList, setBrandList] = useState<IBrand[]>([]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
-  const [formData, setFormData] = useState({ name: "", description: "" });
+  const [editingBrand, setEditingBrand] = useState<IBrand | null>(null);
+  const [formData, setFormData] = useState<ICreateBrand>({ name: "", description: "", image: "" });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredBrands = brandList.filter((b) =>
-    b.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const fetchBrands = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await BrandService.getAll(
+        currentPage - 1,
+        pageSize,
+        debouncedSearch,
+        "createdAt,desc"
+      );
+      if (!res.error) {
+        setBrandList(res.data?.result || []);
+        setTotalPages(res.data?.meta.pages || 0);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách thương hiệu");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch]);
 
-  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
-    filteredBrands,
-    10,
-  );
+  useEffect(() => {
+    fetchBrands();
+  }, [fetchBrands]);
+
+  // Handle search debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCurrentPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,74 +90,69 @@ const BrandsManagement: React.FC = () => {
       toast.error("Kích thước logo tối đa 2MB");
       return;
     }
-    const url = URL.createObjectURL(file);
-    setLogoPreview(url);
+    setLogoPreview(URL.createObjectURL(file));
+    setFiles(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const openAddDialog = () => {
     setEditingBrand(null);
-    setFormData({ name: "", description: "" });
+    setFormData({ name: "", description: "", image: "" });
     setLogoPreview(null);
+    setFiles(null);
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (brand: Brand) => {
+  const openEditDialog = (brand: IBrand) => {
     setEditingBrand(brand);
-    setFormData({ name: brand.name, description: brand.description || "" });
-    setLogoPreview(brand.logo);
+    setFormData({ name: brand.name, description: brand.description || "", image: brand.image });
+    setLogoPreview(brand.image);
+    setFiles(null);
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error("Vui lòng nhập tên thương hiệu");
       return;
     }
 
-    const fallbackLogo =
-      "https://images.unsplash.com/photo-1629198688000-71f23e745b6e?w=200&q=80";
-
-    if (editingBrand) {
-      setBrandList((prev) =>
-        prev.map((b) =>
-          b.id === editingBrand.id
-            ? {
-                ...b,
-                name: formData.name,
-                description: formData.description,
-                logo: logoPreview || b.logo,
-              }
-            : b,
-        ),
-      );
-      toast.success("Cập nhật thương hiệu thành công");
-    } else {
-      const newBrand: Brand = {
-        id: Date.now(),
-        name: formData.name,
-        description: formData.description,
-        logo: logoPreview || fallbackLogo,
-        isActive: true,
-      };
-      setBrandList((prev) => [newBrand, ...prev]);
-      toast.success("Thêm thương hiệu thành công");
+    try {
+      setIsSubmitting(true);
+      if (editingBrand) {
+        const updateData: IUpdateBrand = {
+          id: editingBrand.id,
+          name: formData.name,
+          description: formData.description,
+          image: editingBrand.image
+        };
+        await BrandService.update(updateData, files || undefined);
+        toast.success("Cập nhật thương hiệu thành công");
+      } else {
+        await BrandService.create(formData, files || undefined);
+        toast.success("Thêm thương hiệu thành công");
+      }
+      setIsDialogOpen(false);
+      fetchBrands();
+    } catch {
+      toast.error("Đã xảy ra lỗi khi lưu thương hiệu");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa thương hiệu này?")) {
-      setBrandList((prev) => prev.filter((b) => b.id !== id));
-      toast.success("Xóa thương hiệu thành công");
+      try {
+        await BrandService.remove(id);
+        toast.success("Xóa thương hiệu thành công");
+        fetchBrands();
+      } catch {
+        toast.error("Không thể xóa thương hiệu");
+      }
     }
   };
 
-  const toggleActive = (id: number) => {
-    setBrandList((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)),
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -160,18 +179,17 @@ const BrandsManagement: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm thương hiệu..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Brands Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách thương hiệu ({filteredBrands.length})</CardTitle>
+          <CardTitle>Danh sách thương hiệu ({brandList.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -196,76 +214,102 @@ const BrandsManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginatedItems.map((brand) => (
-                  <tr key={brand.id} className="border-b last:border-0">
-                    <td className="py-3 px-2">
-                      <img
-                        src={brand.logo}
-                        alt={brand.name}
-                        className="w-12 h-12 object-contain rounded-lg border border-border bg-muted/30 p-1"
-                      />
-                    </td>
-                    <td className="py-3 px-2 text-sm font-medium">
-                      {brand.name}
-                    </td>
-                    <td className="py-3 px-2 text-sm text-muted-foreground max-w-[250px] truncate">
-                      {brand.description || "—"}
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <Switch
-                        checked={brand.isActive !== false}
-                        onCheckedChange={() => toggleActive(brand.id)}
-                      />
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(brand)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(brand.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {paginatedItems.length === 0 && (
+                {isLoading ? (
+                  Array.from({ length: pageSize }).map((_, idx) => (
+                    <tr key={idx} className="border-b last:border-0">
+                      <td className="py-4 px-2">
+                        <Skeleton className="w-12 h-12 rounded-lg" />
+                      </td>
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-4 w-32" />
+                      </td>
+                      <td className="py-4 px-2">
+                        <Skeleton className="h-4 w-48" />
+                      </td>
+                      <td className="py-4 px-2 text-center">
+                        <Skeleton className="h-5 w-10 mx-auto rounded-full" />
+                      </td>
+                      <td className="py-4 px-2">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : brandList.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="py-8 text-center text-muted-foreground"
-                    >
+                    <td colSpan={5} className="py-10 text-center text-muted-foreground italic">
                       Không tìm thấy thương hiệu nào
                     </td>
                   </tr>
+                ) : (
+                  brandList.map((brand) => (
+                    <tr key={brand.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="py-3 px-2">
+                        <div className="relative group/logo w-12 h-12">
+                          <img
+                            src={brand.image || "/no-image.png"}
+                            alt={brand.name}
+                            className="w-12 h-12 object-contain rounded-lg border border-border bg-background p-1 group-hover/logo:scale-105 transition-transform"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-sm font-semibold">
+                        {brand.name}
+                      </td>
+                      <td className="py-3 px-2 text-sm text-muted-foreground max-w-[250px] truncate">
+                        {brand.description || "—"}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <Badge variant="secondary" className="bg-green-50 text-green-700 border-none">
+                          Hoạt động
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                            onClick={() => openEditDialog(brand)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            onClick={() => handleDelete(brand.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
             <PaginationControl
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={goToPage}
+              onPageChange={(p) => setCurrentPage(p)}
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
+        <DialogContent className="sm:max-w-[480px] overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>
               {editingBrand ? "Sửa thương hiệu" : "Thêm thương hiệu mới"}
             </DialogTitle>
+            <DialogDescription>
+              {editingBrand ? "Cập nhật thông tin chi tiết cho thương hiệu này" : "Tạo một thương hiệu mới để quản lý sản phẩm"}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -340,11 +384,18 @@ const BrandsManagement: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
               Hủy
             </Button>
-            <Button onClick={handleSave}>
-              {editingBrand ? "Cập nhật" : "Thêm"}
+            <Button onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                editingBrand ? "Cập nhật" : "Thêm"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -5,7 +5,7 @@ export interface IAttribute {
   name: string;
   active: boolean;
   createAt: string;
-  category: ICategory;
+  categories: ICategory[];
 }
 
 export interface IAttributeValue {
@@ -17,14 +17,14 @@ export interface IAttributeValue {
 export interface ICreateAttribute {
   name: string;
   active: boolean;
-  categoryId: number | null;
+  categoryIds: number[];
 }
 
 export interface IUpdateAttribute {
   id: number;
   name: string;
   active: boolean;
-  categoryId: number | null;
+  categoryIds: number[];
 }
 
 export interface ICreateAttributeValue {

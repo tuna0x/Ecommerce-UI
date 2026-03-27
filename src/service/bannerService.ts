@@ -1,19 +1,20 @@
 import axiosInstance from "./axiosInstance";
 import type { IApiResponse, IPagination } from "../types/api.type";
-import type { IBrand, ICreateBrand, IUpdateBrand } from "../types/brand.type";
-const BASE_URL = "/brands";
+import type { IBanner, ICreateBanner, IUpdateBanner } from "../types/banner.type";
 
-export const BrandService = {
+const BASE_URL = "/banners";
+
+export const BannerService = {
   getAll: async (
     page?: number,
     size?: number,
     search?: string,
     sort?: string,
-  ): Promise<IApiResponse<IPagination<IBrand>>> => {
+  ): Promise<IApiResponse<IPagination<IBanner>>> => {
     const params: Record<string, unknown> = {
       page,
       size,
-      filter: search ? `name~'${search}'` : undefined,
+      filter: search ? `title~'${search}'` : undefined,
       sort: sort,
     };
 
@@ -21,22 +22,16 @@ export const BrandService = {
     return res.data;
   },
 
-  getById: async (id: number): Promise<IApiResponse<IBrand>> => {
+  getById: async (id: number): Promise<IApiResponse<IBanner>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}`);
     return res.data;
   },
 
-  getByName: async (name: string): Promise<IApiResponse<IBrand>> => {
-    const params: Record<string, unknown> = { name };
-    const res = await axiosInstance.get(BASE_URL, { params });
-    return res.data;
-  },
-
-  create: async (data: ICreateBrand, file?: File): Promise<IApiResponse<IBrand>> => {
+  create: async (data: ICreateBanner, file?: File): Promise<IApiResponse<IBanner>> => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, value as string);
+        formData.append(key, value.toString());
       }
     });
     if (file) {
@@ -47,14 +42,13 @@ export const BrandService = {
     return res.data;
   },
 
-  update: async (data: IUpdateBrand, file?: File): Promise<IApiResponse<IBrand>> => {
+  update: async (data: IUpdateBanner, file?: File): Promise<IApiResponse<IBanner>> => {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, value as string);
+        formData.append(key, value.toString());
       }
     });
-
     if (file) {
       formData.append("file", file);
     }
@@ -62,8 +56,16 @@ export const BrandService = {
     const res = await axiosInstance.put(BASE_URL, formData);
     return res.data;
   },
+
   remove: async (id: number): Promise<IApiResponse<null>> => {
     const res = await axiosInstance.delete(`${BASE_URL}/${id}`);
+    return res.data;
+  },
+
+  toggleActive: async (id: number, isActive: boolean): Promise<IApiResponse<IBanner>> => {
+    const res = await axiosInstance.patch(`${BASE_URL}/${id}/active`, null, {
+      params: { isActive },
+    });
     return res.data;
   },
 };
