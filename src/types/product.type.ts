@@ -12,6 +12,13 @@ export interface IProduct {
   category: ICategory;
   brand: IBrand;
   attributeValue: IAttributeValue[] | null;
+  // UI-specific optional fields
+  price?: number;
+  discount?: number;
+  rating?: number;
+  reviewCount?: number;
+  volume?: string;
+  hoverImage?: string;
 }
 
 export interface ICreateProduct {

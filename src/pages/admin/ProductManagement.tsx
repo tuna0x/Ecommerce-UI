@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import PaginationControl from "../../components/PaginationControl";
 import {
   Plus,
@@ -8,6 +9,7 @@ import {
   ImageIcon,
   X,
   Loader2,
+  FileText,
 } from "lucide-react";
 import {
   Card,
@@ -526,6 +528,17 @@ const ProductsManagement: React.FC = () => {
                         </td>
                         <td className="py-3 px-2">
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                              title="Quản lý chi tiết sản phẩm"
+                              asChild
+                            >
+                              <Link to={`/admin/product-detail?productId=${product.id}`}>
+                                <FileText className="h-4 w-4" />
+                              </Link>
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
