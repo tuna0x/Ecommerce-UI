@@ -50,7 +50,7 @@ function Header() {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-              tuna<span className="text-primary">HOUSE</span>
+              Bông<span className="text-primary"> Cosmetic</span>
             </h1>
           </Link>
 

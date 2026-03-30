@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
               href="/"
               className="text-2xl font-bold tracking-tight inline-block mb-4"
             >
-              TUNAHOUSE<span className="text-primary">.</span>
+              Bông<span className="text-primary"> Cosmetic.</span>
             </a>
             <p className="text-background/70 max-w-sm mb-6 leading-relaxed">
               Curating premium products for the modern lifestyle. Quality,
@@ -114,7 +114,7 @@ const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="border-t border-background/10 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-background/50 text-sm">
-            © 2026 TUNAHOUSE. All rights reserved.
+            © 2026 TUNA. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-background/50">
             <a href="#" className="hover:text-primary transition-colors">

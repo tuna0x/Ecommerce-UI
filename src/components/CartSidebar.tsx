@@ -175,11 +175,10 @@ const CartSidebar: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`group relative bg-card border rounded-2xl p-4 hover:shadow-md transition-all duration-300 ${
-                        item.selected
+                      className={`group relative bg-card border rounded-2xl p-4 hover:shadow-md transition-all duration-300 ${item.selected
                           ? "border-primary/50 bg-primary/5"
                           : "border-border"
-                      }`}
+                        }`}
                     >
                       <div className="flex gap-3">
                         {/* Checkbox */}

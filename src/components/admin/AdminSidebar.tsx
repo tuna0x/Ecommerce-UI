@@ -14,6 +14,7 @@ import {
   Ticket,
   Image,
   Store,
+  FileText,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
@@ -25,6 +26,7 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Chi tiết sản phẩm", url: "/admin/product-detail", icon: FileText },
   { title: "Sản phẩm", url: "/admin/products", icon: Package },
   { title: "Thể loại", url: "/admin/categories", icon: FolderTree },
   { title: "Thuộc tính", url: "/admin/attributes", icon: Palette },
@@ -58,7 +60,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
       <div className="flex items-center justify-between h-16 px-4 border-b border-border">
         {!collapsed && (
           <span className="text-lg font-bold text-primary">
-            TunaHouse Admin
+            Bông Admin
           </span>
         )}
         <Button

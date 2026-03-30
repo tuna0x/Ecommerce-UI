@@ -47,7 +47,7 @@ const Register: React.FC = () => {
     if (success) {
       toast({
         title: "Đăng ký thành công!",
-        description: "Chào mừng bạn đến với TUNAHOUSE.",
+        description: "Chào mừng bạn đến với Bông Cosmetic.",
       });
       navigate("/login");
     } else {
