@@ -8,6 +8,7 @@ import {
   Truck,
   Gift,
   Tag,
+  Box,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -22,8 +23,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
@@ -37,74 +36,123 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
-import { mockPromotions } from "../../data/mockPromotions";
-import type { Promotion } from "../../data/mockPromotions";
+import type { IPromotion, PromotionType } from "../../types/promotion.type";
+import { PromotionService } from "../../service/promotionService";
+import { ProductService } from "../../service/productService";
 import { toast } from "sonner";
+import type { IMeta } from "../../types/api.type";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
+import type { IProduct } from "../../types/product.type";
 
 const PromotionsManagement: React.FC = () => {
-  const [promotions, setPromotions] = useState<Promotion[]>(mockPromotions);
+  const [promotions, setPromotions] = useState<IPromotion[]>([]);
+  const [meta, setMeta] = useState<IMeta>({
+    page: 1,
+    pageSize: 10,
+    pages: 0,
+    total: 0,
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(
+  const [editingPromotion, setEditingPromotion] = useState<IPromotion | null>(
     null,
   );
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    type: "percentage" as Promotion["type"],
+    type: "PERCENT" as PromotionType,
     value: 0,
     minOrderValue: 0,
-    maxDiscount: 0,
-    startDate: "",
-    endDate: "",
+    maxDiscountValue: 0,
+    startAt: "",
+    endAt: "",
     isActive: true,
-    applicableProducts: "all" as Promotion["applicableProducts"],
   });
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  const [allProducts, setAllProducts] = useState<IProduct[]>([]);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("info");
 
-  const filteredPromotions = promotions.filter(
-    (promo) =>
-      promo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promo.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const getTypeIcon = (type: Promotion["type"]) => {
-    const icons = {
-      percentage: Percent,
-      fixed: Tag,
-      buy_x_get_y: Gift,
-      free_shipping: Truck,
-    };
-    return icons[type];
-  };
-
-  const getTypeLabel = (type: Promotion["type"]) => {
-    const labels = {
-      percentage: "Giảm %",
-      fixed: "Giảm tiền",
-      buy_x_get_y: "Mua X tặng Y",
-      free_shipping: "Freeship",
-    };
-    return labels[type];
-  };
-
-  const formatValue = (promo: Promotion) => {
-    switch (promo.type) {
-      case "percentage":
-        return `${promo.value}%`;
-      case "fixed":
-        return `${promo.value.toLocaleString()}đ`;
-      case "buy_x_get_y":
-        return `Tặng ${promo.value}`;
-      case "free_shipping":
-        return "Miễn phí";
-      default:
-        return promo.value;
+  const fetchPromotions = async (page = 1) => {
+    try {
+      const res = await PromotionService.getAll(page, meta.pageSize);
+      if (res && res.data && res.data.result) {
+        setPromotions(res.data.result);
+        if (res.data.meta) setMeta(res.data.meta);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách khuyến mãi");
     }
   };
 
-  const isExpired = (endDate: string) => new Date(endDate) < new Date();
+  const fetchAllProducts = async () => {
+    try {
+      const res = await ProductService.getAll(0, 100);
+      if (res && res.data && res.data.result) {
+        setAllProducts(res.data.result);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+  };
 
-  const handleOpenDialog = (promotion?: Promotion) => {
+  React.useEffect(() => {
+    fetchPromotions(meta.page);
+    fetchAllProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta.page]);
+
+  const filteredPromotions = promotions.filter(
+    (promo) =>
+      promo.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      promo.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const getTypeIcon = (type: PromotionType) => {
+    const icons: Record<PromotionType, React.ElementType> = {
+      PERCENT: Percent,
+      FIXED: Tag,
+      BUY_X_GET_Y: Gift,
+      FREE_SHIPPING: Truck,
+    };
+    return icons[type] || Percent;
+  };
+
+  const getTypeLabel = (type: PromotionType) => {
+    const labels: Record<PromotionType, string> = {
+      PERCENT: "Giảm %",
+      FIXED: "Giảm tiền",
+      BUY_X_GET_Y: "Mua X tặng Y",
+      FREE_SHIPPING: "Freeship",
+    };
+    return labels[type] || type;
+  };
+
+  const formatValue = (promo: IPromotion) => {
+    switch (promo.type) {
+      case "PERCENT":
+        return `${promo.value}%`;
+      case "FIXED":
+        return `${promo.value.toLocaleString()}đ`;
+      case "BUY_X_GET_Y":
+        return `Tặng ${promo.value}`;
+      case "FREE_SHIPPING":
+        return "Miễn phí";
+      default:
+        return String(promo.value);
+    }
+  };
+
+  const isExpired = (endAt: string) => new Date(endAt) < new Date();
+
+  const handleOpenDialog = (promotion?: IPromotion) => {
     if (promotion) {
       setEditingPromotion(promotion);
       setFormData({
@@ -113,68 +161,88 @@ const PromotionsManagement: React.FC = () => {
         type: promotion.type,
         value: promotion.value,
         minOrderValue: promotion.minOrderValue || 0,
-        maxDiscount: promotion.maxDiscount || 0,
-        startDate: promotion.startDate,
-        endDate: promotion.endDate,
+        maxDiscountValue: promotion.maxDiscountValue || 0,
+        startAt: promotion.startAt ? promotion.startAt.split("T")[0] : "",
+        endAt: promotion.endAt ? promotion.endAt.split("T")[0] : "",
         isActive: promotion.isActive,
-        applicableProducts: promotion.applicableProducts,
+      });
+
+      // Fetch assigned products
+      PromotionService.getAssignedProducts(promotion.id).then((res) => {
+        if (res && res.data && Array.isArray(res.data)) {
+          const assigned = res.data as { id: number }[];
+          setSelectedProductIds(assigned.map((p) => p.id));
+        }
       });
     } else {
       setEditingPromotion(null);
+      setSelectedProductIds([]);
       setFormData({
         name: "",
         description: "",
-        type: "percentage",
+        type: "PERCENT",
         value: 0,
         minOrderValue: 0,
-        maxDiscount: 0,
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: "",
+        maxDiscountValue: 0,
+        startAt: new Date().toISOString().split("T")[0],
+        endAt: "",
         isActive: true,
-        applicableProducts: "all",
       });
     }
+    setActiveTab("info");
     setIsDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (!formData.name || !formData.startDate || !formData.endDate) {
+  const handleSave = async () => {
+    if (!formData.name || !formData.startAt || !formData.endAt) {
       toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
-    if (editingPromotion) {
-      setPromotions(
-        promotions.map((promo) =>
-          promo.id === editingPromotion.id
-            ? {
-                ...promo,
-                ...formData,
-                minOrderValue: formData.minOrderValue || undefined,
-                maxDiscount: formData.maxDiscount || undefined,
-              }
-            : promo,
-        ),
-      );
-      toast.success("Đã cập nhật khuyến mãi");
-    } else {
-      const newPromotion: Promotion = {
-        id: Date.now().toString(),
-        ...formData,
-        minOrderValue: formData.minOrderValue || undefined,
-        maxDiscount: formData.maxDiscount || undefined,
-        usageCount: 0,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setPromotions([...promotions, newPromotion]);
-      toast.success("Đã thêm khuyến mãi mới");
+    // Convert date to LocalDateTime format
+    const startAt = `${formData.startAt}T00:00:00`;
+    const endAt = `${formData.endAt}T23:59:59`;
+
+    try {
+      let promoId: number;
+      if (editingPromotion) {
+        await PromotionService.update({
+          id: editingPromotion.id,
+          ...formData,
+          startAt,
+          endAt,
+        });
+        promoId = editingPromotion.id;
+        toast.success("Đã cập nhật khuyến mãi");
+      } else {
+        const res = await PromotionService.create({
+          ...formData,
+          startAt,
+          endAt,
+        });
+        if (!res.data) throw new Error("Chưa nhận được ID khuyến mãi");
+        promoId = res.data.id;
+        toast.success("Đã thêm khuyến mãi mới");
+      }
+
+      // Assign products
+      await PromotionService.assignProducts(promoId, selectedProductIds);
+
+      setIsDialogOpen(false);
+      fetchPromotions(meta.page);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lưu khuyến mãi");
     }
-    setIsDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setPromotions(promotions.filter((promo) => promo.id !== id));
-    toast.success("Đã xóa khuyến mãi");
+  const handleDelete = async (id: number) => {
+    try {
+      await PromotionService.delete(id);
+      toast.success("Đã xóa khuyến mãi");
+      fetchPromotions(meta.page);
+    } catch {
+      toast.error("Không thể xóa khuyến mãi");
+    }
   };
 
   return (
@@ -220,7 +288,7 @@ const PromotionsManagement: React.FC = () => {
           <TableBody>
             {filteredPromotions.map((promotion) => {
               const TypeIcon = getTypeIcon(promotion.type);
-              const expired = isExpired(promotion.endDate);
+              const expired = isExpired(promotion.endAt);
               return (
                 <TableRow key={promotion.id}>
                   <TableCell>
@@ -242,19 +310,29 @@ const PromotionsManagement: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div>{promotion.startDate}</div>
+                      <div>{promotion.startAt?.split("T")[0]}</div>
                       <div className="text-muted-foreground">
-                        → {promotion.endDate}
+                        → {promotion.endAt?.split("T")[0]}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{promotion.usageCount} lần</TableCell>
+                  <TableCell>0 lần</TableCell>
                   <TableCell>
                     {expired ? (
                       <Badge variant="destructive">Hết hạn</Badge>
                     ) : (
                       <Badge
                         variant={promotion.isActive ? "default" : "secondary"}
+                        className="cursor-pointer"
+                        onClick={async () => {
+                          try {
+                            await PromotionService.toggleActive(promotion.id, !promotion.isActive);
+                            toast.success("Đã thay đổi trạng thái");
+                            fetchPromotions(meta.page);
+                          } catch {
+                            toast.error("Lỗi khi thay đổi trạng thái");
+                          }
+                        }}
                       >
                         {promotion.isActive ? "Hoạt động" : "Tạm dừng"}
                       </Badge>
@@ -287,155 +365,235 @@ const PromotionsManagement: React.FC = () => {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editingPromotion ? "Sửa khuyến mãi" : "Thêm khuyến mãi mới"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-            <div className="space-y-2">
-              <Label>Tên khuyến mãi *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="VD: Flash Sale Mùa Hè"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mô tả</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Mô tả chi tiết khuyến mãi"
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="info">Thông tin chung</TabsTrigger>
+              <TabsTrigger value="products">Sản phẩm áp dụng</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="space-y-4 py-4 pr-2">
               <div className="space-y-2">
-                <Label>Loại khuyến mãi</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value: Promotion["type"]) =>
-                    setFormData({ ...formData, type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Giảm theo %</SelectItem>
-                    <SelectItem value="fixed">Giảm tiền cố định</SelectItem>
-                    <SelectItem value="buy_x_get_y">Mua X tặng Y</SelectItem>
-                    <SelectItem value="free_shipping">
-                      Miễn phí vận chuyển
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  {formData.type === "percentage"
-                    ? "Phần trăm giảm"
-                    : formData.type === "fixed"
-                      ? "Số tiền giảm"
-                      : formData.type === "buy_x_get_y"
-                        ? "Số lượng tặng"
-                        : "Giá trị"}
-                </Label>
+                <Label>Tên khuyến mãi *</Label>
                 <Input
-                  type="number"
-                  value={formData.value}
+                  value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, value: Number(e.target.value) })
+                    setFormData({ ...formData, name: e.target.value })
                   }
-                  disabled={formData.type === "free_shipping"}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Đơn tối thiểu</Label>
-                <Input
-                  type="number"
-                  value={formData.minOrderValue}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      minOrderValue: Number(e.target.value),
-                    })
-                  }
-                  placeholder="0"
+                  placeholder="VD: Flash Sale Mùa Hè"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Giảm tối đa</Label>
-                <Input
-                  type="number"
-                  value={formData.maxDiscount}
+                <Label>Mô tả</Label>
+                <Textarea
+                  value={formData.description}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      maxDiscount: Number(e.target.value),
-                    })
+                    setFormData({ ...formData, description: e.target.value })
                   }
-                  placeholder="Không giới hạn"
+                  placeholder="Mô tả chi tiết khuyến mãi"
+                  rows={2}
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Ngày bắt đầu *</Label>
-                <Input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Loại khuyến mãi</Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value: PromotionType) =>
+                      setFormData({ ...formData, type: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENT">Giảm theo %</SelectItem>
+                      <SelectItem value="FIXED">Giảm tiền cố định</SelectItem>
+                      <SelectItem value="BUY_X_GET_Y">Mua X tặng Y</SelectItem>
+                      <SelectItem value="FREE_SHIPPING">
+                        Miễn phí vận chuyển
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    {formData.type === "PERCENT"
+                      ? "Phần trăm giảm"
+                      : formData.type === "FIXED"
+                        ? "Số tiền giảm"
+                        : formData.type === "BUY_X_GET_Y"
+                          ? "Số lượng tặng"
+                          : "Giá trị"}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={formData.value}
+                    onChange={(e) =>
+                      setFormData({ ...formData, value: Number(e.target.value) })
+                    }
+                    disabled={formData.type === "FREE_SHIPPING"}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Đơn tối thiểu</Label>
+                  <Input
+                    type="number"
+                    value={formData.minOrderValue}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        minOrderValue: Number(e.target.value),
+                      })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Giảm tối đa</Label>
+                  <Input
+                    type="number"
+                    value={formData.maxDiscountValue}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxDiscountValue: Number(e.target.value),
+                      })
+                    }
+                    placeholder="Không giới hạn"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Ngày bắt đầu *</Label>
+                  <Input
+                    type="date"
+                    value={formData.startAt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startAt: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ngày kết thúc *</Label>
+                  <Input
+                    type="date"
+                    value={formData.endAt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, endAt: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Trạng thái hoạt động</Label>
+                <Switch
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isActive: checked })
                   }
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Ngày kết thúc *</Label>
-                <Input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
-                  }
-                />
+            </TabsContent>
+
+            <TabsContent value="products" className="space-y-4 py-4">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Tìm sản phẩm..."
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedProductIds.length === allProducts.length) {
+                        setSelectedProductIds([]);
+                      } else {
+                        setSelectedProductIds(allProducts.map((p) => p.id));
+                      }
+                    }}
+                  >
+                    {selectedProductIds.length === allProducts.length
+                      ? "Bỏ chọn hết"
+                      : "Chọn tất cả"}
+                  </Button>
+                </div>
+
+                <div className="text-sm text-muted-foreground">
+                  Đã chọn {selectedProductIds.length} sản phẩm
+                </div>
+
+                <ScrollArea className="h-[400px] border rounded-md p-4">
+                  <div className="space-y-4">
+                    {allProducts
+                      .filter((p) =>
+                        p.name
+                          .toLowerCase()
+                          .includes(productSearchTerm.toLowerCase()),
+                      )
+                      .map((product) => (
+                        <div
+                          key={product.id}
+                          className="flex items-center space-x-3 space-y-0"
+                        >
+                          <Checkbox
+                            id={`p-${product.id}`}
+                            checked={selectedProductIds.includes(product.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedProductIds([
+                                  ...selectedProductIds,
+                                  product.id,
+                                ]);
+                              } else {
+                                setSelectedProductIds(
+                                  selectedProductIds.filter(
+                                    (id) => id !== product.id,
+                                  ),
+                                );
+                              }
+                            }}
+                          />
+                          <Label
+                            htmlFor={`p-${product.id}`}
+                            className="flex items-center gap-2 font-normal cursor-pointer flex-1"
+                          >
+                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center overflow-hidden border">
+                              {product.image && product.image.length > 0 ? (
+                                <img
+                                  src={product.image[0]}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <Box className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">
+                                {product.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ID: {product.id} |{" "}
+                                {product.originalPrice?.toLocaleString()}đ
+                              </span>
+                            </div>
+                          </Label>
+                        </div>
+                      ))}
+                  </div>
+                </ScrollArea>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Áp dụng cho</Label>
-              <Select
-                value={formData.applicableProducts}
-                onValueChange={(value: Promotion["applicableProducts"]) =>
-                  setFormData({ ...formData, applicableProducts: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả sản phẩm</SelectItem>
-                  <SelectItem value="category">Theo danh mục</SelectItem>
-                  <SelectItem value="specific">Sản phẩm cụ thể</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Trạng thái hoạt động</Label>
-              <Switch
-                checked={formData.isActive}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked })
-                }
-              />
-            </div>
-          </div>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Hủy

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Copy, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -29,33 +29,59 @@ import {
 } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
-import { mockCoupons } from "../../data/mockCoupons";
-import type { Coupon } from "../../data/mockCoupons";
 import { toast } from "sonner";
-
-import { usePagination } from "../../hooks/usePagination";
+import { CouponService } from "../../service/couponService";
+import type { ICoupon, CouponType, CouponStatus } from "../../types/coupon.type";
+import type { IMeta } from "../../types/api.type";
 import PaginationControl from "../../components/PaginationControl";
 
 const CouponsManagement: React.FC = () => {
-  const [coupons, setCoupons] = useState<Coupon[]>(mockCoupons);
+  const [coupons, setCoupons] = useState<ICoupon[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingCoupon, setEditingCoupon] = useState<ICoupon | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [meta, setMeta] = useState<IMeta>({
+    page: 1,
+    pageSize: 10,
+    pages: 0,
+    total: 0,
+  });
+
   const [formData, setFormData] = useState({
     code: "",
     name: "",
     description: "",
-    type: "percentage" as Coupon["type"],
+    type: "PERCENT" as CouponType,
     value: 0,
     minOrderValue: 0,
-    maxDiscount: 0,
+    maxDiscountValue: 0,
     usageLimit: 0,
-    perUserLimit: 1,
     startDate: "",
     endDate: "",
-    isActive: true,
+    status: "ACTIVE" as CouponStatus,
+    isPublic: true,
   });
+
+  const fetchCoupons = async (page = 1) => {
+    try {
+      // Backend expects 0‑based page index, frontend uses 1‑based.
+      const backendPage = Math.max(page - 1, 0);
+      const res = await CouponService.getAll(backendPage, meta.pageSize);
+      if (res?.data) {
+        setCoupons(res.data.result);
+        // Preserve the frontend page number while updating other meta fields.
+        setMeta({ ...res.data.meta, page });
+      }
+    } catch {
+      toast.error("Không thể tải danh sách mã giảm giá");
+    }
+  };
+
+  React.useEffect(() => {
+    fetchCoupons(meta.page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta.page]);
 
   const filteredCoupons = coupons.filter(
     (coupon) =>
@@ -63,28 +89,23 @@ const CouponsManagement: React.FC = () => {
       coupon.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(
-    filteredCoupons,
-    10,
-  );
-
   const isExpired = (endDate: string) => new Date(endDate) < new Date();
-  const isExhausted = (coupon: Coupon) =>
+  const isExhausted = (coupon: ICoupon) =>
     coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit;
 
-  const getUsagePercent = (coupon: Coupon) => {
+  const getUsagePercent = (coupon: ICoupon) => {
     if (coupon.usageLimit === 0) return 0;
     return Math.min(100, (coupon.usedCount / coupon.usageLimit) * 100);
   };
 
-  const handleCopyCode = (code: string, id: string) => {
+  const handleCopyCode = (code: string, id: number) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     toast.success("Đã copy mã coupon");
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleOpenDialog = (coupon?: Coupon) => {
+  const handleOpenDialog = (coupon?: ICoupon) => {
     if (coupon) {
       setEditingCoupon(coupon);
       setFormData({
@@ -94,12 +115,12 @@ const CouponsManagement: React.FC = () => {
         type: coupon.type,
         value: coupon.value,
         minOrderValue: coupon.minOrderValue || 0,
-        maxDiscount: coupon.maxDiscount || 0,
+        maxDiscountValue: coupon.maxDiscountValue || 0,
         usageLimit: coupon.usageLimit,
-        perUserLimit: coupon.perUserLimit,
-        startDate: coupon.startDate,
-        endDate: coupon.endDate,
-        isActive: coupon.isActive,
+        startDate: coupon.startDate ? coupon.startDate.split("T")[0] : "",
+        endDate: coupon.endDate ? coupon.endDate.split("T")[0] : "",
+        status: coupon.status,
+        isPublic: coupon.isPublic,
       });
     } else {
       setEditingCoupon(null);
@@ -107,15 +128,15 @@ const CouponsManagement: React.FC = () => {
         code: "",
         name: "",
         description: "",
-        type: "percentage",
+        type: "PERCENT",
         value: 0,
         minOrderValue: 0,
-        maxDiscount: 0,
+        maxDiscountValue: 0,
         usageLimit: 0,
-        perUserLimit: 1,
         startDate: new Date().toISOString().split("T")[0],
         endDate: "",
-        isActive: true,
+        status: "ACTIVE",
+        isPublic: true,
       });
     }
     setIsDialogOpen(true);
@@ -130,9 +151,8 @@ const CouponsManagement: React.FC = () => {
     setFormData({ ...formData, code });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
-      !formData.code ||
       !formData.name ||
       !formData.startDate ||
       !formData.endDate
@@ -141,44 +161,36 @@ const CouponsManagement: React.FC = () => {
       return;
     }
 
-    // Check if code exists (for new coupons)
-    if (!editingCoupon && coupons.some((c) => c.code === formData.code)) {
-      toast.error("Mã coupon đã tồn tại");
-      return;
+    try {
+      if (editingCoupon) {
+        await CouponService.update({
+          ...formData,
+          id: editingCoupon.id,
+        });
+        toast.success("Đã cập nhật mã giảm giá");
+      } else {
+        await CouponService.create(formData);
+        toast.success("Đã thêm mã giảm giá mới");
+      }
+      setIsDialogOpen(false);
+      fetchCoupons(meta.page);
+    } catch {
+      toast.error("Có lỗi xảy ra khi lưu mã giảm giá");
     }
-
-    if (editingCoupon) {
-      setCoupons(
-        coupons.map((coupon) =>
-          coupon.id === editingCoupon.id
-            ? {
-                ...coupon,
-                ...formData,
-                minOrderValue: formData.minOrderValue || undefined,
-                maxDiscount: formData.maxDiscount || undefined,
-              }
-            : coupon,
-        ),
-      );
-      toast.success("Đã cập nhật mã giảm giá");
-    } else {
-      const newCoupon: Coupon = {
-        id: Date.now().toString(),
-        ...formData,
-        minOrderValue: formData.minOrderValue || undefined,
-        maxDiscount: formData.maxDiscount || undefined,
-        usedCount: 0,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setCoupons([...coupons, newCoupon]);
-      toast.success("Đã thêm mã giảm giá mới");
-    }
-    setIsDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setCoupons(coupons.filter((coupon) => coupon.id !== id));
-    toast.success("Đã xóa mã giảm giá");
+  const handleDelete = async (id: number) => {
+    try {
+      await CouponService.delete(id);
+      toast.success("Đã xóa mã giảm giá");
+      fetchCoupons(meta.page);
+    } catch {
+      toast.error("Không thể xóa mã giảm giá");
+    }
+  };
+
+  const getTypeIcon = (type: CouponType) => {
+    return type === "PERCENT" ? Percent : Tag;
   };
 
   return (
@@ -223,6 +235,7 @@ const CouponsManagement: React.FC = () => {
             {filteredCoupons.map((coupon) => {
               const expired = isExpired(coupon.endDate);
               const exhausted = isExhausted(coupon);
+              const TypeIcon = getTypeIcon(coupon.type);
               return (
                 <TableRow key={coupon.id}>
                   <TableCell>
@@ -253,15 +266,18 @@ const CouponsManagement: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium text-primary">
-                    {coupon.type === "percentage"
-                      ? `${coupon.value}%`
-                      : `${coupon.value.toLocaleString()}đ`}
+                    <div className="flex items-center gap-1">
+                      <TypeIcon className="h-3 w-3" />
+                      {coupon.type === "PERCENT"
+                        ? `${coupon.value}%`
+                        : `${coupon.value.toLocaleString()}đ`}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      <div>{coupon.startDate}</div>
+                      <div>{coupon.startDate ? coupon.startDate.split("T")[0] : ""}</div>
                       <div className="text-muted-foreground">
-                        → {coupon.endDate}
+                        → {coupon.endDate ? coupon.endDate.split("T")[0] : ""}
                       </div>
                     </div>
                   </TableCell>
@@ -285,9 +301,9 @@ const CouponsManagement: React.FC = () => {
                       <Badge variant="secondary">Đã hết</Badge>
                     ) : (
                       <Badge
-                        variant={coupon.isActive ? "default" : "secondary"}
+                        variant={coupon.status === "ACTIVE" ? "default" : "secondary"}
                       >
-                        {coupon.isActive ? "Hoạt động" : "Tạm dừng"}
+                        {coupon.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
                       </Badge>
                     )}
                   </TableCell>
@@ -315,9 +331,9 @@ const CouponsManagement: React.FC = () => {
           </TableBody>
         </Table>
         <PaginationControl
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={goToPage}
+          currentPage={meta.page}
+          totalPages={meta.pages}
+          onPageChange={(page) => setMeta({ ...meta, page })}
         />
       </div>
 
@@ -374,7 +390,7 @@ const CouponsManagement: React.FC = () => {
                 <Label>Loại giảm giá</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value: Coupon["type"]) =>
+                  onValueChange={(value: CouponType) =>
                     setFormData({ ...formData, type: value })
                   }
                 >
@@ -382,14 +398,14 @@ const CouponsManagement: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="percentage">Giảm theo %</SelectItem>
-                    <SelectItem value="fixed">Giảm tiền cố định</SelectItem>
+                    <SelectItem value="PERCENT">Giảm theo %</SelectItem>
+                    <SelectItem value="FIXED">Giảm tiền cố định</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>
-                  {formData.type === "percentage"
+                  {formData.type === "PERCENT"
                     ? "Phần trăm giảm"
                     : "Số tiền giảm"}
                 </Label>
@@ -421,11 +437,11 @@ const CouponsManagement: React.FC = () => {
                 <Label>Giảm tối đa</Label>
                 <Input
                   type="number"
-                  value={formData.maxDiscount}
+                  value={formData.maxDiscountValue}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      maxDiscount: Number(e.target.value),
+                      maxDiscountValue: Number(e.target.value),
                     })
                   }
                   placeholder="Không giới hạn"
@@ -448,18 +464,15 @@ const CouponsManagement: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Lượt/người</Label>
-                <Input
-                  type="number"
-                  value={formData.perUserLimit}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      perUserLimit: Number(e.target.value),
-                    })
-                  }
-                  min={1}
-                />
+                <Label>Công khai</Label>
+                <div className="flex items-center h-10">
+                   <Switch
+                    checked={formData.isPublic}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isPublic: checked })
+                    }
+                  />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -487,9 +500,9 @@ const CouponsManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <Label>Trạng thái hoạt động</Label>
               <Switch
-                checked={formData.isActive}
+                checked={formData.status === "ACTIVE"}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked })
+                  setFormData({ ...formData, status: checked ? "ACTIVE" : "DISABLED" })
                 }
               />
             </div>

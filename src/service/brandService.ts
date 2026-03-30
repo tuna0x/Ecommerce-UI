@@ -11,7 +11,7 @@ export const BrandService = {
     sort?: string,
   ): Promise<IApiResponse<IPagination<IBrand>>> => {
     const params: Record<string, unknown> = {
-      page,
+      page: page && page > 0 ? page - 1 : 0,
       size,
       filter: search ? `name~'${search}'` : undefined,
       sort: sort,

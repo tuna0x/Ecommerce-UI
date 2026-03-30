@@ -12,7 +12,7 @@ export const BannerService = {
     sort?: string,
   ): Promise<IApiResponse<IPagination<IBanner>>> => {
     const params: Record<string, unknown> = {
-      page,
+      page: page !== undefined ? page : 0,
       size,
       filter: search ? `title~'${search}'` : undefined,
       sort: sort,

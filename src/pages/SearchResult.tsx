@@ -226,17 +226,15 @@ const SearchResults: React.FC = () => {
             <div className="hidden md:flex items-center bg-secondary rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "grid" ? "bg-background shadow-sm" : ""
-                }`}
+                className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? "bg-background shadow-sm" : ""
+                  }`}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode("compact")}
-                className={`p-2 rounded-md transition-colors ${
-                  viewMode === "compact" ? "bg-background shadow-sm" : ""
-                }`}
+                className={`p-2 rounded-md transition-colors ${viewMode === "compact" ? "bg-background shadow-sm" : ""
+                  }`}
               >
                 <Grid3X3 className="w-4 h-4" />
               </button>
@@ -309,11 +307,10 @@ const SearchResults: React.FC = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className={`grid gap-4 ${
-              viewMode === "grid"
+            className={`grid gap-4 ${viewMode === "grid"
                 ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
                 : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-            }`}
+              }`}
           >
             {filteredProducts.map((product, index) => (
               <motion.div
