@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Check,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { ProductService } from "../service/productService";
 import productDetailService from "../service/productDetailService";
@@ -308,8 +309,8 @@ const ProductDetail: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="mb-12">
-          <div className="flex border-b border-border mb-8 overflow-x-auto scrollbar-none">
+        <div className="mb-12 pt-12 border-t border-border/30">
+          <div className="flex border-b border-border mb-8 overflow-x-auto scrollbar-none sticky top-[72px] bg-background z-10 py-2">
             {(["description", "ingredient", "usage", "specification", "reviews"] as const).map((tab) => (
               <button
                 key={tab}
@@ -338,62 +339,48 @@ const ProductDetail: React.FC = () => {
                 transition={{ duration: 0.2 }}
               >
                 {activeTab === "description" && (
-                  <div className="prose prose-lg max-w-none prose-p:text-muted-foreground prose-p:leading-relaxed">
-                    {detail?.description ? detail.description.split('\n').map((line, i) => (
-                      <p key={i}>{line}</p>
-                    )) : (
-                      <p>Hiện chưa có mô tả chi tiết cho sản phẩm này.</p>
-                    )}
-                  </div>
+                  <div 
+                    className="prose prose-lg max-w-none prose-p:text-muted-foreground prose-p:leading-relaxed prose-headings:text-foreground prose-img:rounded-3xl prose-img:shadow-xl"
+                    dangerouslySetInnerHTML={{ __html: detail?.description || '<p class="italic text-muted-foreground">Hiện chưa có mô tả chi tiết cho sản phẩm này.</p>' }}
+                  />
                 )}
 
                 {activeTab === "ingredient" && (
                   <div className="bg-secondary/20 p-8 rounded-3xl border border-border">
-                    <h3 className="text-xl font-bold mb-4">Bảng thành phần</h3>
-                    <p className="text-muted-foreground leading-loose whitespace-pre-wrap">
-                      {detail?.ingredient || "Đang cập nhật bảng thành phần chi tiết..."}
-                    </p>
+                    <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
+                       <Shield className="w-6 h-6" />
+                       Bảng thành phần
+                    </h3>
+                    <div 
+                      className="prose prose-sm max-w-none text-muted-foreground leading-loose"
+                      dangerouslySetInnerHTML={{ __html: detail?.ingredient || "Đang cập nhật bảng thành phần chi tiết..." }}
+                    />
                   </div>
                 )}
 
                 {activeTab === "usage" && (
                   <div className="bg-secondary/20 p-8 rounded-3xl border border-border">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                      <Check className="w-6 h-6 text-primary" />
+                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2 text-primary">
+                      <Check className="w-6 h-6" />
                       Hướng dẫn sử dụng
                     </h3>
-                    <div className="space-y-4">
-                      {detail?.usageGuide ? detail.usageGuide.split('\n').map((line, i) => (
-                        <div key={i} className="flex gap-4 p-4 bg-background rounded-2xl border border-border/50">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
-                            {i + 1}
-                          </div>
-                          <p className="text-muted-foreground font-medium">{line}</p>
-                        </div>
-                      )) : (
-                        <p className="text-muted-foreground italic">Liên hệ bộ phận tư vấn để được hướng dẫn sử dụng tốt nhất.</p>
-                      )}
-                    </div>
+                    <div 
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: detail?.usageGuide || '<p class="text-muted-foreground italic">Liên hệ bộ phận tư vấn để được hướng dẫn sử dụng tốt nhất.</p>' }}
+                    />
                   </div>
                 )}
 
                 {activeTab === "specification" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {detail?.specification ? detail.specification.split('\n').map((line, i) => {
-                      const [label, ...valParts] = line.split(':');
-                      const val = valParts.join(':');
-                      if (!val) return <div key={i} className="p-4 border border-border rounded-2xl text-center font-bold bg-secondary/10">{line}</div>;
-                      return (
-                        <div key={i} className="flex items-center justify-between p-4 border border-border rounded-2xl hover:bg-secondary/10 transition-colors">
-                          <span className="text-sm font-bold text-muted-foreground uppercase">{label.trim()}</span>
-                          <span className="text-sm font-bold text-foreground">{val.trim()}</span>
-                        </div>
-                      );
-                    }) : (
-                      <div className="col-span-full p-8 border border-dashed border-border rounded-3xl text-center text-muted-foreground italic">
-                        Chưa có thông số kỹ thuật chi tiết.
-                      </div>
-                    )}
+                  <div className="bg-accent/5 p-8 rounded-3xl border border-border/50">
+                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2 text-accent">
+                      <FileText className="w-6 h-6" />
+                      Thông số sản phẩm
+                    </h3>
+                    <div 
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: detail?.specification || '<p class="text-muted-foreground italic">Chưa có thông số kỹ thuật chi tiết.</p>' }}
+                    />
                   </div>
                 )}
 
@@ -415,7 +402,7 @@ const ProductDetail: React.FC = () => {
         {relatedProducts.length > 0 && (
           <div className="pt-12 border-t border-border/50">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-black tracking-tight uppercase">Sản phẩm liên quan</h2>
+              <h2 className="text-3xl font-black tracking-tight uppercase italic text-primary">Sản phẩm liên quan</h2>
               <Link to={`/category/${product.category.name}`} className="text-primary font-bold hover:underline">Xem tất cả</Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
