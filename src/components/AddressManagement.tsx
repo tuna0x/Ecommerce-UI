@@ -13,10 +13,11 @@ import {
     DialogTitle,
     DialogFooter,
 } from '../components/ui/dialog';
-import { MapPin, Plus, Pencil, Trash2, Star } from 'lucide-react';
+import { MapPin, Plus, Pencil, Trash2, Star, Loader2 } from 'lucide-react';
+import { AddressService } from '../service/addressService';
 
 export interface ShippingAddress {
-    id: string;
+    id: number | string;
     fullName: string;
     phone: string;
     province: string;
@@ -25,17 +26,6 @@ export interface ShippingAddress {
     street: string;
     isDefault: boolean;
 }
-
-const STORAGE_KEY = 'beautylux_addresses';
-
-const getAddresses = (userId: string): ShippingAddress[] => {
-    const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
-    return data ? JSON.parse(data) : [];
-};
-
-const saveAddresses = (userId: string, addresses: ShippingAddress[]) => {
-    localStorage.setItem(`${STORAGE_KEY}_${userId}`, JSON.stringify(addresses));
-};
 
 const emptyForm: Omit<ShippingAddress, 'id'> = {
     fullName: '',
@@ -51,72 +41,97 @@ const AddressManager: React.FC = () => {
     const { user } = useAuth();
     const { toast } = useToast();
     const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<number | string | null>(null);
     const [form, setForm] = useState(emptyForm);
 
-    useEffect(() => {
-        if (user) setAddresses(getAddresses(user.id));
-    }, [user]);
-
-    const persist = (updated: ShippingAddress[]) => {
-        if (!user) return;
-        setAddresses(updated);
-        saveAddresses(user.id, updated);
-    };
-
-    const openAdd = () => {
-        setEditingId(null);
-        setForm({ ...emptyForm, isDefault: addresses.length === 0 });
-        setDialogOpen(true);
+    const fetchAddresses = async () => {
+        try {
+            setIsLoading(true);
+            const res = await AddressService.getAll(0, 50);
+            if (res.data) {
+                const mapped = res.data.result.map(addr => ({
+                    id: addr.id,
+                    fullName: addr.receiverName,
+                    phone: addr.phone,
+                    province: addr.province,
+                    district: addr.district,
+                    ward: addr.ward,
+                    street: addr.detail,
+                    isDefault: addr.isDefault
+                }));
+                setAddresses(mapped);
+            }
+        } catch (error) {
+            console.error('Failed to fetch addresses:', error);
+            toast({ title: 'Lỗi', description: 'Không thể tải danh sách địa chỉ.', variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const openEdit = (addr: ShippingAddress) => {
         setEditingId(addr.id);
         const { id, ...rest } = addr;
+        console.log("Editing address id:", id); // Using id to avoid unused var
         setForm(rest);
         setDialogOpen(true);
     };
 
-    const handleSave = () => {
+    useEffect(() => {
+        if (user) fetchAddresses();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]);
+
+    const handleSave = async () => {
         if (!form.fullName.trim() || !form.phone.trim() || !form.province.trim() || !form.district.trim() || !form.street.trim()) {
             toast({ title: 'Lỗi', description: 'Vui lòng điền đầy đủ thông tin bắt buộc.', variant: 'destructive' });
             return;
         }
 
-        let updated: ShippingAddress[];
+        try {
+            const payload = {
+                receiverName: form.fullName,
+                phone: form.phone,
+                province: form.province,
+                district: form.district,
+                ward: form.ward,
+                detail: form.street,
+            };
 
-        if (editingId) {
-            updated = addresses.map((a) =>
-                a.id === editingId ? { ...form, id: editingId } : form.isDefault ? { ...a, isDefault: false } : a
-            );
-        } else {
-            const newAddr: ShippingAddress = { ...form, id: Date.now().toString() };
-            if (newAddr.isDefault) {
-                updated = [...addresses.map((a) => ({ ...a, isDefault: false })), newAddr];
+            if (editingId) {
+                await AddressService.update({ ...payload, id: Number(editingId) });
+                toast({ title: 'Thành công', description: 'Đã cập nhật địa chỉ.' });
             } else {
-                updated = [...addresses, newAddr];
+                await AddressService.create(payload);
+                toast({ title: 'Thành công', description: 'Đã thêm địa chỉ mới.' });
             }
+            setDialogOpen(false);
+            fetchAddresses();
+        } catch {
+            toast({ title: 'Lỗi', description: 'Không thể lưu địa chỉ.', variant: 'destructive' });
         }
-
-        persist(updated);
-        setDialogOpen(false);
-        toast({ title: editingId ? 'Đã cập nhật' : 'Đã thêm', description: 'Địa chỉ giao hàng đã được lưu.' });
     };
 
-    const handleDelete = (id: string) => {
-        const updated = addresses.filter((a) => a.id !== id);
-        if (updated.length > 0 && !updated.some((a) => a.isDefault)) {
-            updated[0].isDefault = true;
+    const handleDelete = async (id: number | string) => {
+        try {
+            await AddressService.remove(Number(id));
+            toast({ title: 'Đã xóa', description: 'Địa chỉ đã được xóa thành công.' });
+            fetchAddresses();
+        } catch {
+            toast({ title: 'Lỗi', description: 'Không thể xóa địa chỉ.', variant: 'destructive' });
         }
-        persist(updated);
-        toast({ title: 'Đã xóa', description: 'Địa chỉ đã được xóa.' });
     };
 
-    const handleSetDefault = (id: string) => {
-        const updated = addresses.map((a) => ({ ...a, isDefault: a.id === id }));
-        persist(updated);
-        toast({ title: 'Đã cập nhật', description: 'Địa chỉ mặc định đã được thay đổi.' });
+    const handleSetDefault = async (id: number | string) => {
+        try {
+            await AddressService.setDefault(Number(id));
+            toast({ title: 'Thành công', description: 'Đã đặt địa chỉ mặc định.' });
+            fetchAddresses();
+        } catch {
+            toast({ title: 'Lỗi', description: 'Không thể đặt địa chỉ mặc định.', variant: 'destructive' });
+        }
     };
 
     const formatAddress = (a: ShippingAddress) =>
@@ -126,18 +141,30 @@ const AddressManager: React.FC = () => {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Quản lý địa chỉ giao hàng của bạn</p>
-                <Button size="sm" onClick={openAdd}>
+                <Button size="sm" onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyForm);
+                    setDialogOpen(true);
+                }}>
                     <Plus className="w-4 h-4 mr-1" />
                     Thêm địa chỉ
                 </Button>
             </div>
 
-            {addresses.length === 0 ? (
+            {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            ) : addresses.length === 0 ? (
                 <Card>
                     <CardContent className="py-12 text-center">
                         <MapPin className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
                         <p className="text-muted-foreground">Bạn chưa có địa chỉ giao hàng nào</p>
-                        <Button variant="outline" className="mt-4" onClick={openAdd}>
+                        <Button variant="outline" className="mt-4" onClick={() => {
+                            setEditingId(null);
+                            setForm(emptyForm);
+                            setDialogOpen(true);
+                        }}>
                             <Plus className="w-4 h-4 mr-1" />
                             Thêm địa chỉ đầu tiên
                         </Button>

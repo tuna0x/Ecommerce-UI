@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, Pencil, Trash2, Search, X, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, X, ChevronRight, Loader2 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -119,7 +120,7 @@ const AttributesManagement: React.FC = () => {
   }, [fetchCategory]);
 
   // ---- Attribute CRUD ----
-  const handleOpenAttrDialog = (attribute?: IAttribute) => {
+  const handleOpenAttrDialog = useCallback((attribute?: IAttribute) => {
     if (attribute) {
       setEditingAttributeId(attribute.id);
       setAttrForm({
@@ -132,37 +133,45 @@ const AttributesManagement: React.FC = () => {
       setAttrForm({ name: "", categoryIds: [], active: true });
     }
     setIsAttrDialogOpen(true);
-  };
+  }, []);
 
-  const handleDeleteAttr = async (id: number) => {
-    if (window.confirm("Delete this attribute?")) {
-      await attributeService.remove(Number(id));
-      toast.success("Đã xóa thuộc tính");
-      fetchAttributes();
+  const handleDeleteAttr = useCallback(async (id: number) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa thuộc tính này?")) {
+      try {
+        await attributeService.remove(Number(id));
+        toast.success("Đã xóa thuộc tính");
+        fetchAttributes();
+      } catch {
+        toast.error("Không thể xóa thuộc tính");
+      }
     }
-  };
+  }, [fetchAttributes]);
 
-  const handleSaveAttr = async () => {
+  const handleSaveAttr = useCallback(async () => {
     if (!attrForm.name) {
       toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
-    if (editingAttributeId) {
-      const updateData: IUpdateAttribute = {
-        id: editingAttributeId,
-        name: attrForm.name,
-        active: attrForm.active,
-        categoryIds: attrForm.categoryIds,
-      };
-      await attributeService.update(updateData);
-      toast.success("Đã cập nhật thuộc tính");
-    } else {
-      await attributeService.create(attrForm);
-      toast.success("Đã thêm thuộc tính mới");
+    try {
+      if (editingAttributeId) {
+        const updateData: IUpdateAttribute = {
+          id: editingAttributeId,
+          name: attrForm.name,
+          active: attrForm.active,
+          categoryIds: attrForm.categoryIds,
+        };
+        await attributeService.update(updateData);
+        toast.success("Đã cập nhật thuộc tính");
+      } else {
+        await attributeService.create(attrForm);
+        toast.success("Đã thêm thuộc tính mới");
+      }
+      setIsAttrDialogOpen(false);
+      fetchAttributes();
+    } catch {
+      toast.error("Đã xảy ra lỗi");
     }
-    setIsAttrDialogOpen(false);
-    fetchAttributes();
-  };
+  }, [editingAttributeId, attrForm, fetchAttributes]);
 
   // ---- Value CRUD ----
 
@@ -179,7 +188,7 @@ const AttributesManagement: React.FC = () => {
     fetchAttributeValues(selectedAttribute.id);
   }, [selectedAttribute?.id, fetchAttributeValues]);
 
-  const handleOpenValueDialog = (value?: IAttributeValue) => {
+  const handleOpenValueDialog = useCallback((value?: IAttributeValue) => {
     if (value) {
       setEditingValueId(value.id);
       setValueForm({ value: value.value, attributeId: value.attribute.id });
@@ -188,42 +197,50 @@ const AttributesManagement: React.FC = () => {
       setValueForm({ value: "", attributeId: selectedAttribute?.id ?? null });
     }
     setIsValueDialogOpen(true);
-  };
+  }, [selectedAttribute?.id]);
 
-  const handleDeleteValue = async (id: string) => {
-    if (window.confirm("Delete this attribute value?")) {
-      await attributeValueService.remove(Number(id));
-      toast.success("Đã xóa giá trị");
-      if (selectedAttribute?.id) fetchAttributeValues(selectedAttribute.id);
+  const handleDeleteValue = useCallback(async (id: string) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa giá trị này?")) {
+      try {
+        await attributeValueService.remove(Number(id));
+        toast.success("Đã xóa giá trị");
+        if (selectedAttribute?.id) fetchAttributeValues(selectedAttribute.id);
+      } catch {
+        toast.error("Không thể xóa giá trị");
+      }
     }
-  };
+  }, [selectedAttribute?.id, fetchAttributeValues]);
 
-  const handleSaveValue = async () => {
+  const handleSaveValue = useCallback(async () => {
     if (!selectedAttribute) return;
     if (!valueForm.value.trim()) {
       toast.error("Vui lòng nhập giá trị");
       return;
     }
-    if (editingValueId) {
-      const updateData: IUpdateAttributeValue = {
-        id: editingValueId,
-        value: valueForm.value,
-        attributeId: selectedAttribute.id,
-      };
-      await attributeValueService.update(updateData);
-      toast.success("Đã cập nhật giá trị");
-    } else {
-      const createData: ICreateAttributeValue = {
-        value: valueForm.value,
-        attributeId: selectedAttribute.id,
-      };
-      await attributeValueService.create(createData);
-      toast.success("Đã thêm giá trị mới");
-    }
+    try {
+      if (editingValueId) {
+        const updateData: IUpdateAttributeValue = {
+          id: editingValueId,
+          value: valueForm.value,
+          attributeId: selectedAttribute.id,
+        };
+        await attributeValueService.update(updateData);
+        toast.success("Đã cập nhật giá trị");
+      } else {
+        const createData: ICreateAttributeValue = {
+          value: valueForm.value,
+          attributeId: selectedAttribute.id,
+        };
+        await attributeValueService.create(createData);
+        toast.success("Đã thêm giá trị mới");
+      }
 
-    fetchAttributeValues(selectedAttribute.id);
-    setIsValueDialogOpen(false);
-  };
+      fetchAttributeValues(selectedAttribute.id);
+      setIsValueDialogOpen(false);
+    } catch {
+      toast.error("Đã xảy ra lỗi");
+    }
+  }, [selectedAttribute, valueForm.value, editingValueId, fetchAttributeValues]);
 
   return (
     <div className="space-y-6">
@@ -267,7 +284,13 @@ const AttributesManagement: React.FC = () => {
               </Button>
             )}
           </div>
-          <div className="border rounded-lg">
+          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+            <div className="border rounded-lg bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -277,95 +300,96 @@ const AttributesManagement: React.FC = () => {
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell><div className="h-6 w-24 animate-pulse bg-muted rounded" /></TableCell>
-                          <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
-                          <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
-                          <TableCell><div className="h-6 w-20 animate-pulse bg-muted rounded ml-auto" /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : attributes?.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="text-center text-muted-foreground py-8"
-                        >
-                          Chưa có thuộc tính nào
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      attributes?.map((attr) => (
-                        <TableRow
-                          key={attr.id}
-                          className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
-                          onClick={() => setSelectedAttribute(attr)}
-                        >
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{attr.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {attr.name + " (" + attr.categories.length + " thể loại)"}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {attr.categories.map((cat) => (
-                          <Badge key={cat.id} variant="outline" className="text-[10px] px-1 h-5">
-                            {cat.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={attr.active ? "default" : "secondary"}
-                        className="text-xs"
-                      >
-                        {attr.active ? "Hoạt động" : "Ẩn"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenAttrDialog(attr);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteAttr(attr.id);
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
-                      </div>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-6 w-24 animate-pulse bg-muted rounded" /></TableCell>
+                      <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
+                      <TableCell><div className="h-6 w-16 animate-pulse bg-muted rounded" /></TableCell>
+                      <TableCell><div className="h-6 w-20 animate-pulse bg-muted rounded ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : attributes?.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground py-8"
+                    >
+                      Chưa có thuộc tính nào
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
+                ) : (
+                  attributes?.map((attr) => (
+                    <TableRow
+                      key={attr.id}
+                      className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
+                      onClick={() => setSelectedAttribute(attr)}
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{attr.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {attr.name + " (" + attr.categories.length + " thể loại)"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {attr.categories.map((cat) => (
+                            <Badge key={cat.id} variant="outline" className="text-[10px] px-1 h-5">
+                              {cat.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={attr.active ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {attr.active ? "Hoạt động" : "Ẩn"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenAttrDialog(attr);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAttr(attr.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
             </Table>
           </div>
-          <PaginationControl
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(page)}
-          />
+            <PaginationControl
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => setCurrentPage(page)}
+            />
+          </div>
         </div>
 
         {/* === RIGHT: Attribute Values === */}
@@ -499,8 +523,8 @@ const AttributesManagement: React.FC = () => {
               <Label>Thể loại </Label>
               <MultiSearchableSelect
                 options={allCategories?.map((cat) => ({
-                    value: cat.id.toString(),
-                    label: cat.name,
+                  value: cat.id.toString(),
+                  label: cat.name,
                 })) || []}
                 value={attrForm.categoryIds.map(String)}
                 onValueChange={(values) =>

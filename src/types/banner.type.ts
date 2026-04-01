@@ -1,6 +1,8 @@
 export interface IBanner {
   id: number;
   title: string;
+  subtitle?: string;
+  description?: string;
   image: string;
   link: string;
   position: "hero" | "sub" | "popup" | "category";
@@ -12,6 +14,8 @@ export interface IBanner {
 
 export interface ICreateBanner {
   title: string;
+  subtitle?: string;
+  description?: string;
   link: string;
   position: string;
   order: number;

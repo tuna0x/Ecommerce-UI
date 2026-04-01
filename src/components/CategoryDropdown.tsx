@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, ChevronRight } from 'lucide-react';
-import { categories } from '../data/products';
 import { Link } from 'react-router-dom';
+import type { CategoryTree } from '../lib/categoryUtils';
 
-const CategoryDropdown: React.FC = () => {
+interface CategoryDropdownProps {
+    categories: CategoryTree[];
+}
+
+const CategoryDropdown: React.FC<CategoryDropdownProps> = ({ categories }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -52,7 +56,7 @@ const CategoryDropdown: React.FC = () => {
                         {/* Category List (Level 1) */}
                         <div className="w-56 bg-background border border-border rounded-lg shadow-lg overflow-hidden">
                             {categories.map((category) => {
-                                const slug = category.name.toLowerCase().replace(/\s+/g, '-');
+                                const slug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
                                 const isActive = activeCategory === category.id;
                                 return (
                                     <div
@@ -89,10 +93,8 @@ const CategoryDropdown: React.FC = () => {
                                         {categories
                                             .find((c) => c.id === activeCategory)
                                             ?.subcategories.map((sub, i) => {
-                                                const parentSlug = categories
-                                                    .find((c) => c.id === activeCategory)!
-                                                    .name.toLowerCase()
-                                                    .replace(/\s+/g, '-');
+                                                const parentCategory = categories.find((c) => c.id === activeCategory)!;
+                                                const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase().replace(/\s+/g, '-');
                                                 return (
                                                     <div key={i}>
                                                         <Link

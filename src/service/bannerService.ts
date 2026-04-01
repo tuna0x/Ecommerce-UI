@@ -29,14 +29,31 @@ export const BannerService = {
 
   create: async (data: ICreateBanner, file?: File): Promise<IApiResponse<IBanner>> => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value.toString());
-      }
-    });
+    
+    formData.append("title", data.title);
+    if (data.subtitle?.trim()) formData.append("subtitle", data.subtitle.trim());
+    if (data.description?.trim()) formData.append("description", data.description.trim());
+    if (data.link?.trim()) formData.append("link", data.link.trim());
+    
+    const position = data.position?.toLowerCase() || "hero";
+    formData.append("position", position);
+    
+    if (data.order !== undefined && data.order !== null) {
+      formData.append("order", data.order.toString());
+    }
+    
+    formData.append("isActive", String(data.isActive));
+    
+    if (data.startDate?.trim()) formData.append("startDate", data.startDate.trim());
+    if (data.endDate?.trim()) formData.append("endDate", data.endDate.trim());
+    
     if (file) {
       formData.append("file", file);
     }
+
+    console.group("=== DEBUG: BannerService.create API Content ===");
+    formData.forEach((value, key) => console.log(`${key}:`, value));
+    console.groupEnd();
 
     const res = await axiosInstance.post(BASE_URL, formData);
     return res.data;
@@ -44,14 +61,33 @@ export const BannerService = {
 
   update: async (data: IUpdateBanner, file?: File): Promise<IApiResponse<IBanner>> => {
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value.toString());
-      }
-    });
+    
+    formData.append("id", data.id.toString());
+    formData.append("title", data.title);
+    
+    if (data.subtitle?.trim()) formData.append("subtitle", data.subtitle.trim());
+    if (data.description?.trim()) formData.append("description", data.description.trim());
+    if (data.link?.trim()) formData.append("link", data.link.trim());
+    
+    const position = data.position?.toLowerCase() || "hero";
+    formData.append("position", position);
+    
+    if (data.order !== undefined && data.order !== null) {
+      formData.append("order", data.order.toString());
+    }
+    
+    formData.append("isActive", String(data.isActive));
+    
+    if (data.startDate?.trim()) formData.append("startDate", data.startDate.trim());
+    if (data.endDate?.trim()) formData.append("endDate", data.endDate.trim());
+
     if (file) {
       formData.append("file", file);
     }
+
+    console.group("=== DEBUG: BannerService.update API Content ===");
+    formData.forEach((value, key) => console.log(`${key}:`, value));
+    console.groupEnd();
 
     const res = await axiosInstance.put(BASE_URL, formData);
     return res.data;

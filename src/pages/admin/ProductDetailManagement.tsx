@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Pencil, Plus, Eye, Trash2, ArrowUpDown, Search } from 'lucide-react';
+import { Pencil, Plus, Eye, Trash2, ArrowUpDown, Search, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -25,7 +25,6 @@ import productDetailService from '../../service/productDetailService';
 import { ProductService } from '../../service/productService';
 import type { IProductDetail } from '../../types/productDetail.type';
 import type { IProduct } from '../../types/product.type';
-import PaginationControl from '../../components/PaginationControl';
 import RichEditor from '../../components/admin/RichEditor';
 import { DataTable } from '../../components/ui/data-table';
 import { Checkbox } from '../../components/ui/Checkbox';
@@ -54,23 +53,6 @@ const ProductDetailManagement: React.FC = () => {
     const [editingDetail, setEditingDetail] = useState<IProductDetail | null>(null);
     const [previewDetail, setPreviewDetail] = useState<IProductDetail | null>(null);
 
-    // Auto-open form from query param
-    useEffect(() => {
-        if (productIdFromQuery && products.length > 0) {
-            const existingDetail = details.find(d => d.product.id.toString() === productIdFromQuery);
-            if (existingDetail) {
-                // If detail exists, open edit dialog
-                handleOpenDialog(existingDetail);
-            } else {
-                // If no detail exists, check if product is valid then open add dialog
-                const product = products.find(p => p.id.toString() === productIdFromQuery);
-                if (product) {
-                    handleOpenDialog();
-                    setFormData(prev => ({ ...prev, productId: product.id.toString() }));
-                }
-            }
-        }
-    }, [productIdFromQuery, products, details]);
 
     // Pagination state
     const [meta, setMeta] = useState({
@@ -125,11 +107,11 @@ const ProductDetailManagement: React.FC = () => {
         fetchProducts();
     }, [fetchDetails]);
 
-    const handleSearch = () => {
+    const handleSearch = useCallback(() => {
         fetchDetails(1, searchTerm);
-    };
+    }, [fetchDetails, searchTerm]);
 
-    const handleOpenDialog = (detail?: IProductDetail) => {
+    const handleOpenDialog = useCallback((detail?: IProductDetail) => {
         if (detail) {
             setEditingDetail(detail);
             setFormData({
@@ -150,12 +132,30 @@ const ProductDetailManagement: React.FC = () => {
             });
         }
         setIsDialogOpen(true);
-    };
+    }, []);
 
-    const handlePreview = (detail: IProductDetail) => {
+    // Auto-open form from query param
+    useEffect(() => {
+        if (productIdFromQuery && products.length > 0) {
+            const existingDetail = details.find(d => d.product.id.toString() === productIdFromQuery);
+            if (existingDetail) {
+                // If detail exists, open edit dialog
+                handleOpenDialog(existingDetail);
+            } else {
+                // If no detail exists, check if product is valid then open add dialog
+                const product = products.find(p => p.id.toString() === productIdFromQuery);
+                if (product) {
+                    handleOpenDialog();
+                    setFormData(prev => ({ ...prev, productId: product.id.toString() }));
+                }
+            }
+        }
+    }, [productIdFromQuery, products, details, handleOpenDialog]);
+
+    const handlePreview = useCallback((detail: IProductDetail) => {
         setPreviewDetail(detail);
         setIsPreviewOpen(true);
-    };
+    }, []);
 
     const handleSave = async () => {
         if (!formData.productId) {
@@ -188,7 +188,7 @@ const ProductDetailManagement: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleDelete = useCallback(async (id: number) => {
         if (!window.confirm('Bạn có chắc chắn muốn xóa chi tiết sản phẩm này?')) return;
 
         try {
@@ -198,14 +198,14 @@ const ProductDetailManagement: React.FC = () => {
         } catch {
             toast.error('Không thể xóa chi tiết sản phẩm');
         }
-    };
+    }, [fetchDetails, meta]);
 
     // Filter available products (only those without details, plus the current one if editing)
     const availableProducts = products.filter(
         (p) => !details.some((d) => d.product.id === p.id) || editingDetail?.product.id === p.id
     );
 
-    const handleBulkDelete = async (selectedRows: IProductDetail[]) => {
+    const handleBulkDelete = useCallback(async (selectedRows: IProductDetail[]) => {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedRows.length} chi tiết sản phẩm đã chọn?`)) return;
         
         try {
@@ -218,7 +218,7 @@ const ProductDetailManagement: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [fetchDetails, meta, searchTerm]);
 
     const StatusIcon = ({ exists, icon: Icon, label }: { exists: boolean, icon: React.ElementType, label: string }) => (
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors hover:bg-muted/50 group">
@@ -234,7 +234,7 @@ const ProductDetailManagement: React.FC = () => {
         </div>
     );
 
-    const columns: ColumnDef<IProductDetail>[] = [
+    const columns: ColumnDef<IProductDetail>[] = useMemo(() => [
         {
             id: "select",
             header: ({ table }) => (
@@ -349,7 +349,7 @@ const ProductDetailManagement: React.FC = () => {
                 );
             },
         },
-    ];
+    ], [handlePreview, handleOpenDialog, handleDelete]);
 
     return (
         <div className="space-y-6">
@@ -382,19 +382,23 @@ const ProductDetailManagement: React.FC = () => {
                 </Button>
             </div>
 
-            <DataTable
+            <div className={cn("relative transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
+                {loading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                )}
+                <DataTable
                 columns={columns}
                 data={details}
                 searchKey="product_name"
                 placeholder="Lọc nhanh trong trang..."
                 onDeleteSelected={handleBulkDelete}
-            />
-
-            <PaginationControl
                 currentPage={meta.current}
                 totalPages={meta.pages}
                 onPageChange={(page) => fetchDetails(page, searchTerm)}
             />
+          </div>
 
             {/* Edit/Add Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

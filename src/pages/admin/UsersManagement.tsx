@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Shield, ShieldOff, UserCog } from "lucide-react";
+import { Search, Shield, ShieldOff, UserCog, Loader2 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -99,11 +100,11 @@ const UsersManagement: React.FC = () => {
     });
   };
 
-  const toggleUserRole = (user: IUser) => {
+  const toggleUserRole = useCallback((user: IUser) => {
     setUserToToggleRole(user);
-  };
+  }, []);
 
-  const confirmToggleRole = async () => {
+  const confirmToggleRole = useCallback(async () => {
     if (!userToToggleRole) return;
 
     try {
@@ -129,9 +130,9 @@ const UsersManagement: React.FC = () => {
     } finally {
       setUserToToggleRole(null);
     }
-  };
+  }, [userToToggleRole, roles, fetchUsers, currentPage]);
 
-  const toggleUserStatus = async (user: IUser) => {
+  const toggleUserStatus = useCallback(async (user: IUser) => {
     try {
       await UserService.toggleActive(user.id, !user.active);
       toast.success("Đã cập nhật trạng thái người dùng");
@@ -140,7 +141,7 @@ const UsersManagement: React.FC = () => {
       console.error(error);
       toast.error("Cập nhật trạng thái thất bại");
     }
-  };
+  }, [fetchUsers, currentPage]);
 
   return (
     <div className="space-y-6">
@@ -219,117 +220,135 @@ const UsersManagement: React.FC = () => {
           <CardTitle>Danh sách người dùng ({totalElements})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Người dùng
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Tuổi/Địa chỉ
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Vai trò
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Trạng thái
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Ngày tạo
-                  </th>
-                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={isLoading ? "opacity-50" : ""}>
-                {users.map((user) => (
-                  <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-2">
-                      <div>
-                        <p className="text-sm font-medium">{user.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-sm">
-                        <p>{user.age} tuổi</p>
-                        <p className="text-xs text-muted-foreground">{user.address}</p>
-                    </td>
-                    <td className="py-3 px-2">
-                      <Badge
-                        variant={
-                          user.role?.name === "SUPER_ADMIN" ? "default" : "secondary"
-                        }
-                      >
-                        {user.role?.name === "SUPER_ADMIN" ? "Admin" : "Người dùng"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-2">
-                      <Badge
-                        variant="outline"
-                        className={
-                          user.active
-                            ? "border-green-500 text-green-600 bg-green-50"
-                            : "border-destructive text-destructive bg-destructive/10"
-                        }
-                      >
-                        {user.active ? "Hoạt động" : "Bị khóa"}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-2 text-sm">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title={
-                            user.role?.name === "SUPER_ADMIN"
-                              ? "Thu hồi quyền admin"
-                              : "Cấp quyền admin"
-                          }
-                          onClick={() => toggleUserRole(user)}
-                        >
-                          {user.role?.name === "SUPER_ADMIN" ? (
-                            <ShieldOff className="h-4 w-4 text-orange-500" />
-                          ) : (
-                            <Shield className="h-4 w-4 text-green-500" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title={
-                            user.active
-                              ? "Vô hiệu hóa"
-                              : "Kích hoạt"
-                          }
-                          onClick={() => toggleUserStatus(user)}
-                        >
-                          <UserCog className={`h-4 w-4 ${user.active ? "text-muted-foreground" : "text-destructive font-bold"}`} />
-                        </Button>
-                      </div>
-                    </td>
+          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+            <div className="overflow-x-auto border rounded-lg bg-card">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Người dùng
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Tuổi/Địa chỉ
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Vai trò
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Ngày tạo
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Hành động
+                    </th>
                   </tr>
-                ))}
-                {users.length === 0 && !isLoading && (
-                    <tr>
-                        <td colSpan={6} className="text-center py-10 text-muted-foreground">
-                            Không tìm thấy người dùng nào
-                        </td>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50 transition-all group">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">{user.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {user.email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm">
+                          <p className="font-medium">{user.age} tuổi</p>
+                          <p className="text-xs text-muted-foreground">{user.address}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant={
+                            user.role?.name === "SUPER_ADMIN" ? "default" : "secondary"
+                          }
+                          className={cn("text-[10px] uppercase font-bold tracking-wider", user.role?.name === "SUPER_ADMIN" ? "bg-primary" : "")}
+                        >
+                          {user.role?.name === "SUPER_ADMIN" ? "Admin" : "Người dùng"}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] uppercase font-bold tracking-wider",
+                            user.active
+                              ? "border-green-500 text-green-600 bg-green-50"
+                              : "border-destructive text-destructive bg-destructive/10"
+                          )}
+                        >
+                          {user.active ? "Hoạt động" : "Bị khóa"}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                            title={
+                              user.role?.name === "SUPER_ADMIN"
+                                ? "Thu hồi quyền admin"
+                                : "Cấp quyền admin"
+                            }
+                            onClick={() => toggleUserRole(user)}
+                          >
+                            {user.role?.name === "SUPER_ADMIN" ? (
+                              <ShieldOff className="h-4 w-4 text-orange-500" />
+                            ) : (
+                              <Shield className="h-4 w-4 text-green-500" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-destructive/10 transition-colors"
+                            title={
+                              user.active
+                                ? "Vô hiệu hóa"
+                                : "Kích hoạt"
+                            }
+                            onClick={() => toggleUserStatus(user)}
+                          >
+                            <UserCog className={`h-4 w-4 ${user.active ? "text-muted-foreground" : "text-destructive font-bold"}`} />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
-                )}
-              </tbody>
-            </table>
-            <PaginationControl
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
+                  ))}
+                  {users.length === 0 && !isLoading && (
+                      <tr>
+                          <td colSpan={6} className="text-center py-20 text-muted-foreground italic">
+                              Không tìm thấy người dùng nào phù hợp
+                          </td>
+                      </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="p-4 border-t bg-muted/10">
+                <PaginationControl
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

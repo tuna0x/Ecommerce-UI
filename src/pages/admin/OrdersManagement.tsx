@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { usePagination } from "../../hooks/usePagination";
 import PaginationControl from "../../components/PaginationControl";
-import { Search, Eye, ChevronDown } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -68,6 +69,7 @@ const OrdersManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -91,7 +93,7 @@ const OrdersManagement: React.FC = () => {
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = React.useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
@@ -99,28 +101,35 @@ const OrdersManagement: React.FC = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
+  }, []);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = React.useCallback((status: string) => {
     const option = statusOptions.find((s) => s.value === status);
     if (!option) return null;
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${option.color}`}
+        className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider ${option.color}`}
       >
         {option.label}
       </span>
     );
-  };
+  }, []);
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
+  const updateOrderStatus = React.useCallback((orderId: string, newStatus: Order["status"]) => {
     setOrders((prev) =>
       prev.map((order) =>
         order.id === orderId ? { ...order, status: newStatus } : order,
       ),
     );
     toast.success(`Đã cập nhật trạng thái đơn hàng ${orderId}`);
-  };
+  }, []);
+
+  // Simulate loading on filter change
+  React.useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -168,97 +177,116 @@ const OrdersManagement: React.FC = () => {
           <CardTitle>Danh sách đơn hàng ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Mã đơn
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Khách hàng
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Ngày đặt
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Tổng tiền
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Trạng thái
-                  </th>
-                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedItems.map((order) => (
-                  <tr key={order.id} className="border-b last:border-0">
-                    <td className="py-3 px-2 text-sm font-medium">
-                      {order.id}
-                    </td>
-                    <td className="py-3 px-2">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {order.customerName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.customerEmail}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2 text-sm">
-                      {formatDate(order.createdAt)}
-                    </td>
-                    <td className="py-3 px-2 text-sm font-medium">
-                      {formatCurrency(order.total)}
-                    </td>
-                    <td className="py-3 px-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex items-center gap-1">
-                            {getStatusBadge(order.status)}
-                            <ChevronDown className="h-3 w-3" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {statusOptions.map((status) => (
-                            <DropdownMenuItem
-                              key={status.value}
-                              onClick={() =>
-                                updateOrderStatus(
-                                  order.id,
-                                  status.value as Order["status"],
-                                )
-                              }
-                            >
-                              {status.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                    <td className="py-3 px-2">
-                      <div className="flex items-center justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedOrder(order)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+            <div className="overflow-x-auto border rounded-lg bg-card">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Mã đơn
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Khách hàng
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Ngày đặt
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Tổng tiền
+                    </th>
+                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="text-right py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                      Hành động
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <PaginationControl
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={goToPage}
-            />
+                </thead>
+                <tbody>
+                  {paginatedItems.length === 0 && !isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-20 text-muted-foreground italic">
+                        Không tìm thấy đơn hàng nào tương ứng
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedItems.map((order) => (
+                      <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50 transition-all group">
+                        <td className="py-4 px-4 text-sm font-mono font-bold text-primary">
+                          {order.id}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {order.customerName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.customerEmail}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-muted-foreground">
+                          {formatDate(order.createdAt)}
+                        </td>
+                        <td className="py-4 px-4 text-sm font-bold">
+                          {formatCurrency(order.total)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="flex items-center gap-1 hover:opacity-80 transition-opacity outline-none">
+                                {getStatusBadge(order.status)}
+                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {statusOptions.map((status) => (
+                                <DropdownMenuItem
+                                  key={status.value}
+                                  className="text-xs"
+                                  onClick={() =>
+                                    updateOrderStatus(
+                                      order.id,
+                                      status.value as Order["status"],
+                                    )
+                                  }
+                                >
+                                  {status.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center justify-end">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <div className="p-4 border-t bg-muted/10">
+                <PaginationControl
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

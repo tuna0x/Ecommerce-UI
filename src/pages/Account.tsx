@@ -1,27 +1,18 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import MobileNavBar from "../components/MobileNavBar";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { useToast } from "../hooks/use-toast";
-import { User, Mail, Phone, MapPin, Camera, Save } from "lucide-react";
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import MobileNavBar from '../components/MobileNavBar';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { useToast } from '../hooks/use-toast';
+import { User, Mail, Phone, MapPin, Camera, Save } from 'lucide-react';
+import AddressManager from '../components/AddressManagement';
 
 const Account = () => {
   const { user, logout } = useAuth();
@@ -29,29 +20,29 @@ const Account = () => {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: "0901234567",
-    address: "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: '0901234567',
+    address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
   });
 
   const [passwords, setPasswords] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   React.useEffect(() => {
     if (!user) {
-      navigate("/login");
+      navigate('/login');
     }
   }, [user, navigate]);
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     toast({
-      title: "Cập nhật thành công",
-      description: "Thông tin tài khoản đã được cập nhật.",
+      title: 'Cập nhật thành công',
+      description: 'Thông tin tài khoản đã được cập nhật.',
     });
   };
 
@@ -59,17 +50,17 @@ const Account = () => {
     e.preventDefault();
     if (passwords.newPassword !== passwords.confirmPassword) {
       toast({
-        title: "Lỗi",
-        description: "Mật khẩu xác nhận không khớp.",
-        variant: "destructive",
+        title: 'Lỗi',
+        description: 'Mật khẩu xác nhận không khớp.',
+        variant: 'destructive',
       });
       return;
     }
     toast({
-      title: "Đổi mật khẩu thành công",
-      description: "Mật khẩu của bạn đã được thay đổi.",
+      title: 'Đổi mật khẩu thành công',
+      description: 'Mật khẩu của bạn đã được thay đổi.',
     });
-    setPasswords({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
   };
 
   if (!user) return null;
@@ -104,7 +95,7 @@ const Account = () => {
                   className="mt-4 w-full"
                   onClick={() => {
                     logout();
-                    navigate("/");
+                    navigate('/');
                   }}
                 >
                   Đăng xuất
@@ -122,6 +113,7 @@ const Account = () => {
               <Tabs defaultValue="profile">
                 <TabsList className="mb-4">
                   <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
+                  <TabsTrigger value="address">Địa chỉ giao hàng</TabsTrigger>
                   <TabsTrigger value="password">Đổi mật khẩu</TabsTrigger>
                 </TabsList>
 
@@ -135,9 +127,7 @@ const Account = () => {
                           <Input
                             id="name"
                             value={formData.name}
-                            onChange={(e) =>
-                              setFormData({ ...formData, name: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             className="pl-10"
                           />
                         </div>
@@ -151,12 +141,7 @@ const Account = () => {
                             id="email"
                             type="email"
                             value={formData.email}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                email: e.target.value,
-                              })
-                            }
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="pl-10"
                           />
                         </div>
@@ -169,12 +154,7 @@ const Account = () => {
                           <Input
                             id="phone"
                             value={formData.phone}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                phone: e.target.value,
-                              })
-                            }
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                             className="pl-10"
                           />
                         </div>
@@ -187,12 +167,7 @@ const Account = () => {
                           <Input
                             id="address"
                             value={formData.address}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                address: e.target.value,
-                              })
-                            }
+                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                             className="pl-10"
                           />
                         </div>
@@ -206,23 +181,19 @@ const Account = () => {
                   </form>
                 </TabsContent>
 
+                <TabsContent value="address">
+                  <AddressManager />
+                </TabsContent>
+
                 <TabsContent value="password">
-                  <form
-                    onSubmit={handleChangePassword}
-                    className="space-y-4 max-w-md"
-                  >
+                  <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
                       <Input
                         id="currentPassword"
                         type="password"
                         value={passwords.currentPassword}
-                        onChange={(e) =>
-                          setPasswords({
-                            ...passwords,
-                            currentPassword: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
                       />
                     </div>
 
@@ -232,33 +203,23 @@ const Account = () => {
                         id="newPassword"
                         type="password"
                         value={passwords.newPassword}
-                        onChange={(e) =>
-                          setPasswords({
-                            ...passwords,
-                            newPassword: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">
-                        Xác nhận mật khẩu mới
-                      </Label>
+                      <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
                       <Input
                         id="confirmPassword"
                         type="password"
                         value={passwords.confirmPassword}
-                        onChange={(e) =>
-                          setPasswords({
-                            ...passwords,
-                            confirmPassword: e.target.value,
-                          })
-                        }
+                        onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
                       />
                     </div>
 
-                    <Button type="submit">Đổi mật khẩu</Button>
+                    <Button type="submit">
+                      Đổi mật khẩu
+                    </Button>
                   </form>
                 </TabsContent>
               </Tabs>

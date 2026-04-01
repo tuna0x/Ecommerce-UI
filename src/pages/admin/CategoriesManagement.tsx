@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle, Loader2 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -97,54 +98,63 @@ const CategoriesManagement: React.FC = () => {
     fetchAllCategories();
   }, [fetchAllCategories]);
 
-  const handleSubmit = async () => {
+  const resetForm = useCallback(() => {
+    setFormData({
+      name: "",
+      description: "",
+      active: true,
+      parentId: null,
+    });
+    setEditingId(null);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     if (!formData.name) {
       toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
-    if (editingId) {
-      const updateData: IUpdateCategory = {
-        id: editingId,
-        name: formData.name,
-        description: formData.description,
-        active: !!formData.active,
-        parentId: formData.parentId,
-      };
+    try {
+      if (editingId) {
+        const updateData: IUpdateCategory = {
+          id: editingId,
+          name: formData.name,
+          description: formData.description,
+          active: !!formData.active,
+          parentId: formData.parentId,
+        };
 
-      await categoryService.update(updateData);
-      toast.success("Đã cập nhật thể loại");
-    } else {
-      await categoryService.create(formData);
-      toast.success("Đã thêm mới thể loại");
+        await categoryService.update(updateData);
+        toast.success("Đã cập nhật thể loại");
+      } else {
+        await categoryService.create(formData);
+        toast.success("Đã thêm mới thể loại");
+      }
+      resetForm();
+      setIsDialogOpen(false);
+      fetchCategories();
+    } catch {
+      toast.error("Đã xảy ra lỗi");
     }
-    resetForm();
-    fetchCategories();
-  };
+  }, [editingId, formData, fetchCategories, resetForm]);
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      active: formData.active,
-      parentId: null,
-    });
-    setEditingId(null);
-  };
-
-  const handleDelete = async (id: number) => {
-    const haschildren = category?.some((cate) => cate.parentCategory?.id);
-    if (haschildren) {
+  const handleDelete = useCallback(async (id: number) => {
+    const hasChildren = category?.some((cate) => cate.parentCategory?.id === id);
+    if (hasChildren) {
       toast.error("Không thể xóa thể loại có thể loại con");
       return;
     }
     if (window.confirm("Bạn có chắc chắn muốn xóa thể loại này?")) {
-      await categoryService.remove(Number(id));
-      toast.success("Đã xóa thể loại thành công");
-      fetchCategories();
+      try {
+        await categoryService.remove(id);
+        toast.success("Đã xóa thể loại thành công");
+        fetchCategories();
+      } catch {
+        toast.error("Không thể xóa thể loại");
+      }
     }
-  };
+  }, [category, fetchCategories]);
 
-  const handleOpenDialog = (category?: ICategory) => {
+  const handleOpenDialog = useCallback((category?: ICategory) => {
     if (category) {
       setEditingId(category.id);
       setFormData({
@@ -158,12 +168,12 @@ const CategoriesManagement: React.FC = () => {
       setFormData({
         name: "",
         description: "",
-        active: formData.active,
+        active: true,
         parentId: null,
       });
     }
     setIsDialogOpen(true);
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -193,7 +203,12 @@ const CategoriesManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="border rounded-lg">
+      <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center -top-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
