@@ -33,4 +33,15 @@ export const UserService = {
     });
     return res.data;
   },
+
+  updateProfile: async (data: {
+    id: number;
+    name?: string;
+    age?: number;
+    gender?: string;
+    image?: string;
+  }): Promise<IApiResponse<IUser>> => {
+    const res = await axiosInstance.put(BASE_URL, data);
+    return res.data;
+  },
 };

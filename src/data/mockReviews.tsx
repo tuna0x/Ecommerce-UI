@@ -3,7 +3,7 @@ export interface Review {
   productId: number;
   userId: string;
   userName: string;
-  avatar?: string;
+  userImage?: string;
   rating: number;
   comment: string;
   images?: string[];
@@ -19,6 +19,7 @@ export const mockReviews: Review[] = [
     productId: 1,
     userId: "user-1",
     userName: "Nguyễn Thị Mai",
+    userImage: "https://i.pravatar.cc/150?u=user-1",
     rating: 5,
     comment:
       "Serum rất tốt, da mình sáng lên rõ rệt sau 2 tuần sử dụng. Kết cấu lỏng, thẩm thấu nhanh, không gây nhờn rít. Rất recommend cho ai muốn làm sáng da!",
@@ -35,6 +36,7 @@ export const mockReviews: Review[] = [
     productId: 1,
     userId: "user-2",
     userName: "Trần Văn Hùng",
+    userImage: "https://i.pravatar.cc/150?u=user-2",
     rating: 4,
     comment:
       "Sản phẩm OK, dùng được 1 tuần thấy da đều màu hơn. Giao hàng nhanh, đóng gói cẩn thận. Trừ 1 sao vì giá hơi cao.",

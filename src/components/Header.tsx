@@ -16,6 +16,7 @@ import SearchDropdown from './SearchDropdown';
 import CategoryDropdown from './CategoryDropdown';
 import { categoryService } from '../service/categoryService';
 import { buildCategoryTree, type CategoryTree } from '../lib/categoryUtils';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
@@ -93,9 +94,12 @@ const Header: React.FC = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="hidden md:flex items-center gap-2 p-2 hover:bg-secondary rounded-lg transition-colors">
-                    <div className="w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Avatar className="w-8 h-8 border border-border/50">
+                      <AvatarImage src={user.image} alt={user.name} />
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                        {user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
                   </button>
                 </DropdownMenuTrigger>

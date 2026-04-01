@@ -9,21 +9,23 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useToast } from '../hooks/use-toast';
-import { User, Mail, Phone, MapPin, Camera, Save } from 'lucide-react';
+import { User, Mail, Camera, Save } from 'lucide-react';
+import { UserService } from '../service/userService';
 import AddressManager from '../components/AddressManagement';
 
 const Account = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '0901234567',
-    address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
+    age: user?.age || 0,
+    gender: user?.gender || '',
   });
 
   const [passwords, setPasswords] = useState({
@@ -38,12 +40,33 @@ const Account = () => {
     }
   }, [user, navigate]);
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: 'Cập nhật thành công',
-      description: 'Thông tin tài khoản đã được cập nhật.',
-    });
+    if (!user) return;
+
+    try {
+      const res = await UserService.updateProfile({
+        id: user.id,
+        name: formData.name,
+        age: formData.age,
+        gender: formData.gender,
+      });
+
+      if (res.data) {
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
+        toast({
+          title: 'Thành công',
+          description: 'Thông tin cá nhân đã được cập nhật.',
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Lỗi',
+        description: 'Không thể cập nhật thông tin. Vui lòng thử lại.',
+      });
+    }
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -79,7 +102,7 @@ const Account = () => {
               <div className="flex flex-col items-center text-center">
                 <div className="relative">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={user.avatar} />
+                    <AvatarImage src={user.image} />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                       {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
@@ -148,29 +171,30 @@ const Account = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Số điện thoại</Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="phone"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="pl-10"
-                          />
-                        </div>
+                        <Label htmlFor="age">Tuổi</Label>
+                        <Input
+                          id="age"
+                          type="number"
+                          value={formData.age}
+                          onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                        />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="address">Địa chỉ</Label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input
-                            id="address"
-                            value={formData.address}
-                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                            className="pl-10"
-                          />
-                        </div>
+                        <Label htmlFor="gender">Giới tính</Label>
+                        <Select 
+                          value={formData.gender} 
+                          onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn giới tính" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MALE">Nam</SelectItem>
+                            <SelectItem value="FEMALE">Nữ</SelectItem>
+                            <SelectItem value="OTHER">Khác</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 

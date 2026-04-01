@@ -24,6 +24,7 @@ export interface ICreateAddress {
   district: string;
   ward: string;
   detail: string;
+  isDefault: boolean;
 }
 
 export interface IUpdateAddress extends ICreateAddress {
