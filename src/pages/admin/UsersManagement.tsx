@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Search, Shield, ShieldOff, UserCog, Loader2 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
   Card,
   CardContent,
@@ -255,9 +256,12 @@ const UsersManagement: React.FC = () => {
                     <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50 transition-all group">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                            {user.name.charAt(0)}
-                          </div>
+                          <Avatar className="w-8 h-8 border border-border/50">
+                            <AvatarImage src={user.image} alt={user.name} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                              {user.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
                             <p className="text-sm font-semibold">{user.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -266,9 +270,8 @@ const UsersManagement: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-sm">
-                          <p className="font-medium">{user.age} tuổi</p>
-                          <p className="text-xs text-muted-foreground">{user.address}</p>
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground">{user.age ?? 'N/A'}</span> tuổi
                       </td>
                       <td className="py-4 px-4">
                         <Badge

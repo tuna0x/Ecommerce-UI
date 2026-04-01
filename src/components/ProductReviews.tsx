@@ -9,6 +9,7 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Progress } from "../components/ui/progress";
@@ -419,11 +420,12 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="text-primary font-semibold text-sm">
-                      {review.userName.charAt(0)}
-                    </span>
-                  </div>
+                  <Avatar className="w-10 h-10 border border-border/50">
+                    <AvatarImage src={review.userImage} alt={review.userName} />
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                      {review.userName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">

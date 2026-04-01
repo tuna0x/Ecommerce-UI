@@ -17,6 +17,9 @@ interface User {
   id: number;
   name: string;
   email: string;
+  image?: string;
+  age?: number;
+  gender?: string;
   role: {
     name: string;
   };
@@ -27,6 +30,7 @@ interface AuthContectType {
   login: (login: ILoginPayload) => Promise<boolean>;
   register: (register: IRegister) => Promise<boolean>;
   logout: () => void;
+  setUser: (user: User | null) => void;
   isAuthenticated: boolean;
   loading: boolean;
 }
@@ -97,6 +101,7 @@ export const AuthProvider = ({ children }: any) => {
         login,
         logout,
         register,
+        setUser,
         isAuthenticated: !!user,
         loading,
       }}

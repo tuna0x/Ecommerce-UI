@@ -98,6 +98,7 @@ const AddressManager: React.FC = () => {
                 district: form.district,
                 ward: form.ward,
                 detail: form.street,
+                isDefault: form.isDefault,
             };
 
             if (editingId) {
