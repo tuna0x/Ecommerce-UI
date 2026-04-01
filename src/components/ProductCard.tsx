@@ -1,10 +1,10 @@
 import React from "react";
 import { Star } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { Product } from "../data/products";
+import type { IProduct } from "../types/product.type";
 
 interface ProductCardProps {
-  product: Product;
+  product: IProduct;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
@@ -12,21 +12,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     return new Intl.NumberFormat("vi-VN").format(price);
   };
 
+  const mainImage = Array.isArray(product.image) && product.image.length > 0 ? product.image[0] : "";
+  const hoverImage = Array.isArray(product.image) && product.image.length > 1 ? product.image[1] : product.hoverImage;
+  const displayPrice = product.price || product.originalPrice;
+  const ratingValue = product.rating || 5.0;
+
   return (
     <Link to={`/product/${product.id}`} className="group block">
       <div className="bg-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
         {/* Image Container */}
         <div className="relative aspect-[3/4] bg-secondary/30 overflow-hidden">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          {mainImage && (
+            <img
+              src={mainImage}
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          )}
 
           {/* Hover Image */}
-          {product.hoverImage && (
+          {hoverImage && (
             <img
-              src={product.hoverImage}
+              src={hoverImage}
               alt={product.name}
               className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
             />
@@ -34,7 +41,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           {/* Category Badge */}
           <span className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-foreground shadow-sm">
-            {product.category}
+            {product.category.name}
           </span>
 
           {/* Discount Badge */}
@@ -51,7 +58,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <div className="flex items-center gap-1.5">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
             <span className="text-sm font-medium text-foreground">
-              {product.rating}
+              {ratingValue}
             </span>
           </div>
 
@@ -63,9 +70,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Price */}
           <div className="flex items-center gap-2 pt-1">
             <span className="text-lg font-bold text-foreground">
-              {formatPrice(product.price)}₫
+              {formatPrice(displayPrice)}₫
             </span>
-            {product.originalPrice && product.originalPrice > product.price && (
+            {product.originalPrice && product.originalPrice > displayPrice && (
               <span className="text-sm text-muted-foreground line-through">
                 {formatPrice(product.originalPrice)}₫
               </span>

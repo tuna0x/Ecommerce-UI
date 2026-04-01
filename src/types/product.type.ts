@@ -2,6 +2,11 @@ import type { IAttributeValue } from "./attribute.type";
 import type { IBrand } from "./brand.type";
 import type { ICategory } from "./category.type";
 
+export interface IProductAttributeValue {
+  id: number;
+  attributeValue: IAttributeValue;
+}
+
 export interface IProduct {
   id: number;
   name: string;
@@ -11,7 +16,14 @@ export interface IProduct {
   image: string[] | null;
   category: ICategory;
   brand: IBrand;
-  attributeValue: IAttributeValue[] | null;
+  attributeValue: IProductAttributeValue[] | null;
+  // UI-specific optional fields
+  price?: number;
+  discount?: number;
+  rating?: number;
+  reviewCount?: number;
+  volume?: string;
+  hoverImage?: string;
 }
 
 export interface ICreateProduct {

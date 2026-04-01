@@ -73,7 +73,7 @@ const PromotionsManagement: React.FC = () => {
     maxDiscountValue: 0,
     startAt: "",
     endAt: "",
-    isActive: true,
+    active: true,
   });
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [allProducts, setAllProducts] = useState<IProduct[]>([]);
@@ -164,7 +164,7 @@ const PromotionsManagement: React.FC = () => {
         maxDiscountValue: promotion.maxDiscountValue || 0,
         startAt: promotion.startAt ? promotion.startAt.split("T")[0] : "",
         endAt: promotion.endAt ? promotion.endAt.split("T")[0] : "",
-        isActive: promotion.isActive,
+        active: promotion.active,
       });
 
       // Fetch assigned products
@@ -186,7 +186,7 @@ const PromotionsManagement: React.FC = () => {
         maxDiscountValue: 0,
         startAt: new Date().toISOString().split("T")[0],
         endAt: "",
-        isActive: true,
+        active: true,
       });
     }
     setActiveTab("info");
@@ -322,11 +322,11 @@ const PromotionsManagement: React.FC = () => {
                       <Badge variant="destructive">Hết hạn</Badge>
                     ) : (
                       <Badge
-                        variant={promotion.isActive ? "default" : "secondary"}
+                        variant={promotion.active ? "default" : "secondary"}
                         className="cursor-pointer"
                         onClick={async () => {
                           try {
-                            await PromotionService.toggleActive(promotion.id, !promotion.isActive);
+                            await PromotionService.toggleActive(promotion.id, !promotion.active);
                             toast.success("Đã thay đổi trạng thái");
                             fetchPromotions(meta.page);
                           } catch {
@@ -334,7 +334,7 @@ const PromotionsManagement: React.FC = () => {
                           }
                         }}
                       >
-                        {promotion.isActive ? "Hoạt động" : "Tạm dừng"}
+                        {promotion.active ? "Hoạt động" : "Tạm dừng"}
                       </Badge>
                     )}
                   </TableCell>
@@ -490,9 +490,9 @@ const PromotionsManagement: React.FC = () => {
               <div className="flex items-center justify-between">
                 <Label>Trạng thái hoạt động</Label>
                 <Switch
-                  checked={formData.isActive}
+                  checked={formData.active}
                   onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isActive: checked })
+                    setFormData({ ...formData, active: checked })
                   }
                 />
               </div>

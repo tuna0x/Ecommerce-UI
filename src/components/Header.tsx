@@ -1,37 +1,48 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  User,
-  Heart,
-  ShoppingBag,
-  Menu,
-  X,
-  ChevronDown,
-  LogOut,
-} from "lucide-react";
-import { useCart } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
-import { categories } from "../data/products";
-import { Link } from "react-router-dom";
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import NotificationDropdown from './NotificationDropdown';
+import { User, ShoppingBag, Menu, X, LogOut, Shield } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { categories } from '../data/products';
+import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu";
-import SearchDropdown from "./SearchDropdown";
+} from '../components/ui/dropdown-menu';
+import SearchDropdown from './SearchDropdown';
+import CategoryDropdown from './CategoryDropdown';
 
-function Header() {
+const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
   const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string | number | null>(
-    null,
-  );
 
   return (
-    <header className="sticky top-0 z-40 bg-background border-b border-border">
+    <header className="sticky top-0 z-40 bg-background border-b border-border shadow-sm">
+      {/* Admin Utility Bar */}
+      {user?.role?.name === 'SUPER_ADMIN' && (
+        <div className="bg-primary text-primary-foreground py-1.5 md:py-2 text-[11px] md:text-xs font-bold transition-all border-b border-primary/20">
+          <div className="container mx-auto flex items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5 uppercase tracking-wider opacity-90">
+                <Shield className="w-3 h-3" />
+                Admin Mode
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/admin" className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full flex items-center gap-1.5 transition-all active:scale-95 border border-white/10">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Dashboard
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Header */}
       <div className="container mx-auto">
         <div className="flex items-center justify-between h-16 md:h-20 gap-4">
@@ -40,17 +51,13 @@ function Header() {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 hover:bg-secondary rounded-lg transition-colors"
           >
-            {isMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-              Bông<span className="text-primary"> Cosmetic</span>
+              BEAUTY<span className="text-primary">LUX</span>
             </h1>
           </Link>
 
@@ -67,63 +74,29 @@ function Header() {
                     <div className="w-7 h-7 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
                       {user.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium max-w-[100px] truncate">
-                      {user.name}
-                    </span>
+                    <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.email}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  {user?.role?.name === "SUPER_ADMIN" && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/admin"
-                        className="flex items-center cursor-pointer text-primary font-medium"
-                      >
-                        <ShoppingBag className="w-4 h-4 mr-2" />
-                        Quản trị Admin
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-
                   <DropdownMenuItem asChild>
-                    <Link
-                      to="/account"
-                      className="flex items-center cursor-pointer"
-                    >
+                    <Link to="/account" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
                       Tài khoản của tôi
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link
-                      to="/orders"
-                      className="flex items-center cursor-pointer"
-                    >
+                    <Link to="/orders" className="flex items-center cursor-pointer">
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       Đơn hàng
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link
-                      to="/wishlist"
-                      className="flex items-center cursor-pointer"
-                    >
-                      <Heart className="w-4 h-4 mr-2" />
-                      Yêu thích
-                    </Link>
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={logout}
-                    className="text-destructive"
-                  >
+                  <DropdownMenuItem onClick={logout} className="text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
                     Đăng xuất
                   </DropdownMenuItem>
@@ -139,15 +112,8 @@ function Header() {
               </Link>
             )}
 
-            {/* Wishlist
-            <Link to="/wishlist" className="relative p-2 hover:bg-secondary rounded-lg transition-colors">
-              <Heart className="w-5 h-5" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link> */}
+            {/* Notifications */}
+            <NotificationDropdown />
 
             {/* Cart */}
             <button
@@ -169,71 +135,24 @@ function Header() {
         </div>
       </div>
 
-      {/* Desktop Navigation / Mega Menu */}
+      {/* Desktop Navigation Bar */}
       <nav className="hidden md:block border-t border-border">
         <div className="container mx-auto">
-          <ul className="flex items-center gap-0">
-            {categories.map((category) => {
-              const categorySlug = category.name
-                .toLowerCase()
-                .replace(/\s+/g, "-");
-              return (
-                <li
-                  key={category.id}
-                  className="relative group"
-                  onMouseEnter={() => setActiveCategory(category.id)}
-                  onMouseLeave={() => setActiveCategory(null)}
-                >
-                  <Link
-                    to={`/category/${categorySlug}`}
-                    className="flex items-center gap-1 px-4 py-3 text-sm font-medium hover:text-primary transition-colors"
-                  >
-                    {category.name}
-                    <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
-                  </Link>
-
-                  {/* Dropdown */}
-                  <AnimatePresence>
-                    {activeCategory === category.id && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 min-w-[200px] bg-background border border-border rounded-lg shadow-lg py-2 z-50"
-                      >
-                        {category.subcategories.map((sub, index) => (
-                          <Link
-                            key={index}
-                            to={`/category/${categorySlug}?sub=${encodeURIComponent(sub)}`}
-                            className="block px-4 py-2 text-sm hover:bg-secondary hover:text-primary transition-colors"
-                          >
-                            {sub}
-                          </Link>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </li>
-              );
-            })}
-            <li>
-              <Link
-                to="/flash-sale"
-                className="flex items-center px-4 py-3 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-              >
-                🔥 Flash Sale
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/brands"
-                className="flex items-center px-4 py-3 text-sm font-medium hover:text-primary transition-colors"
-              >
-                Thương hiệu
-              </Link>
-            </li>
-          </ul>
+          <div className="flex items-center gap-1 py-2">
+            <CategoryDropdown />
+            <Link
+              to="/flash-sale"
+              className="flex items-center px-4 py-2.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+            >
+              🔥 Flash Sale
+            </Link>
+            <Link
+              to="/brands"
+              className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+            >
+              Thương hiệu
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -247,30 +166,28 @@ function Header() {
         {isMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden border-t border-border overflow-hidden"
           >
             <div className="p-4 space-y-4">
               {categories.map((category) => {
-                const categorySlug = category.name
-                  .toLowerCase()
-                  .replace(/\s+/g, "-");
+                const categorySlug = category.name.toLowerCase().replace(/\s+/g, '-');
                 return (
                   <div key={category.id}>
                     <Link
                       to={`/category/${categorySlug}`}
-                      className="font-medium mb-2 block hover:text-primary"
+                      className="font-medium mb-1 block hover:text-primary"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       {category.name}
                     </Link>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 ml-2 mb-4">
                       {category.subcategories.map((sub, index) => (
                         <Link
                           key={index}
                           to={`/category/${categorySlug}?sub=${encodeURIComponent(sub)}`}
-                          className="text-sm text-muted-foreground hover:text-primary px-3 py-1 bg-secondary rounded-full"
+                          className="text-xs text-muted-foreground hover:text-primary px-2.5 py-1 bg-secondary rounded-full"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           {sub}
@@ -286,5 +203,6 @@ function Header() {
       </AnimatePresence>
     </header>
   );
-}
+};
+
 export default Header;

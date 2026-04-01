@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import PaginationControl from "../../components/PaginationControl";
+import { Link } from "react-router-dom";
 import {
   Plus,
   Pencil,
@@ -8,6 +8,7 @@ import {
   ImageIcon,
   X,
   Loader2,
+  FileText,
 } from "lucide-react";
 import {
   Card,
@@ -21,7 +22,9 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { Skeleton } from "../../components/ui/skeleton";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { DataTable } from "../../components/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
   Dialog,
   DialogContent,
@@ -76,9 +79,24 @@ const ProductsManagement: React.FC = () => {
     attributeValue: [] as number[],
   });
 
+  const [selectedAttributes, setSelectedAttributes] = useState<
+    Record<string, string[]>
+  >({});
+
   const openDialog = async (product: IProduct | null) => {
     if (product) {
       setEditingProductId(product.id);
+      const groupedAttrs: Record<string, string[]> = {};
+      product.attributeValue?.forEach((attr) => {
+        const attribute = attr.attributeValue?.attribute;
+        if (attribute) {
+          const attrId = attribute.id.toString();
+          if (!groupedAttrs[attrId]) groupedAttrs[attrId] = [];
+          groupedAttrs[attrId].push(attr.attributeValue.id.toString());
+        }
+      });
+      setSelectedAttributes(groupedAttrs);
+
       setFormData({
         name: product.name,
         originalPrice: product.originalPrice,
@@ -87,10 +105,11 @@ const ProductsManagement: React.FC = () => {
         weight: product.weight,
         categoryId: product.category.id,
         brandId: product.brand.id || null,
-        attributeValue: product.attributeValue?.map((attr: IAttributeValue) => attr.id) ?? [],
+        attributeValue: product.attributeValue?.map((attr) => attr.attributeValue?.id) ?? [],
       });
     } else {
       setEditingProductId(null);
+      setSelectedAttributes({});
       setFormData({
         name: "",
         originalPrice: 0,
@@ -207,6 +226,7 @@ const ProductsManagement: React.FC = () => {
       currency: "VND",
     }).format(value);
   };
+
   const handleSave = async () => {
     try {
       setIsSubmitting(true);
@@ -219,13 +239,13 @@ const ProductsManagement: React.FC = () => {
         return;
       }
 
-      const attributeValue = Object.values(selectedAttributes)
+      const attrIds = Object.values(selectedAttributes)
         .flat()
         .map((id) => Number(id));
 
       const payload = {
         ...formData,
-        attributeValue,
+        attributeValue: attrIds,
       };
 
       if (editingProductId) {
@@ -238,14 +258,12 @@ const ProductsManagement: React.FC = () => {
           brandId: formData.brandId,
           categoryId: formData.categoryId,
           image: formData.image,
-          attributeValue: attributeValue || [],
+          attributeValue: attrIds || [],
         };
 
         await ProductService.update(updateData, files);
         toast.success("Cập nhật sản phẩm thành công");
       } else {
-        console.log(formData);
-
         await ProductService.create(payload, files);
         toast.success("Thêm mới sản phẩm thành công");
       }
@@ -271,6 +289,7 @@ const ProductsManagement: React.FC = () => {
       brandId: null,
       attributeValue: [],
     });
+    setSelectedAttributes({});
     setEditingProductId(null);
   };
 
@@ -286,11 +305,6 @@ const ProductsManagement: React.FC = () => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
-  const [selectedAttributes, setSelectedAttributes] = useState<
-    Record<string, string[]>
-  >({});
-
-
 
   const filteredAttributes = value.filter(
     (v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId),
@@ -306,6 +320,7 @@ const ProductsManagement: React.FC = () => {
     attributeName: string;
     values: AttributeValue[];
   };
+
   const groupedAttributes: GroupedAttribute[] = Object.values(
     value
       .filter((v) => v.attribute.categories.some((cat) => cat.id === formData.categoryId))
@@ -328,6 +343,167 @@ const ProductsManagement: React.FC = () => {
         return acc;
       }, {}),
   );
+
+  const columns: ColumnDef<IProduct>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "image",
+      header: "Hình ảnh",
+      cell: ({ row }) => (
+        <div className="w-12 h-12">
+          <img
+            src={row.original.image?.[0] || "/no-image.png"}
+            alt={row.original.name}
+            className="w-12 h-12 object-cover rounded shadow-sm"
+          />
+        </div>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Tên sản phẩm",
+      cell: ({ row }) => (
+        <div className="max-w-[200px]">
+          <p className="text-sm font-semibold text-foreground truncate" title={row.original.name}>
+            {row.original.name}
+          </p>
+          <p className="text-[10px] text-muted-foreground font-mono">ID: {row.original.id}</p>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "brand.name",
+      header: "Thương hiệu",
+    },
+    {
+      accessorKey: "category.name",
+      header: "Danh mục",
+      cell: ({ row }) => (
+        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-normal text-[11px]">
+          {row.original.category.name}
+        </Badge>
+      ),
+    },
+    {
+      id: "attributes",
+      header: "Thuộc tính",
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {row.original.attributeValue?.length ? (
+            row.original.attributeValue.map((attr, index) => (
+              <Badge
+                key={index}
+                variant="outline"
+                className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
+              >
+                {attr.attributeValue?.value || "N/A"}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-[10px] text-muted-foreground italic">Trống</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "stock",
+      header: "Kho",
+      cell: ({ row }) => <div className="text-center font-medium">{row.original.stock}</div>,
+    },
+    {
+      accessorKey: "weight",
+      header: "Cân nặng",
+      cell: ({ row }) => <div className="text-center text-muted-foreground whitespace-nowrap">{row.original.weight}g</div>,
+    },
+    {
+      id: "price",
+      header: "Giá",
+      cell: ({ row }) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-primary">
+            {formatCurrency(price[row.original.id]?.finalPrice || row.original.originalPrice)}
+          </span>
+          {price[row.original.id]?.discountPrice > 0 && (
+            <span className="text-[10px] text-muted-foreground line-through">
+              {formatCurrency(price[row.original.id]?.originalPrice)}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "discount",
+      header: "Giảm giá",
+      cell: ({ row }) => {
+        const p = price[row.original.id];
+        const discountPercentage = p?.originalPrice && p?.discountPrice
+          ? Math.round((p.discountPrice / p.originalPrice) * 100)
+          : 0;
+        
+        if (discountPercentage <= 0) return <div className="text-center text-muted-foreground">-</div>;
+
+        return (
+          <div className="text-center">
+            <span className="px-1.5 py-0.5 bg-destructive/10 text-destructive text-[10px] font-bold rounded">
+              -{discountPercentage}%
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => <div className="text-right">Thao tác</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+            asChild
+          >
+            <Link to={`/admin/product-detail?productId=${row.original.id}`}>
+              <FileText className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => openDialog(row.original)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:bg-destructive/10 transition-colors"
+            onClick={() => handleDelete(row.original.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -363,197 +539,32 @@ const ProductsManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Products Table */}
       <Card>
         <CardHeader>
           <CardTitle>Danh sách sản phẩm ({products.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hình ảnh
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Tên sản phẩm
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Thương hiệu
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Danh mục
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Thuộc tính
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Số lượng(Kho)
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Cân nặng
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Giá
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Giảm giá
-                  </th>
-                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  Array.from({ length: pageSize }).map((_, idx) => (
-                    <tr key={idx} className="border-b last:border-0">
-                      <td className="py-4 px-2">
-                        <Skeleton className="w-12 h-12 rounded" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <Skeleton className="h-4 w-32 mb-2" />
-                        <Skeleton className="h-3 w-20 opacity-60" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <Skeleton className="h-4 w-20" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <div className="flex gap-1 flex-wrap w-24">
-                          <Skeleton className="h-5 w-10" />
-                          <Skeleton className="h-5 w-10" />
-                        </div>
-                      </td>
-                      <td className="py-4 px-2 text-center">
-                        <Skeleton className="h-4 w-8 mx-auto" />
-                      </td>
-                      <td className="py-4 px-2 text-center">
-                        <Skeleton className="h-4 w-12 mx-auto" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <Skeleton className="h-4 w-20" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <Skeleton className="h-5 w-12 rounded-full mx-auto" />
-                      </td>
-                      <td className="py-4 px-2">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : products.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-10 text-center text-muted-foreground italic">
-                      Không tìm thấy sản phẩm nào.
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((product) => {
-                    const attrBadges = product.attributeValue;
-                    return (
-                      <tr key={product.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="py-3 px-2">
-                          <div className="relative group/img w-12 h-12">
-                            <img
-                              src={product.image?.[0] || "/no-image.png"}
-                              alt={product.name}
-                              className="w-12 h-12 object-cover rounded shadow-sm group-hover/img:scale-105 transition-transform"
-                            />
-                          </div>
-                        </td>
-                        <td className="py-3 px-2">
-                          <p className="text-sm font-semibold text-foreground max-w-[200px] truncate">
-                            {product.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground font-mono">ID: {product.id}</p>
-                        </td>
-                        <td className="py-3 px-2 text-sm text-muted-foreground font-medium">
-                          {product.brand.name}
-                        </td>
-                        <td className="py-3 px-2">
-                          <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 border-none font-normal text-[11px]">
-                            {product.category.name}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className="flex flex-wrap gap-1 max-w-[150px]">
-                            {(attrBadges ?? [])?.length > 0 ? (
-                              attrBadges?.map((attr: IAttributeValue, index: number) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5 h-5 font-normal bg-background"
-                                >
-                                  {attr.value}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground italic">
-                                Trống
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 text-sm text-center font-medium">
-                          {product.stock}
-                        </td>
-                        <td className="py-3 px-2 text-sm text-center text-muted-foreground whitespace-nowrap">
-                          {product.weight}g
-                        </td>
-                        <td className="py-3 px-2 text-sm font-bold text-primary">
-                          {formatCurrency(price[product.id]?.originalPrice || 0)}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="px-1.5 py-0.5 bg-destructive/10 text-destructive text-[10px] font-bold rounded">
-                            -{price[product.id]?.originalPrice &&
-                              price[product.id]?.discountPrice
-                              ? Math.round(
-                                (1 -
-                                  price[product.id].discountPrice /
-                                  price[product.id].originalPrice) *
-                                100,
-                              )
-                              : 0}
-                            %
-                          </span>
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
-                              onClick={() => openDialog(product)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive transition-colors"
-                              onClick={() => handleDelete(product.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-            <PaginationControl
+          <div className="relative">
+            {isLoading && (
+              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-md">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+            
+            <DataTable 
+              columns={columns} 
+              data={products} 
+              onDeleteSelected={(rows) => {
+                if (confirm(`Bạn có chắc chắn muốn xóa ${rows.length} sản phẩm?`)) {
+                  Promise.all(rows.map(r => ProductService.remove(r.id))).then(() => {
+                    toast.success("Xóa hàng loạt thành công");
+                    fetchProducts();
+                  });
+                }
+              }}
               currentPage={currentPage}
               totalPages={totalPages}
-              onPageChange={(goToPage) => setCurrentPage(goToPage)}
+              onPageChange={setCurrentPage}
             />
           </div>
         </CardContent>

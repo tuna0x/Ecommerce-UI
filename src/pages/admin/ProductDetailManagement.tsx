@@ -1,18 +1,10 @@
-import React, { useState } from 'react';
-import { Search, Pencil, Plus, Eye, FileText } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Pencil, Plus, Eye, Trash2, ArrowUpDown, Search } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '../../components/ui/table';
 import {
     Dialog,
     DialogContent,
@@ -28,111 +20,336 @@ import {
     SelectValue,
 } from '../../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { products } from '../../data/products';
-import { mockProductDetails, ProductDetailContent } from '../../data/mockProductDetails';
-import { usePagination } from '../../hooks/usePagination';
-import PaginationControl from '../../components/PaginationControl';
 import { toast } from 'sonner';
+import productDetailService from '../../service/productDetailService';
+import { ProductService } from '../../service/productService';
+import type { IProductDetail } from '../../types/productDetail.type';
+import type { IProduct } from '../../types/product.type';
+import PaginationControl from '../../components/PaginationControl';
+import RichEditor from '../../components/admin/RichEditor';
+import { DataTable } from '../../components/ui/data-table';
+import { Checkbox } from '../../components/ui/Checkbox';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import type { ColumnDef } from "@tanstack/react-table";
+import { CheckCircle2, XCircle, MoreHorizontal, LayoutList, FlaskConical, BookOpen, Settings } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 const ProductDetailManagement: React.FC = () => {
-    const [details, setDetails] = useState<ProductDetailContent[]>(mockProductDetails);
+    const [searchParams] = useSearchParams();
+    const productIdFromQuery = searchParams.get('productId');
+
+    const [details, setDetails] = useState<IProductDetail[]>([]);
+    const [products, setProducts] = useState<IProduct[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loading, setLoading] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [editingDetail, setEditingDetail] = useState<ProductDetailContent | null>(null);
-    const [previewDetail, setPreviewDetail] = useState<ProductDetailContent | null>(null);
+    const [editingDetail, setEditingDetail] = useState<IProductDetail | null>(null);
+    const [previewDetail, setPreviewDetail] = useState<IProductDetail | null>(null);
+
+    // Auto-open form from query param
+    useEffect(() => {
+        if (productIdFromQuery && products.length > 0) {
+            const existingDetail = details.find(d => d.product.id.toString() === productIdFromQuery);
+            if (existingDetail) {
+                // If detail exists, open edit dialog
+                handleOpenDialog(existingDetail);
+            } else {
+                // If no detail exists, check if product is valid then open add dialog
+                const product = products.find(p => p.id.toString() === productIdFromQuery);
+                if (product) {
+                    handleOpenDialog();
+                    setFormData(prev => ({ ...prev, productId: product.id.toString() }));
+                }
+            }
+        }
+    }, [productIdFromQuery, products, details]);
+
+    // Pagination state
+    const [meta, setMeta] = useState({
+        current: 1,
+        pageSize: 8,
+        pages: 1,
+        total: 0
+    });
+
     const [formData, setFormData] = useState({
         productId: '',
         description: '',
-        ingredients: '',
-        usage: '',
+        ingredient: '',
+        usageGuide: '',
+        specification: '',
     });
 
-    const filteredDetails = details.filter(
-        (d) =>
-            d.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            d.productId.toString().includes(searchTerm)
-    );
+    const fetchDetails = useCallback(async (page: number, search?: string) => {
+        setLoading(true);
+        try {
+            const res = await productDetailService.getAll(page - 1, meta.pageSize, search);
+            if (res.data) {
+                setDetails(res.data.result);
+                setMeta({
+                    current: res.data.meta.page,
+                    pageSize: res.data.meta.pageSize,
+                    pages: res.data.meta.pages,
+                    total: res.data.meta.total
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Không thể tải danh sách chi tiết sản phẩm');
+        } finally {
+            setLoading(false);
+        }
+    }, [meta.pageSize]);
 
-    const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(filteredDetails, 8);
+    const fetchProducts = async () => {
+        try {
+            const res = await ProductService.getAll(0, 100); // Fetch up to 100 products
+            if (res.data) {
+                setProducts(res.data.result);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
-    // Products that don't have detail content yet
-    const availableProducts = products.filter(
-        (p) => !details.some((d) => d.productId === p.id) || editingDetail?.productId === p.id
-    );
+    useEffect(() => {
+        fetchDetails(1);
+        fetchProducts();
+    }, [fetchDetails]);
 
-    const handleOpenDialog = (detail?: ProductDetailContent) => {
+    const handleSearch = () => {
+        fetchDetails(1, searchTerm);
+    };
+
+    const handleOpenDialog = (detail?: IProductDetail) => {
         if (detail) {
             setEditingDetail(detail);
             setFormData({
-                productId: detail.productId.toString(),
-                description: detail.description,
-                ingredients: detail.ingredients,
-                usage: detail.usage,
+                productId: detail.product.id.toString(),
+                description: detail.description || '',
+                ingredient: detail.ingredient || '',
+                usageGuide: detail.usageGuide || '',
+                specification: detail.specification || '',
             });
         } else {
             setEditingDetail(null);
-            setFormData({ productId: '', description: '', ingredients: '', usage: '' });
+            setFormData({
+                productId: '',
+                description: '',
+                ingredient: '',
+                usageGuide: '',
+                specification: '',
+            });
         }
         setIsDialogOpen(true);
     };
 
-    const handlePreview = (detail: ProductDetailContent) => {
+    const handlePreview = (detail: IProductDetail) => {
         setPreviewDetail(detail);
         setIsPreviewOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formData.productId) {
             toast.error('Vui lòng chọn sản phẩm');
             return;
         }
 
-        const product = products.find((p) => p.id === Number(formData.productId));
-        if (!product) return;
-
-        if (editingDetail) {
-            setDetails(
-                details.map((d) =>
-                    d.id === editingDetail.id
-                        ? {
-                            ...d,
-                            productId: Number(formData.productId),
-                            productName: product.name,
-                            description: formData.description,
-                            ingredients: formData.ingredients,
-                            usage: formData.usage,
-                            updatedAt: new Date().toISOString().split('T')[0],
-                        }
-                        : d
-                )
-            );
-            toast.success('Đã cập nhật chi tiết sản phẩm');
-        } else {
-            const newDetail: ProductDetailContent = {
-                id: Date.now().toString(),
+        try {
+            const payload = {
                 productId: Number(formData.productId),
-                productName: product.name,
                 description: formData.description,
-                ingredients: formData.ingredients,
-                usage: formData.usage,
-                updatedAt: new Date().toISOString().split('T')[0],
+                ingredient: formData.ingredient,
+                usageGuide: formData.usageGuide,
+                specification: formData.specification,
             };
-            setDetails([...details, newDetail]);
-            toast.success('Đã thêm chi tiết sản phẩm mới');
+
+            if (editingDetail) {
+                await productDetailService.update({ ...payload, id: editingDetail.id });
+                toast.success('Đã cập nhật chi tiết sản phẩm');
+            } else {
+                await productDetailService.create(payload);
+                toast.success('Đã thêm chi tiết sản phẩm mới');
+            }
+            setIsDialogOpen(false);
+            fetchDetails(meta.current, searchTerm);
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            const msg = err.response?.data?.message || 'Có lỗi xảy ra khi lưu';
+            toast.error(msg);
         }
-        setIsDialogOpen(false);
     };
 
-    const handleDelete = (id: string) => {
-        setDetails(details.filter((d) => d.id !== id));
-        toast.success('Đã xóa chi tiết sản phẩm');
+    const handleDelete = async (id: number) => {
+        if (!window.confirm('Bạn có chắc chắn muốn xóa chi tiết sản phẩm này?')) return;
+
+        try {
+            await productDetailService.remove(id);
+            toast.success('Đã xóa chi tiết sản phẩm');
+            fetchDetails(meta.current);
+        } catch {
+            toast.error('Không thể xóa chi tiết sản phẩm');
+        }
     };
 
-    const truncateText = (text: string, maxLength: number = 60) => {
-        if (text.length <= maxLength) return text;
-        return text.substring(0, maxLength) + '...';
+    // Filter available products (only those without details, plus the current one if editing)
+    const availableProducts = products.filter(
+        (p) => !details.some((d) => d.product.id === p.id) || editingDetail?.product.id === p.id
+    );
+
+    const handleBulkDelete = async (selectedRows: IProductDetail[]) => {
+        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedRows.length} chi tiết sản phẩm đã chọn?`)) return;
+        
+        try {
+            setLoading(true);
+            await Promise.all(selectedRows.map(row => productDetailService.remove(row.id)));
+            toast.success(`Đã xóa ${selectedRows.length} chi tiết sản phẩm`);
+            fetchDetails(meta.current, searchTerm);
+        } catch {
+            toast.error('Có lỗi xảy ra khi xóa hàng loạt');
+        } finally {
+            setLoading(false);
+        }
     };
+
+    const StatusIcon = ({ exists, icon: Icon, label }: { exists: boolean, icon: React.ElementType, label: string }) => (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors hover:bg-muted/50 group">
+            {exists ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
+            )}
+            <Icon className={cn("h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors", !exists && "opacity-40")} />
+            <span className={cn("text-[11px] font-medium transition-colors", exists ? "text-foreground" : "text-muted-foreground opacity-50")}>
+                {label}
+            </span>
+        </div>
+    );
+
+    const columns: ColumnDef<IProductDetail>[] = [
+        {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllPageRowsSelected()}
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        },
+        {
+            accessorKey: "id",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="px-0 hover:bg-transparent"
+                    >
+                        ID
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => <div className="font-mono text-xs text-muted-foreground">#{row.getValue("id")}</div>,
+        },
+        {
+            accessorKey: "product.name",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                        className="px-0 hover:bg-transparent"
+                    >
+                        Sản phẩm
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const detail = row.original;
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-foreground line-clamp-1">{detail.product?.name}</span>
+                        <div className="flex items-center gap-2">
+                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                                {detail.product?.brand?.name || 'No Brand'}
+                             </Badge>
+                             <span className="text-[10px] text-muted-foreground">ID: {detail.product?.id}</span>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
+            id: "status",
+            header: "Độ đầy đủ thông tin",
+            cell: ({ row }) => {
+                const detail = row.original;
+                return (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 w-fit">
+                        <StatusIcon exists={!!detail.description} icon={LayoutList} label="Mô tả" />
+                        <StatusIcon exists={!!detail.ingredient} icon={FlaskConical} label="Thành phần" />
+                        <StatusIcon exists={!!detail.usageGuide} icon={BookOpen} label="Hướng dẫn" />
+                        <StatusIcon exists={!!detail.specification} icon={Settings} label="Thông số" />
+                    </div>
+                );
+            },
+        },
+        {
+            id: "actions",
+            header: () => <div className="text-right">Thao tác</div>,
+            cell: ({ row }) => {
+                const detail = row.original;
+                return (
+                    <div className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                                <DropdownMenuLabel>Tùy chọn</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handlePreview(detail)}>
+                                    <Eye className="mr-2 h-4 w-4" /> Xem trước
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOpenDialog(detail)}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                    onClick={() => handleDelete(detail.id)}
+                                    className="text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Xóa chi tiết
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                );
+            },
+        },
+    ];
 
     return (
         <div className="space-y-6">
@@ -140,7 +357,7 @@ const ProductDetailManagement: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold">Quản lý Chi tiết sản phẩm</h1>
                     <p className="text-muted-foreground">
-                        Quản lý mô tả, thành phần và hướng dẫn sử dụng
+                        Quản lý mô tả chuyên sâu, thành phần và hướng dẫn sử dụng
                     </p>
                 </div>
                 <Button onClick={() => handleOpenDialog()}>
@@ -153,184 +370,107 @@ const ProductDetailManagement: React.FC = () => {
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Tìm kiếm theo tên sản phẩm..."
+                        placeholder="Tìm kiếm sản phẩm hoặc mô tả..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         className="pl-10"
                     />
                 </div>
+                <Button variant="secondary" onClick={handleSearch} disabled={loading}>
+                    Tìm kiếm
+                </Button>
             </div>
 
-            <div className="border rounded-lg">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Sản phẩm</TableHead>
-                            <TableHead>Mô tả</TableHead>
-                            <TableHead>Thành phần</TableHead>
-                            <TableHead>Hướng dẫn</TableHead>
-                            <TableHead>Cập nhật</TableHead>
-                            <TableHead className="text-right">Thao tác</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {paginatedItems.map((detail) => (
-                            <TableRow key={detail.id}>
-                                <TableCell className="font-medium max-w-[200px]">
-                                    {detail.productName}
-                                </TableCell>
-                                <TableCell className="max-w-[150px]">
-                                    {detail.description ? (
-                                        <Badge variant="outline" className="text-xs">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Đã có
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="text-xs">Chưa có</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell>
-                                    {detail.ingredients ? (
-                                        <Badge variant="outline" className="text-xs">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Đã có
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="text-xs">Chưa có</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell>
-                                    {detail.usage ? (
-                                        <Badge variant="outline" className="text-xs">
-                                            <FileText className="h-3 w-3 mr-1" />
-                                            Đã có
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="text-xs">Chưa có</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-muted-foreground text-sm">
-                                    {detail.updatedAt}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handlePreview(detail)}
-                                            title="Xem trước"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleOpenDialog(detail)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDelete(detail.id)}
-                                        >
-                                            <FileText className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                        {paginatedItems.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                    Chưa có dữ liệu chi tiết sản phẩm
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            <DataTable
+                columns={columns}
+                data={details}
+                searchKey="product_name"
+                placeholder="Lọc nhanh trong trang..."
+                onDeleteSelected={handleBulkDelete}
+            />
 
-            <PaginationControl currentPage={currentPage} totalPages={totalPages} onPageChange={goToPage} />
+            <PaginationControl
+                currentPage={meta.current}
+                totalPages={meta.pages}
+                onPageChange={(page) => fetchDetails(page, searchTerm)}
+            />
 
             {/* Edit/Add Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>
-                            {editingDetail ? 'Sửa chi tiết sản phẩm' : 'Thêm chi tiết sản phẩm'}
+                        <DialogTitle className="text-xl">
+                            {editingDetail ? 'Chỉnh sửa chi tiết sản phẩm' : 'Thêm chi tiết sản phẩm mới'}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-6 py-4">
                         <div className="space-y-2">
-                            <Label>Sản phẩm *</Label>
+                            <Label className="text-sm font-semibold">Chọn sản phẩm liên kết *</Label>
                             <Select
                                 value={formData.productId}
                                 onValueChange={(value) => setFormData({ ...formData, productId: value })}
+                                disabled={!!editingDetail}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Chọn sản phẩm" />
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Chọn sản phẩm trong kho..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {(editingDetail ? products : availableProducts).map((p) => (
+                                    {availableProducts.map((p) => (
                                         <SelectItem key={p.id} value={p.id.toString()}>
-                                            {p.name} - {p.brand}
+                                            [{p.id}] {p.name} - {p.brand.name}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            <p className="text-[11px] text-muted-foreground">Mỗi sản phẩm chỉ được có 1 bản chi tiết duy nhất.</p>
                         </div>
 
-                        <Tabs defaultValue="description">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="description">Mô tả</TabsTrigger>
-                                <TabsTrigger value="ingredients">Thành phần</TabsTrigger>
-                                <TabsTrigger value="usage">Hướng dẫn SD</TabsTrigger>
+                        <Tabs defaultValue="description" className="border rounded-xl p-1">
+                            <TabsList className="grid w-full grid-cols-4 bg-muted/50">
+                                <TabsTrigger value="description">Mô tả chi tiết</TabsTrigger>
+                                <TabsTrigger value="ingredient">Thành phần</TabsTrigger>
+                                <TabsTrigger value="usageGuide">Hướng dẫn</TabsTrigger>
+                                <TabsTrigger value="specification">Thông số</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="description" className="space-y-2 mt-3">
-                                <Label>Mô tả sản phẩm</Label>
-                                <Textarea
+                            <TabsContent value="description" className="space-y-3 mt-4 px-2">
+                                <Label className="text-sm font-medium">Giới thiệu sản phẩm</Label>
+                                <RichEditor
                                     value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Nhập mô tả chi tiết sản phẩm. Hỗ trợ xuống dòng."
-                                    rows={10}
+                                    onChange={(val) => setFormData({ ...formData, description: val })}
+                                    placeholder="Mô tả các đặc điểm nổi bật, công dụng chính..."
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Mẹo: Dùng dấu gạch đầu dòng (-) để tạo danh sách
-                                </p>
                             </TabsContent>
-                            <TabsContent value="ingredients" className="space-y-2 mt-3">
-                                <Label>Thành phần sản phẩm</Label>
-                                <Textarea
-                                    value={formData.ingredients}
-                                    onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
-                                    placeholder="Liệt kê thành phần sản phẩm (INCI list)..."
-                                    rows={10}
+                            <TabsContent value="ingredient" className="space-y-3 mt-4 px-2">
+                                <Label className="text-sm font-medium">Bảng thành phần đầy đủ</Label>
+                                <RichEditor
+                                    value={formData.ingredient}
+                                    onChange={(val) => setFormData({ ...formData, ingredient: val })}
+                                    placeholder="Liệt kê các thành phần chính hoặc bảng INCI..."
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Nhập danh sách thành phần theo tiêu chuẩn INCI
-                                </p>
                             </TabsContent>
-                            <TabsContent value="usage" className="space-y-2 mt-3">
-                                <Label>Hướng dẫn sử dụng</Label>
-                                <Textarea
-                                    value={formData.usage}
-                                    onChange={(e) => setFormData({ ...formData, usage: e.target.value })}
-                                    placeholder="Nhập hướng dẫn sử dụng sản phẩm. Mỗi bước trên 1 dòng."
-                                    rows={10}
+                            <TabsContent value="usageGuide" className="space-y-3 mt-4 px-2">
+                                <Label className="text-sm font-medium">Cách dùng và lưu ý</Label>
+                                <RichEditor
+                                    value={formData.usageGuide}
+                                    onChange={(val) => setFormData({ ...formData, usageGuide: val })}
+                                    placeholder="Quy trình sử dụng, liều dùng, đối tượng khuyên dùng..."
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    Mẹo: Đánh số các bước (1. 2. 3.) để dễ đọc hơn
-                                </p>
+                            </TabsContent>
+                            <TabsContent value="specification" className="space-y-3 mt-4 px-2">
+                                <Label className="text-sm font-medium">Thông số kỹ thuật/khác</Label>
+                                <RichEditor
+                                    value={formData.specification}
+                                    onChange={(val) => setFormData({ ...formData, specification: val })}
+                                    placeholder="Dung tích, hạn sử dụng, xuất xứ, loại da..."
+                                />
                             </TabsContent>
                         </Tabs>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Hủy
-                        </Button>
-                        <Button onClick={handleSave}>
-                            {editingDetail ? 'Cập nhật' : 'Thêm mới'}
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Hủy bỏ</Button>
+                        <Button onClick={handleSave} className="px-8 bg-primary hover:bg-primary/90">
+                            {editingDetail ? 'Lưu thay đổi' : 'Tạo mới'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -338,43 +478,48 @@ const ProductDetailManagement: React.FC = () => {
 
             {/* Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Xem trước: {previewDetail?.productName}</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Eye className="h-5 w-5 text-primary" />
+                            Xem trước: {previewDetail?.product?.name}
+                        </DialogTitle>
                     </DialogHeader>
                     {previewDetail && (
-                        <Tabs defaultValue="description">
-                            <TabsList className="grid w-full grid-cols-3">
-                                <TabsTrigger value="description">Mô tả</TabsTrigger>
-                                <TabsTrigger value="ingredients">Thành phần</TabsTrigger>
-                                <TabsTrigger value="usage">Hướng dẫn SD</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="description" className="mt-4">
-                                <div className="prose prose-sm max-w-none">
-                                    {previewDetail.description.split('\n').map((line, i) => (
-                                        <p key={i} className="text-muted-foreground leading-relaxed mb-1">
-                                            {line}
-                                        </p>
-                                    ))}
-                                </div>
-                            </TabsContent>
-                            <TabsContent value="ingredients" className="mt-4">
-                                <div className="prose prose-sm max-w-none">
-                                    <p className="text-muted-foreground leading-relaxed">
-                                        {previewDetail.ingredients}
-                                    </p>
-                                </div>
-                            </TabsContent>
-                            <TabsContent value="usage" className="mt-4">
-                                <div className="prose prose-sm max-w-none">
-                                    {previewDetail.usage.split('\n').map((line, i) => (
-                                        <p key={i} className="text-muted-foreground leading-relaxed mb-1">
-                                            {line}
-                                        </p>
-                                    ))}
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                        <div className="mt-4 space-y-6">
+                            <Tabs defaultValue="description">
+                                <TabsList className="grid w-full grid-cols-4">
+                                    <TabsTrigger value="description">Mô tả</TabsTrigger>
+                                    <TabsTrigger value="ingredient">Thành phần</TabsTrigger>
+                                    <TabsTrigger value="usageGuide">Hướng dẫn</TabsTrigger>
+                                    <TabsTrigger value="specification">Thông số</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="description" className="mt-6">
+                                    <div 
+                                        className="prose prose-sm max-w-none dark:prose-invert prose-p:text-muted-foreground prose-p:leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: previewDetail.description || '<p class="italic text-muted-foreground">Chưa có thông tin</p>' }}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="ingredient" className="mt-6">
+                                    <div 
+                                        className="bg-muted/30 p-6 rounded-2xl border border-border prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{ __html: previewDetail.ingredient || 'Chưa có thông tin' }}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="usageGuide" className="mt-6">
+                                    <div 
+                                        className="prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{ __html: previewDetail.usageGuide || 'Chưa có thông tin' }}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="specification" className="mt-6">
+                                    <div 
+                                        className="bg-muted p-6 rounded-2xl prose prose-sm max-w-none"
+                                        dangerouslySetInnerHTML={{ __html: previewDetail.specification || 'Chưa có thông tin' }}
+                                    />
+                                </TabsContent>
+                            </Tabs>
+                        </div>
                     )}
                 </DialogContent>
             </Dialog>

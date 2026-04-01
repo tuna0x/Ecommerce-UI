@@ -10,7 +10,7 @@ export interface IPromotion {
   maxDiscountValue?: number;
   startAt: string;
   endAt: string;
-  isActive: boolean;
+  active: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -24,10 +24,10 @@ export interface IReqCreatePromotion {
   maxDiscountValue?: number;
   startAt: string;
   endAt: string;
-  isActive: boolean;
+  active: boolean;
 }
 
 export interface IReqUpdatePromotion extends IReqCreatePromotion {
   id: number;
-  isActive: boolean;
+  active: boolean;
 }
