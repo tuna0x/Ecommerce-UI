@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Plus,
@@ -24,6 +24,7 @@ import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { DataTable } from "../../components/ui/data-table";
+import { cn } from "../../lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Dialog,
@@ -83,7 +84,7 @@ const ProductsManagement: React.FC = () => {
     Record<string, string[]>
   >({});
 
-  const openDialog = async (product: IProduct | null) => {
+  const openDialog = useCallback(async (product: IProduct | null) => {
     if (product) {
       setEditingProductId(product.id);
       const groupedAttrs: Record<string, string[]> = {};
@@ -122,7 +123,7 @@ const ProductsManagement: React.FC = () => {
       });
     }
     setIsDialogOpen(true);
-  };
+  }, []);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -220,12 +221,12 @@ const ProductsManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(value);
-  };
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -293,13 +294,13 @@ const ProductsManagement: React.FC = () => {
     setEditingProductId(null);
   };
 
-  const handleDelete = async (productId: number) => {
+  const handleDelete = useCallback(async (productId: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
       await ProductService.remove(productId);
       toast.success("Xóa sản phẩm thành công");
       fetchProducts();
     }
-  };
+  }, [fetchProducts]);
 
   const removeImage = (index: number) => {
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
@@ -321,30 +322,32 @@ const ProductsManagement: React.FC = () => {
     values: AttributeValue[];
   };
 
-  const groupedAttributes: GroupedAttribute[] = Object.values(
-    value
-      .filter((v) => v.attribute.categories.some((cat) => cat.id === formData.categoryId))
-      .reduce((acc: Record<number, GroupedAttribute>, item: IAttributeValue) => {
-        const attrId = item.attribute.id;
+  const groupedAttributes: GroupedAttribute[] = useMemo(() => {
+    return Object.values(
+      value
+        .filter((v) => v.attribute.categories.some((cat) => cat.id === formData.categoryId))
+        .reduce((acc: Record<number, GroupedAttribute>, item: IAttributeValue) => {
+          const attrId = item.attribute.id;
 
-        if (!acc[attrId]) {
-          acc[attrId] = {
-            attributeId: attrId,
-            attributeName: item.attribute.name,
-            values: [],
-          };
-        }
+          if (!acc[attrId]) {
+            acc[attrId] = {
+              attributeId: attrId,
+              attributeName: item.attribute.name,
+              values: [],
+            };
+          }
 
-        acc[attrId].values.push({
-          id: item.id,
-          value: item.value,
-        });
+          acc[attrId].values.push({
+            id: item.id,
+            value: item.value,
+          });
 
-        return acc;
-      }, {}),
-  );
+          return acc;
+        }, {}),
+    );
+  }, [value, formData.categoryId]);
 
-  const columns: ColumnDef<IProduct>[] = [
+  const columns: ColumnDef<IProduct>[] = useMemo(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -503,7 +506,7 @@ const ProductsManagement: React.FC = () => {
         </div>
       ),
     },
-  ];
+  ], [price, formatCurrency, openDialog, handleDelete]);
 
   return (
     <div className="space-y-6">
@@ -544,9 +547,9 @@ const ProductsManagement: React.FC = () => {
           <CardTitle>Danh sách sản phẩm ({products.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative">
+          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
             {isLoading && (
-              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-md">
+              <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}

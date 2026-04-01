@@ -7,6 +7,7 @@ import ProductGrid from "../components/ProductGird";
 import CartSidebar from "../components/CartSidebar";
 import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
+import ChatBot from "../components/ChatBot";
 
 function Index() {
   return (
@@ -22,6 +23,7 @@ function Index() {
       <CartSidebar />
       <Footer />
       <MobileNavBar />
+      <ChatBot />
     </div>
   );
 }

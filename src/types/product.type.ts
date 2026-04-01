@@ -1,28 +1,29 @@
-import type { IAttributeValue } from "./attribute.type";
-import type { IBrand } from "./brand.type";
-import type { ICategory } from "./category.type";
+
 
 export interface IProductAttributeValue {
   id: number;
-  attributeValue: IAttributeValue;
+  value: string;
 }
 
 export interface IProduct {
   id: number;
   name: string;
+  description?: string;
   originalPrice: number;
+  discountPrice?: number;
+  finalPrice: number;
   stock: number;
   weight: number;
+  thumbnail?: string;
   image: string[] | null;
-  category: ICategory;
-  brand: IBrand;
+  category: { id: number; name: string } | string;
+  brand: { id: number; name: string } | string;
   attributeValue: IProductAttributeValue[] | null;
-  // UI-specific optional fields
-  price?: number;
-  discount?: number;
-  rating?: number;
+  averageRating?: number;
   reviewCount?: number;
-  volume?: string;
+  // UI-specific legacy support
+  price?: number; 
+  rating?: number;
   hoverImage?: string;
 }
 

@@ -22,8 +22,15 @@ import {
 } from "recharts";
 import { mockOrders } from "../../data/mockOrders";
 import { products } from "../../data/products";
+import { cn } from "../../lib/utils";
 
 const Statistics: React.FC = () => {
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
   // Revenue by month data
   const revenueData = [
     { month: "T8", revenue: 12500000 },
@@ -126,11 +133,11 @@ const Statistics: React.FC = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Tổng doanh thu</p>
-            <p className="text-2xl font-bold text-primary">
+      <div className={cn("grid gap-4 md:grid-cols-4 transition-all duration-500", isLoading ? "opacity-30 translate-y-4" : "opacity-100 translate-y-0")}>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="pt-6 text-center lg:text-left">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tổng doanh thu</p>
+            <p className="text-2xl font-bold text-primary mt-1">
               {new Intl.NumberFormat("vi-VN", {
                 style: "currency",
                 currency: "VND",
@@ -138,10 +145,10 @@ const Statistics: React.FC = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Giá trị đơn TB</p>
-            <p className="text-2xl font-bold">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="pt-6 text-center lg:text-left">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Giá trị đơn TB</p>
+            <p className="text-2xl font-bold mt-1">
               {new Intl.NumberFormat("vi-VN", {
                 style: "currency",
                 currency: "VND",
@@ -149,16 +156,16 @@ const Statistics: React.FC = () => {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Tổng đơn hàng</p>
-            <p className="text-2xl font-bold">{mockOrders.length}</p>
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="pt-6 text-center lg:text-left">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tổng đơn hàng</p>
+            <p className="text-2xl font-bold mt-1">{mockOrders.length}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Tỷ lệ hoàn thành</p>
-            <p className="text-2xl font-bold text-green-600">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="pt-6 text-center lg:text-left">
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Tỷ lệ hoàn thành</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">
               {Math.round(
                 (mockOrders.filter((o) => o.status === "delivered").length /
                   mockOrders.length) *
@@ -171,20 +178,21 @@ const Statistics: React.FC = () => {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className={cn("grid gap-6 lg:grid-cols-2 transition-all duration-700 delay-100", isLoading ? "opacity-0 translate-y-8" : "opacity-100 translate-y-0")}>
         {/* Revenue Chart */}
-        <Card>
+        <Card className="hover:shadow-lg transition-all border-primary/10">
           <CardHeader>
-            <CardTitle>Doanh thu theo tháng</CardTitle>
+            <CardTitle className="text-base font-semibold">Doanh thu theo tháng</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={formatCurrency} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={formatCurrency} axisLine={false} tickLine={false} />
                   <Tooltip
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                     formatter={(value) =>
                       new Intl.NumberFormat("vi-VN", {
                         style: "currency",
@@ -196,6 +204,7 @@ const Statistics: React.FC = () => {
                     dataKey="revenue"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
+                    barSize={40}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -204,9 +213,9 @@ const Statistics: React.FC = () => {
         </Card>
 
         {/* Orders by Status Pie Chart */}
-        <Card>
+        <Card className="hover:shadow-lg transition-all border-primary/10">
           <CardHeader>
-            <CardTitle>Đơn hàng theo trạng thái</CardTitle>
+            <CardTitle className="text-base font-semibold">Đơn hàng theo trạng thái</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -216,9 +225,9 @@ const Statistics: React.FC = () => {
                     data={ordersByStatus}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
+                    innerRadius={70}
                     outerRadius={100}
-                    paddingAngle={2}
+                    paddingAngle={5}
                     dataKey="value"
                     label={({ name, percent }) =>
                       `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
@@ -226,10 +235,12 @@ const Statistics: React.FC = () => {
                     labelLine={false}
                   >
                     {ordersByStatus.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

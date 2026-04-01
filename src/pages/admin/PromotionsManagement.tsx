@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   Plus,
   Pencil,
@@ -9,7 +9,11 @@ import {
   Gift,
   Tag,
   Box,
+  Clock,
+  Loader2,
 } from "lucide-react";
+import { cn } from "../../lib/utils";
+import PaginationControl from "../../components/PaginationControl";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -78,10 +82,12 @@ const PromotionsManagement: React.FC = () => {
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [allProducts, setAllProducts] = useState<IProduct[]>([]);
   const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
 
-  const fetchPromotions = async (page = 1) => {
+  const fetchPromotions = useCallback(async (page = 1) => {
     try {
+      setIsLoading(true);
       const res = await PromotionService.getAll(page, meta.pageSize);
       if (res && res.data && res.data.result) {
         setPromotions(res.data.result);
@@ -89,8 +95,10 @@ const PromotionsManagement: React.FC = () => {
       }
     } catch {
       toast.error("Không thể tải danh sách khuyến mãi");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [meta.pageSize]);
 
   const fetchAllProducts = async () => {
     try {
@@ -103,17 +111,18 @@ const PromotionsManagement: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchPromotions(meta.page);
     fetchAllProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meta.page]);
+  }, [meta.page, fetchPromotions]);
 
-  const filteredPromotions = promotions.filter(
-    (promo) =>
-      promo.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      promo.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredPromotions = useMemo(() => {
+    return promotions.filter(
+      (promo) =>
+        promo.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        promo.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [promotions, searchTerm]);
 
   const getTypeIcon = (type: PromotionType) => {
     const icons: Record<PromotionType, React.ElementType> = {
@@ -152,7 +161,7 @@ const PromotionsManagement: React.FC = () => {
 
   const isExpired = (endAt: string) => new Date(endAt) < new Date();
 
-  const handleOpenDialog = (promotion?: IPromotion) => {
+  const handleOpenDialog = useCallback((promotion?: IPromotion) => {
     if (promotion) {
       setEditingPromotion(promotion);
       setFormData({
@@ -191,7 +200,7 @@ const PromotionsManagement: React.FC = () => {
     }
     setActiveTab("info");
     setIsDialogOpen(true);
-  };
+  }, []);
 
   const handleSave = async () => {
     if (!formData.name || !formData.startAt || !formData.endAt) {
@@ -235,15 +244,17 @@ const PromotionsManagement: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await PromotionService.delete(id);
-      toast.success("Đã xóa khuyến mãi");
-      fetchPromotions(meta.page);
-    } catch {
-      toast.error("Không thể xóa khuyến mãi");
+  const handleDelete = useCallback(async (id: number) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa khuyến mãi này?")) {
+      try {
+        await PromotionService.delete(id);
+        toast.success("Đã xóa khuyến mãi");
+        fetchPromotions(meta.page);
+      } catch {
+        toast.error("Không thể xóa khuyến mãi");
+      }
     }
-  };
+  }, [fetchPromotions, meta.page]);
 
   return (
     <div className="space-y-6">
@@ -272,95 +283,122 @@ const PromotionsManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tên khuyến mãi</TableHead>
-              <TableHead>Loại</TableHead>
-              <TableHead>Giá trị</TableHead>
-              <TableHead>Thời gian</TableHead>
-              <TableHead>Đã dùng</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPromotions.map((promotion) => {
-              const TypeIcon = getTypeIcon(promotion.type);
-              const expired = isExpired(promotion.endAt);
-              return (
-                <TableRow key={promotion.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{promotion.name}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-1">
-                        {promotion.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="gap-1">
-                      <TypeIcon className="h-3 w-3" />
-                      {getTypeLabel(promotion.type)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium text-primary">
-                    {formatValue(promotion)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{promotion.startAt?.split("T")[0]}</div>
-                      <div className="text-muted-foreground">
-                        → {promotion.endAt?.split("T")[0]}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>0 lần</TableCell>
-                  <TableCell>
-                    {expired ? (
-                      <Badge variant="destructive">Hết hạn</Badge>
-                    ) : (
-                      <Badge
-                        variant={promotion.active ? "default" : "secondary"}
-                        className="cursor-pointer"
-                        onClick={async () => {
-                          try {
-                            await PromotionService.toggleActive(promotion.id, !promotion.active);
-                            toast.success("Đã thay đổi trạng thái");
-                            fetchPromotions(meta.page);
-                          } catch {
-                            toast.error("Lỗi khi thay đổi trạng thái");
-                          }
-                        }}
-                      >
-                        {promotion.active ? "Hoạt động" : "Tạm dừng"}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDialog(promotion)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(promotion.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+      <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+        <div className="border rounded-lg overflow-hidden bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tên khuyến mãi</TableHead>
+                <TableHead>Loại</TableHead>
+                <TableHead>Giá trị</TableHead>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Đã dùng</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredPromotions.length === 0 && !isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground italic">
+                    Không tìm thấy khuyến mãi nào
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredPromotions.map((promotion) => {
+                  const TypeIcon = getTypeIcon(promotion.type);
+                  const expired = isExpired(promotion.endAt);
+                  return (
+                    <TableRow key={promotion.id} className="group hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{promotion.name}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-1">
+                            {promotion.description}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="gap-1">
+                          <TypeIcon className="h-3 w-3" />
+                          {getTypeLabel(promotion.type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-medium text-primary">
+                        {formatValue(promotion)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            {promotion.startAt?.split("T")[0]}
+                          </div>
+                          <div className="text-muted-foreground pl-4 flex items-center gap-1">
+                            → {promotion.endAt?.split("T")[0]}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">0 lần</TableCell>
+                      <TableCell>
+                        {expired ? (
+                          <Badge variant="destructive" className="rounded-full px-2 py-0.5">Hết hạn</Badge>
+                        ) : (
+                          <Badge
+                            variant={promotion.active ? "default" : "secondary"}
+                            className="cursor-pointer rounded-full px-2 py-0.5 transition-all hover:scale-105 active:scale-95"
+                            onClick={async () => {
+                              try {
+                                await PromotionService.toggleActive(promotion.id, !promotion.active);
+                                toast.success("Đã thay đổi trạng thái");
+                                fetchPromotions(meta.page);
+                              } catch {
+                                toast.error("Lỗi khi thay đổi trạng thái");
+                              }
+                            }}
+                          >
+                            {promotion.active ? "Hoạt động" : "Tạm dừng"}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-muted"
+                            onClick={() => handleOpenDialog(promotion)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDelete(promotion.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="mt-4">
+          <PaginationControl
+            currentPage={meta.page}
+            totalPages={meta.pages}
+            onPageChange={(page) => fetchPromotions(page)}
+          />
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -10,6 +10,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -95,23 +96,23 @@ const BrandsManagement: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const openAddDialog = () => {
+  const openAddDialog = useCallback(() => {
     setEditingBrand(null);
     setFormData({ name: "", description: "", image: "" });
     setLogoPreview(null);
     setFiles(null);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const openEditDialog = (brand: IBrand) => {
+  const openEditDialog = useCallback((brand: IBrand) => {
     setEditingBrand(brand);
     setFormData({ name: brand.name, description: brand.description || "", image: brand.image });
     setLogoPreview(brand.image);
     setFiles(null);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!formData.name.trim()) {
       toast.error("Vui lòng nhập tên thương hiệu");
       return;
@@ -139,9 +140,9 @@ const BrandsManagement: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [editingBrand, formData, files, fetchBrands]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa thương hiệu này?")) {
       try {
         await BrandService.remove(id);
@@ -151,7 +152,7 @@ const BrandsManagement: React.FC = () => {
         toast.error("Không thể xóa thương hiệu");
       }
     }
-  };
+  }, [fetchBrands]);
 
 
   return (
@@ -192,27 +193,23 @@ const BrandsManagement: React.FC = () => {
           <CardTitle>Danh sách thương hiệu ({brandList.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Logo
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Tên thương hiệu
-                  </th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Mô tả
-                  </th>
-                  <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Trạng thái
-                  </th>
-                  <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
+          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+            {isLoading && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center -top-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Logo</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Tên thương hiệu</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Mô tả</th>
+                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Trạng thái</th>
+                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">Hành động</th>
+                  </tr>
+                </thead>
               <tbody>
                 {isLoading ? (
                   Array.from({ length: pageSize }).map((_, idx) => (
@@ -297,8 +294,9 @@ const BrandsManagement: React.FC = () => {
               onPageChange={(p) => setCurrentPage(p)}
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </CardContent>
+    </Card>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -41,6 +42,8 @@ const CouponsManagement: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<ICoupon | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [meta, setMeta] = useState<IMeta>({
     page: 1,
     pageSize: 10,
@@ -63,31 +66,35 @@ const CouponsManagement: React.FC = () => {
     isPublic: true,
   });
 
-  const fetchCoupons = async (page = 1) => {
+  const fetchCoupons = useCallback(async (page = 1) => {
     try {
+      setIsLoading(true);
       // Backend expects 0‑based page index, frontend uses 1‑based.
       const backendPage = Math.max(page - 1, 0);
       const res = await CouponService.getAll(backendPage, meta.pageSize);
       if (res?.data) {
         setCoupons(res.data.result);
         // Preserve the frontend page number while updating other meta fields.
-        setMeta({ ...res.data.meta, page });
+        setMeta(() => ({ ...res.data!.meta, page }));
       }
     } catch {
       toast.error("Không thể tải danh sách mã giảm giá");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [meta.pageSize]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchCoupons(meta.page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meta.page]);
+  }, [fetchCoupons, meta.page]);
 
-  const filteredCoupons = coupons.filter(
-    (coupon) =>
-      coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      coupon.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredCoupons = useMemo(() => {
+    return coupons.filter(
+      (coupon) =>
+        coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        coupon.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+  }, [coupons, searchTerm]);
 
   const isExpired = (endDate: string) => new Date(endDate) < new Date();
   const isExhausted = (coupon: ICoupon) =>
@@ -98,14 +105,14 @@ const CouponsManagement: React.FC = () => {
     return Math.min(100, (coupon.usedCount / coupon.usageLimit) * 100);
   };
 
-  const handleCopyCode = (code: string, id: number) => {
+  const handleCopyCode = useCallback((code: string, id: number) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     toast.success("Đã copy mã coupon");
     setTimeout(() => setCopiedId(null), 2000);
-  };
+  }, []);
 
-  const handleOpenDialog = (coupon?: ICoupon) => {
+  const handleOpenDialog = useCallback((coupon?: ICoupon) => {
     if (coupon) {
       setEditingCoupon(coupon);
       setFormData({
@@ -140,18 +147,18 @@ const CouponsManagement: React.FC = () => {
       });
     }
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const generateCode = () => {
+  const generateCode = useCallback(() => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let code = "";
     for (let i = 0; i < 8; i++) {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setFormData({ ...formData, code });
-  };
+    setFormData((prev) => ({ ...prev, code }));
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (
       !formData.name ||
       !formData.startDate ||
@@ -162,6 +169,7 @@ const CouponsManagement: React.FC = () => {
     }
 
     try {
+      setIsSubmitting(true);
       if (editingCoupon) {
         await CouponService.update({
           ...formData,
@@ -176,18 +184,22 @@ const CouponsManagement: React.FC = () => {
       fetchCoupons(meta.page);
     } catch {
       toast.error("Có lỗi xảy ra khi lưu mã giảm giá");
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }, [editingCoupon, formData, fetchCoupons, meta.page]);
 
-  const handleDelete = async (id: number) => {
-    try {
-      await CouponService.delete(id);
-      toast.success("Đã xóa mã giảm giá");
-      fetchCoupons(meta.page);
-    } catch {
-      toast.error("Không thể xóa mã giảm giá");
+  const handleDelete = useCallback(async (id: number) => {
+    if (confirm("Bạn có chắc chắn muốn xóa mã giảm giá này?")) {
+      try {
+        await CouponService.delete(id);
+        toast.success("Đã xóa mã giảm giá");
+        fetchCoupons(meta.page);
+      } catch {
+        toast.error("Không thể xóa mã giảm giá");
+      }
     }
-  };
+  }, [fetchCoupons, meta.page]);
 
   const getTypeIcon = (type: CouponType) => {
     return type === "PERCENT" ? Percent : Tag;
@@ -218,123 +230,147 @@ const CouponsManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Mã coupon</TableHead>
-              <TableHead>Tên</TableHead>
-              <TableHead>Giá trị</TableHead>
-              <TableHead>Thời gian</TableHead>
-              <TableHead>Sử dụng</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCoupons.map((coupon) => {
-              const expired = isExpired(coupon.endDate);
-              const exhausted = isExhausted(coupon);
-              const TypeIcon = getTypeIcon(coupon.type);
-              return (
-                <TableRow key={coupon.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-2 py-1 rounded font-mono text-sm font-bold">
-                        {coupon.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleCopyCode(coupon.code, coupon.id)}
-                      >
-                        {copiedId === coupon.id ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{coupon.name}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-1">
-                        {coupon.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-primary">
-                    <div className="flex items-center gap-1">
-                      <TypeIcon className="h-3 w-3" />
-                      {coupon.type === "PERCENT"
-                        ? `${coupon.value}%`
-                        : `${coupon.value.toLocaleString()}đ`}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>{coupon.startDate ? coupon.startDate.split("T")[0] : ""}</div>
-                      <div className="text-muted-foreground">
-                        → {coupon.endDate ? coupon.endDate.split("T")[0] : ""}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1 w-24">
-                      <div className="text-sm">
-                        {coupon.usedCount}/{coupon.usageLimit || "∞"}
-                      </div>
-                      {coupon.usageLimit > 0 && (
-                        <Progress
-                          value={getUsagePercent(coupon)}
-                          className="h-1.5"
-                        />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {expired ? (
-                      <Badge variant="destructive">Hết hạn</Badge>
-                    ) : exhausted ? (
-                      <Badge variant="secondary">Đã hết</Badge>
-                    ) : (
-                      <Badge
-                        variant={coupon.status === "ACTIVE" ? "default" : "secondary"}
-                      >
-                        {coupon.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDialog(coupon)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(coupon.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+      <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+        <div className="border rounded-lg bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mã coupon</TableHead>
+                <TableHead>Tên</TableHead>
+                <TableHead>Giá trị</TableHead>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Sử dụng</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredCoupons.length === 0 && !isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground italic">
+                    Không tìm thấy mã giảm giá nào
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        <PaginationControl
-          currentPage={meta.page}
-          totalPages={meta.pages}
-          onPageChange={(page) => setMeta({ ...meta, page })}
-        />
+              ) : (
+                filteredCoupons.map((coupon) => {
+                  const expired = isExpired(coupon.endDate);
+                  const exhausted = isExhausted(coupon);
+                  const TypeIcon = getTypeIcon(coupon.type);
+                  return (
+                    <TableRow key={coupon.id} className="group hover:bg-muted/50 transition-colors">
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="bg-muted px-2 py-1 rounded font-mono text-sm font-bold">
+                            {coupon.code}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleCopyCode(coupon.code, coupon.id)}
+                          >
+                            {copiedId === coupon.id ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{coupon.name}</div>
+                          <div className="text-sm text-muted-foreground line-clamp-1 opacity-70">
+                            {coupon.description}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium text-primary">
+                        <div className="flex items-center gap-1">
+                          <TypeIcon className="h-3 w-3" />
+                          {coupon.type === "PERCENT"
+                            ? `${coupon.value}%`
+                            : `${coupon.value.toLocaleString()}đ`}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm leading-relaxed">
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground w-6">Từ:</span>
+                            <span>{coupon.startDate ? coupon.startDate.split("T")[0] : ""}</span>
+                          </div>
+                          <div className={cn("flex items-center gap-1", expired ? "text-destructive font-medium" : "")}>
+                            <span className="text-muted-foreground w-6">Đến:</span>
+                            <span>{coupon.endDate ? coupon.endDate.split("T")[0] : ""}</span>
+                            {expired && <span className="text-[10px] uppercase font-bold">(Hết)</span>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 w-24">
+                          <div className="text-sm flex justify-between">
+                            <span>{coupon.usedCount}</span>
+                            <span className="text-muted-foreground">/ {coupon.usageLimit || "∞"}</span>
+                          </div>
+                          {coupon.usageLimit > 0 && (
+                            <Progress
+                              value={getUsagePercent(coupon)}
+                              className="h-1.5"
+                            />
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {expired ? (
+                          <Badge variant="destructive" className="bg-destructive hover:bg-destructive">Hết hạn</Badge>
+                        ) : exhausted ? (
+                          <Badge variant="secondary">Đã hết</Badge>
+                        ) : (
+                          <Badge
+                            variant={coupon.status === "ACTIVE" ? "default" : "secondary"}
+                            className={cn(coupon.status === "ACTIVE" ? "bg-green-500 hover:bg-green-600" : "")}
+                          >
+                            {coupon.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            onClick={() => handleOpenDialog(coupon)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => handleDelete(coupon.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+          <PaginationControl
+            currentPage={meta.page}
+            totalPages={meta.pages}
+            onPageChange={(page) => setMeta((p) => ({ ...p, page }))}
+          />
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -511,7 +547,8 @@ const CouponsManagement: React.FC = () => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingCoupon ? "Cập nhật" : "Thêm mới"}
             </Button>
           </DialogFooter>

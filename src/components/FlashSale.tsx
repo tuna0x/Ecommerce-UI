@@ -1,14 +1,33 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Zap, ChevronLeft, ChevronRight } from "lucide-react";
-import { products } from "../data/products";
+import { ProductService } from "../service/productService";
+import type { IProduct } from "../types/product.type";
 import ProductCard from "./ProductCard";
 
 const FlashSale: React.FC = () => {
-  const flashSaleProducts = useMemo(
-    () => products.filter((p) => p.isFlashSale),
-    [],
-  );
+  const [products, setProducts] = useState<IProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFlashSaleProducts = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch products, maybe those with discount?
+        // For now, just fetch first 8 products
+        const response = await ProductService.getAll(0, 8);
+        if (response && response.data) {
+          setProducts(response.data.result);
+        }
+      } catch (error) {
+        console.error("Error fetching flash sale products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFlashSaleProducts();
+  }, []);
 
   // Countdown timer - ends in 6 hours from now
   const [timeLeft, setTimeLeft] = useState({
@@ -99,17 +118,24 @@ const FlashSale: React.FC = () => {
             ref={scrollRef}
             className="flex gap-4 overflow-x-auto scrollbar-hide pb-4 px-1"
           >
-            {flashSaleProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex-shrink-0 w-[200px] md:w-[240px]"
-              >
-                <ProductCard product={product} />
-              </motion.div>
-            ))}
+            {isLoading
+              ? [...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-[200px] md:w-[240px] aspect-[4/5] bg-secondary/20 animate-pulse rounded-lg"
+                  />
+                ))
+              : products.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex-shrink-0 w-[200px] md:w-[240px]"
+                  >
+                    <ProductCard product={product} showFlashSale={true} />
+                  </motion.div>
+                ))}
           </div>
 
           <button

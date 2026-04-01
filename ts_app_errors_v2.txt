@@ -1,0 +1,27 @@
+﻿src/components/AddressManagement.tsx(59,53): error TS2339: Property 'to' does not exist on type 'number'.
+src/components/AddressManagement.tsx(65,23): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/components/NotificationDropdown.tsx(4,28): error TS1484: 'Notification' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/ProductDetailSidebar.tsx(3,36): error TS6133: 'Star' is declared but its value is never read.
+src/components/ProductDetailSidebar.tsx(7,14): error TS2304: Cannot find name 'Product'.
+src/components/ProductDetailSidebar.tsx(11,19): error TS2552: Cannot find name 'brands'. Did you mean 'brand'?
+src/components/ProductDetailSidebar.tsx(11,32): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/components/ProductDetailSidebar.tsx(14,16): error TS2552: Cannot find name 'products'. Did you mean 'product'?
+src/components/ProductDetailSidebar.tsx(15,22): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ProductDetailSidebar.tsx(92,49): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ProductReviews.tsx(6,3): error TS6133: 'ImageIcon' is declared but its value is never read.
+src/components/TopBar.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/ui/data-table.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/context/AuthContext.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/context/AuthContext.tsx(6,3): error TS6133: 'Children' is declared but its value is never read.
+src/context/AuthContext.tsx(9,1): error TS6133: 'IApiResponse' is declared but its value is never read.
+src/context/AuthContext.tsx(12,3): error TS6196: 'ILoginResponse' is declared but never used.
+src/context/AuthContext.tsx(39,10): error TS6133: 'isAuthenticated' is declared but its value is never read.
+src/context/AuthContext.tsx(85,13): error TS6133: 'res' is declared but its value is never read.
+src/pages/Account.tsx(91,44): error TS2339: Property 'avatar' does not exist on type 'User'.
+src/pages/Category.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Category.tsx(126,9): error TS6133: 'formatPrice' is declared but its value is never read.
+src/pages/SearchResult.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/SearchResult.tsx(10,3): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/pages/SearchResult.tsx(18,20): error TS6133: 'categories' is declared but its value is never read.
+src/pages/SearchResult.tsx(19,1): error TS6133: 'Product' is declared but its value is never read.
+src/pages/SearchResult.tsx(29,24): error TS6133: 'setSearchParams' is declared but its value is never read.

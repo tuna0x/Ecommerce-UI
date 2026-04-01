@@ -1,17 +1,9 @@
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Plus,
-  Minus,
-  ShoppingBag,
-  Truck,
-  ArrowRight,
-  Check,
-} from "lucide-react";
-import { useCart, FREE_SHIPPING_THRESHOLD } from "../context/CartContext";
-import { Link, useNavigate } from "react-router-dom";
-import { Checkbox } from "../components/ui/Checkbox";
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight } from 'lucide-react';
+import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { Checkbox } from '../components/ui/Checkbox';
 
 const CartSidebar: React.FC = () => {
   const {
@@ -29,24 +21,20 @@ const CartSidebar: React.FC = () => {
   const navigate = useNavigate();
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN").format(price);
+    return new Intl.NumberFormat('vi-VN').format(price);
   };
 
   const amountToFreeShip = FREE_SHIPPING_THRESHOLD - selectedTotal;
   const hasFreeShipping = selectedTotal >= FREE_SHIPPING_THRESHOLD;
-  const freeShipProgress = Math.min(
-    (selectedTotal / FREE_SHIPPING_THRESHOLD) * 100,
-    100,
-  );
+  const freeShipProgress = Math.min((selectedTotal / FREE_SHIPPING_THRESHOLD) * 100, 100);
 
-  const allSelected =
-    cartItems.length > 0 && cartItems.every((item) => item.selected);
+  const allSelected = cartItems.length > 0 && cartItems.every((item) => item.selected);
   const someSelected = cartItems.some((item) => item.selected);
 
   const handleCheckout = () => {
     if (selectedCount > 0) {
       setIsCartOpen(false);
-      navigate("/checkout");
+      navigate('/checkout');
     }
   };
 
@@ -65,10 +53,10 @@ const CartSidebar: React.FC = () => {
 
           {/* Sidebar */}
           <motion.div
-            initial={{ x: "100%" }}
+            initial={{ x: '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed top-0 right-0 h-full w-full max-w-md bg-background z-50 shadow-2xl flex flex-col"
           >
             {/* Header */}
@@ -96,9 +84,7 @@ const CartSidebar: React.FC = () => {
                   <label className="flex items-center gap-3 cursor-pointer">
                     <Checkbox
                       checked={allSelected}
-                      onCheckedChange={(checked) =>
-                        selectAllItems(checked as boolean)
-                      }
+                      onCheckedChange={(checked) => selectAllItems(checked as boolean)}
                       className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                     />
                     <span className="text-sm font-medium">
@@ -122,14 +108,7 @@ const CartSidebar: React.FC = () => {
                       </span>
                     ) : selectedTotal > 0 ? (
                       <span className="text-sm">
-                        Mua thêm{" "}
-                        <span className="font-bold text-primary">
-                          {formatPrice(amountToFreeShip)}₫
-                        </span>{" "}
-                        để được{" "}
-                        <span className="font-medium text-accent">
-                          Freeship
-                        </span>
+                        Mua thêm <span className="font-bold text-primary">{formatPrice(amountToFreeShip)}₫</span> để được <span className="font-medium text-accent">Freeship</span>
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">
@@ -175,9 +154,7 @@ const CartSidebar: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`group relative bg-card border rounded-2xl p-4 hover:shadow-md transition-all duration-300 ${item.selected
-                          ? "border-primary/50 bg-primary/5"
-                          : "border-border"
+                      className={`group relative bg-card border rounded-2xl p-4 hover:shadow-md transition-all duration-300 ${item.selected ? 'border-primary/50 bg-primary/5' : 'border-border'
                         }`}
                     >
                       <div className="flex gap-3">
@@ -230,12 +207,11 @@ const CartSidebar: React.FC = () => {
                             <span className="text-primary font-bold text-sm">
                               {formatPrice(item.price)}₫
                             </span>
-                            {item.originalPrice &&
-                              item.originalPrice > item.price && (
-                                <span className="text-[11px] text-muted-foreground line-through">
-                                  {formatPrice(item.originalPrice)}₫
-                                </span>
-                              )}
+                            {item.originalPrice && item.originalPrice > item.price && (
+                              <span className="text-[11px] text-muted-foreground line-through">
+                                {formatPrice(item.originalPrice)}₫
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -252,14 +228,10 @@ const CartSidebar: React.FC = () => {
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50 ml-8">
                         {/* Quantity Controls */}
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground mr-2">
-                            Số lượng:
-                          </span>
+                          <span className="text-xs text-muted-foreground mr-2">Số lượng:</span>
                           <div className="flex items-center border border-border rounded-lg bg-background">
                             <button
-                              onClick={() =>
-                                updateQuantity(item.id, item.quantity - 1)
-                              }
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
                               className="p-1.5 hover:bg-secondary transition-colors rounded-l-lg disabled:opacity-50"
                               disabled={item.quantity <= 1}
                             >
@@ -269,9 +241,7 @@ const CartSidebar: React.FC = () => {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() =>
-                                updateQuantity(item.id, item.quantity + 1)
-                              }
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
                               className="p-1.5 hover:bg-secondary transition-colors rounded-r-lg"
                             >
                               <Plus className="w-3 h-3" />
@@ -281,9 +251,7 @@ const CartSidebar: React.FC = () => {
 
                         {/* Item Subtotal */}
                         <div className="text-right">
-                          <span className="text-xs text-muted-foreground">
-                            Thành tiền:
-                          </span>
+                          <span className="text-xs text-muted-foreground">Thành tiền:</span>
                           <p className="font-bold text-foreground text-sm">
                             {formatPrice(item.price * item.quantity)}₫
                           </p>
@@ -301,31 +269,17 @@ const CartSidebar: React.FC = () => {
                 {/* Subtotal */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Sản phẩm đã chọn
-                    </span>
-                    <span className="font-medium">
-                      {selectedCount} sản phẩm
-                    </span>
+                    <span className="text-muted-foreground">Sản phẩm đã chọn</span>
+                    <span className="font-medium">{selectedCount} sản phẩm</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tạm tính</span>
-                    <span className="font-medium">
-                      {formatPrice(selectedTotal)}₫
-                    </span>
+                    <span className="font-medium">{formatPrice(selectedTotal)}₫</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Phí vận chuyển
-                    </span>
-                    <span
-                      className={`font-medium ${hasFreeShipping ? "text-accent" : ""}`}
-                    >
-                      {selectedTotal === 0
-                        ? "—"
-                        : hasFreeShipping
-                          ? "Miễn phí"
-                          : "Tính ở bước tiếp theo"}
+                    <span className="text-muted-foreground">Phí vận chuyển</span>
+                    <span className={`font-medium ${hasFreeShipping ? 'text-accent' : ''}`}>
+                      {selectedTotal === 0 ? '—' : hasFreeShipping ? 'Miễn phí' : 'Tính ở bước tiếp theo'}
                     </span>
                   </div>
                 </div>
@@ -333,9 +287,7 @@ const CartSidebar: React.FC = () => {
                 {/* Total */}
                 <div className="flex items-center justify-between py-4 border-t border-border mb-4">
                   <span className="text-lg font-bold">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {formatPrice(selectedTotal)}₫
-                  </span>
+                  <span className="text-2xl font-bold text-primary">{formatPrice(selectedTotal)}₫</span>
                 </div>
 
                 {/* Checkout Button */}
@@ -345,7 +297,7 @@ const CartSidebar: React.FC = () => {
                   className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {selectedCount === 0 ? (
-                    "Chọn sản phẩm để thanh toán"
+                    'Chọn sản phẩm để thanh toán'
                   ) : (
                     <>
                       Thanh toán ({selectedCount})
