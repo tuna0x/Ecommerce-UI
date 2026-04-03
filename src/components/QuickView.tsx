@@ -4,6 +4,8 @@ import { X, Star, ShoppingBag, Heart } from 'lucide-react';
 import type { IProduct } from '../types/product.type';
 import { useCart } from '../context/CartContext';
 import { toast } from 'sonner';
+import { cn } from '../lib/utils';
+import { useState, useMemo, useEffect } from 'react';
 
 interface QuickViewProps {
   product: IProduct | null;
@@ -13,10 +15,64 @@ interface QuickViewProps {
 
 const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   const { addToCart } = useCart();
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+
+
+
+  // Group all attributes by name from variants for the selector
+  const groupedAttributes = useMemo(() => {
+    if (!product || !product.variants || product.variants.length === 0) return [];
+    
+    const groups: Record<string, Set<string>> = {};
+    
+    product.variants.forEach(v => {
+      v.variantAttributes.forEach(va => {
+        if (!groups[va.name]) groups[va.name] = new Set();
+        groups[va.name].add(va.value);
+      });
+    });
+
+    return Object.entries(groups).map(([name, values]) => ({ 
+      name, 
+      values: Array.from(values) 
+    }));
+  }, [product]);
+
+  // Handle automatic attribute selection when modal opens
+  useEffect(() => {
+    if (isOpen && groupedAttributes.length > 0) {
+      const newSelection: Record<string, string> = { ...selectedAttributes };
+      let changed = false;
+
+      groupedAttributes.forEach(attr => {
+        if (attr.values.length > 0 && !newSelection[attr.name]) {
+          newSelection[attr.name] = attr.values[0];
+          changed = true;
+        }
+      });
+      
+      if (changed) {
+        setSelectedAttributes(prev => ({ ...prev, ...newSelection }));
+      }
+    }
+  }, [isOpen, groupedAttributes]);
+
+  // Find the variant that matches selected attributes
+  const matchedVariant = useMemo(() => {
+    if (!product || !product.variants || product.variants.length === 0) return null;
+    
+    return product.variants.find(v => {
+      // Every selected attribute must match the variant's attributes
+      return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
+        return v.variantAttributes.some(va => va.name === attrName && va.value === selectedVal);
+      });
+    });
+  }, [product, selectedAttributes]);
 
   if (!product) return null;
 
-  const displayPrice = product.finalPrice || product.price || 0;
+  const displayPrice = matchedVariant?.price || product.finalPrice || product.price || 0;
+  const currentStock = matchedVariant ? matchedVariant.stock : (product.stock || 0);
   const displayOriginalPrice = product.originalPrice || 0;
   const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
@@ -25,7 +81,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   };
 
   const handleAddToCart = () => {
-    addToCart(product);
+    addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, 1);
     toast.success('Đã thêm vào giỏ hàng!');
     onClose();
   };
@@ -110,15 +166,35 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                     </span>
                   </div>
 
-                  {/* Category & Volume */}
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="px-2 py-0.5 bg-secondary rounded-full">
-                      {typeof product.category === 'string' ? product.category : product.category.name}
-                    </span>
-                    {product.volume && (
-                      <span className="px-2 py-0.5 bg-secondary rounded-full">{product.volume}</span>
-                    )}
-                  </div>
+                  {/* Attributes Selection */}
+                  {groupedAttributes.length > 0 && (
+                    <div className="space-y-3">
+                      {groupedAttributes.map((attr, idx) => (
+                        <div key={idx} className="space-y-1.5 text-left">
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase">{attr.name}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {attr.values.map((val, vIdx) => {
+                              const isSelected = selectedAttributes[attr.name] === val;
+                              return (
+                                <button 
+                                  key={vIdx}
+                                  onClick={() => setSelectedAttributes(prev => ({ ...prev, [attr.name]: val }))}
+                                  className={cn(
+                                    "px-3 py-1.5 border rounded-lg text-xs font-medium transition-all duration-200",
+                                    isSelected 
+                                      ? "border-primary bg-primary/10 text-primary" 
+                                      : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5"
+                                  )}
+                                >
+                                  {val}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Price */}
                   <div className="flex items-baseline gap-2">
@@ -133,9 +209,9 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                   </div>
 
                   {/* Stock */}
-                  {product.stock !== undefined && product.stock < 10 && (
+                  {currentStock > 0 && currentStock < 10 && (
                     <p className="text-xs font-semibold text-primary">
-                      🔥 Chỉ còn {product.stock} sản phẩm cuối
+                      🔥 Chỉ còn {currentStock} sản phẩm cuối
                     </p>
                   )}
 

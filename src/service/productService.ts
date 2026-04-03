@@ -15,11 +15,12 @@ export const ProductService = {
     size: number,
     search?: string,
     sort?: string,
+    filter?: string
   ): Promise<IApiResponse<IPagination<IProduct>>> => {
     const params: Record<string, unknown> = {
       page,
       size,
-      filter: search ? `name~'${search}'` : undefined,
+      filter: filter || (search ? `name~'${search}'` : undefined),
       sort: sort,
     };
 

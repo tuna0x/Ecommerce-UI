@@ -9,6 +9,12 @@ import {
   X,
   Loader2,
   FileText,
+  ChevronDown,
+  Tag,
+  Package,
+  Boxes,
+  LayoutGrid,
+  Scale,
 } from "lucide-react";
 import {
   Card,
@@ -24,7 +30,6 @@ import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { DataTable } from "../../components/ui/data-table";
-import { cn } from "../../lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   Dialog,
@@ -38,7 +43,6 @@ import type {
   ICreateProduct,
   IPrice,
   IProduct,
-  IProductAttributeValueResponse,
   IUpdateProduct,
 } from "../../types/product.type";
 import type {
@@ -74,7 +78,6 @@ const ProductsManagement: React.FC = () => {
     name: "",
     originalPrice: 0,
     stock: 0,
-    weight: 0,
     image: null,
     brandId: null as number | null,
     categoryId: null as number | null,
@@ -105,30 +108,56 @@ const ProductsManagement: React.FC = () => {
     }
   }, [currentPage, pageSize, debouncedSearch, sort]);
 
+  const hasVariants = (formData.variants || []).length > 0;
+
   const openDialog = useCallback(async (product: IProduct | null) => {
     if (product) {
       setEditingProductId(product.id);
-      const groupedAttrs: Record<string, string[]> = {};
-      (product.attributeValue as unknown as IProductAttributeValueResponse[])?.forEach((attr) => {
-        const attribute = attr.attributeValue?.attribute;
-        if (attribute) {
-          const attrId = attribute.id.toString();
-          if (!groupedAttrs[attrId]) groupedAttrs[attrId] = [];
-          groupedAttrs[attrId].push(attr.attributeValue.id.toString());
+      
+      const attrValues = product.attributeValue || [];
+      
+      // Populate selectedAttributes for UI
+      const attributeGroups: Record<string, string[]> = {};
+      attrValues.forEach((av) => {
+        if (av.attributeId) {
+          const attrIdStr = av.attributeId.toString();
+          if (!attributeGroups[attrIdStr]) {
+            attributeGroups[attrIdStr] = [];
+          }
+          attributeGroups[attrIdStr].push(av.id.toString());
         }
       });
-      setSelectedAttributes(groupedAttrs);
+      setSelectedAttributes(attributeGroups);
 
       setFormData({
         name: product.name,
         originalPrice: product.originalPrice,
         stock: product.stock,
-        image: null, // Reset images for update unless explicitly unchanged
-        weight: product.weight,
+        image: null,
         categoryId: typeof product.category === 'object' ? product.category.id : null,
         brandId: typeof product.brand === 'object' ? product.brand.id : null,
-        attributeValue: (product.attributeValue as unknown as IProductAttributeValueResponse[])?.map((attr) => attr.attributeValue?.id) ?? [],
+        attributeValue: attrValues.map((attr) => attr.id),
+        variants: product.variants?.map((v) => ({
+          sku: v.sku,
+          price: v.price,
+          stock: v.stock,
+          weight: v.weight,
+          attributeValues: v.variantAttributes.map(va => {
+            // Find the ID in product's attributeValue or current value state
+            const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
+               const avName = (av as { attributeName?: string }).attributeName || (av as { attribute?: { name: string } }).attribute?.name;
+               return av.value === va.value && avName === va.name;
+            });
+            return attrMatch ? (attrMatch as { id: number }).id : 0;
+          }).filter(id => id !== 0)
+        })) || []
       });
+
+      // Populate image previews for existing images
+      const existingImages = Array.isArray(product.image) 
+        ? product.image 
+        : (product.image ? [product.image as string] : []);
+      setImagePreviews(existingImages);
     } else {
       setEditingProductId(null);
       setSelectedAttributes({});
@@ -136,15 +165,17 @@ const ProductsManagement: React.FC = () => {
         name: "",
         originalPrice: 0,
         stock: 0,
-        weight: 0,
         image: null,
         categoryId: null,
         brandId: null,
         attributeValue: [],
+        variants: []
       });
+      setImagePreviews([]);
+      setFiles([]);
     }
     setIsDialogOpen(true);
-  }, []);
+  }, [value]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -181,10 +212,9 @@ const ProductsManagement: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [brandRes, categoryRes, valueRes] = await Promise.all([
+      const [brandRes, categoryRes] = await Promise.all([
         BrandService.getAll(0, 1000),
         categoryService.getAll(0, 1000),
-        attributeValueService.getAll(),
       ]);
 
       if (!brandRes.error) {
@@ -194,14 +224,31 @@ const ProductsManagement: React.FC = () => {
       if (!categoryRes.error) {
         setCategory(categoryRes.data?.result || []);
       }
-
-      if (!valueRes.error) {
-        setValue(valueRes.data?.result || []);
-      }
     };
 
     fetchData();
   }, []);
+
+  // Fetch attribute values when category changes
+  useEffect(() => {
+    const fetchAttributeValues = async () => {
+      if (!formData.categoryId) {
+        setValue([]);
+        return;
+      }
+      
+      try {
+        const res = await attributeValueService.getAll(`attribute.categories.id:'${formData.categoryId}'`);
+        if (!res.error) {
+          setValue(res.data?.result || []);
+        }
+      } catch (error) {
+        console.error("Error fetching attribute values:", error);
+      }
+    };
+
+    fetchAttributeValues();
+  }, [formData.categoryId]);
 
   useEffect(() => {
     products.forEach((p) => {
@@ -234,13 +281,12 @@ const ProductsManagement: React.FC = () => {
       name: "",
       originalPrice: 0,
       stock: 0,
-      weight: 0,
       image: null,
       categoryId: null,
       brandId: null,
       attributeValue: [],
-    });
-    setSelectedAttributes({});
+      variants: []
+    });setSelectedAttributes({});
     setEditingProductId(null);
   }, []);
 
@@ -260,9 +306,10 @@ const ProductsManagement: React.FC = () => {
         .flat()
         .map((id) => Number(id));
 
-      const payload = {
+      const payload: ICreateProduct = {
         ...formData,
         attributeValue: attrIds,
+        variants: formData.variants,
       };
 
       if (editingProductId) {
@@ -271,11 +318,12 @@ const ProductsManagement: React.FC = () => {
           name: formData.name,
           originalPrice: formData.originalPrice,
           stock: formData.stock,
-          weight: formData.weight,
           brandId: formData.brandId,
           categoryId: formData.categoryId,
-          image: null,
+          // Only send existing Cloudinary URLs to keep
+          image: imagePreviews.filter(p => !p.startsWith('blob:')),
           attributeValue: attrIds || [],
+          variants: formData.variants,
         };
 
         await ProductService.update(updateData, files);
@@ -304,8 +352,19 @@ const ProductsManagement: React.FC = () => {
   }, [fetchProducts]);
 
   const removeImage = (index: number) => {
+    const previewToRemove = imagePreviews[index];
+    
+    // If it's a new upload (blob), find and remove from files state
+    if (previewToRemove.startsWith('blob:')) {
+      // Find index within only blob previews to match files array
+      const blobIndex = imagePreviews
+        .slice(0, index)
+        .filter(p => p.startsWith('blob:')).length;
+        
+      setFiles((prev) => prev.filter((_, i) => i !== blobIndex));
+    }
+    
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   type AttributeValue = {
@@ -324,31 +383,50 @@ const ProductsManagement: React.FC = () => {
   );
 
   const groupedAttributes: GroupedAttribute[] = useMemo(() => {
-    return Object.values(
-      value
-        .filter((v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId))
-        .reduce((acc: Record<number, GroupedAttribute>, item: IAttributeValue) => {
-          const attrId = item.attribute.id;
-
-          if (!acc[attrId]) {
-            acc[attrId] = {
-              attributeId: attrId,
-              attributeName: item.attribute.name,
-              values: [],
-            };
-          }
-
-          acc[attrId].values.push({
-            id: item.id,
-            value: item.value,
-          });
-
-          return acc;
-        }, {}),
-    );
+    if (!formData.categoryId) return [];
+    
+    const groups: Record<number, GroupedAttribute> = {};
+    
+    value.forEach((item) => {
+      if (!item.attribute) return;
+      
+      const attrId = item.attribute.id;
+      if (!groups[attrId]) {
+        groups[attrId] = {
+          attributeId: attrId,
+          attributeName: item.attribute.name,
+          values: [],
+        };
+      }
+      
+      groups[attrId].values.push({
+        id: item.id,
+        value: item.value,
+      });
+    });
+    
+    return Object.values(groups);
   }, [value, formData.categoryId]);
 
   const columns: ColumnDef<IProduct>[] = useMemo(() => [
+    {
+      id: "expander",
+      header: () => null,
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => row.toggleExpanded()}
+        >
+          {row.getIsExpanded() ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+      ),
+    },
     {
       id: "select",
       header: ({ table }) => (
@@ -418,14 +496,15 @@ const ProductsManagement: React.FC = () => {
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {row.original.attributeValue?.length ? (
-            (row.original.attributeValue as unknown as IProductAttributeValueResponse[]).map((attr, index) => {
+            row.original.attributeValue.map((item, index) => {
+                const value = (item as { attributeValue?: { value: string } }).attributeValue?.value || (item as { value?: string }).value || "N/A";
                 return (
                     <Badge
                         key={index}
                         variant="outline"
                         className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
                     >
-                        {attr.attributeValue?.value || "N/A"}
+                        {value}
                     </Badge>
                 );
             })
@@ -439,11 +518,6 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "stock",
       header: "Kho",
       cell: ({ row }) => <div className="text-center font-medium">{row.original.stock}</div>,
-    },
-    {
-      accessorKey: "weight",
-      header: "Cân nặng",
-      cell: ({ row }) => <div className="text-center text-muted-foreground whitespace-nowrap">{row.original.weight}g</div>,
     },
     {
       id: "price",
@@ -577,6 +651,96 @@ const ProductsManagement: React.FC = () => {
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
+              getRowCanExpand={(row) => (row.original.variants?.length || 0) > 0}
+              renderSubComponent={({ row }) => (
+                <div className="p-4 bg-muted/20 border-y border-border/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                      {row.original.variants?.length} Biến thể
+                    </Badge>
+                    <span className="text-xs text-muted-foreground italic">
+                      Chi tiết các phiên bản của {row.original.name}
+                    </span>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-border/50 shadow-md bg-background">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-muted/40 border-b border-border/50">
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <Tag className="h-3.5 w-3.5" />
+                              SKU / Phiên bản
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5">
+                              <LayoutGrid className="h-3.5 w-3.5" />
+                              Thuộc tính
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <Scale className="h-3.5 w-3.5" />
+                              Weight
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <Boxes className="h-3.5 w-3.5" />
+                              Kho
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <Package className="h-3.5 w-3.5" />
+                              Giá bán
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/30">
+                        {row.original.variants?.map((variant, idx: number) => (
+                          <tr key={idx} className="hover:bg-primary/[0.02] transition-colors group">
+                            <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground font-medium group-hover:text-primary transition-colors">
+                              {variant.sku}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1.5">
+                                {variant.variantAttributes?.map((val, vIdx: number) => (
+                                  <Badge 
+                                    key={vIdx} 
+                                    variant="outline"
+                                    className="bg-muted/50 border-border/50 text-[10px] px-1.5 py-0 font-normal h-4.5"
+                                  >
+                                    <span className="text-muted-foreground mr-1 opacity-70">{val.name}:</span>
+                                    {val.value}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">
+                              {variant.weight}g
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge 
+                                  variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")} 
+                                  className={`text-[10px] h-5 px-1.5 font-medium border-none ${variant.stock > 10 ? 'bg-emerald-50 text-emerald-700' : ''}`}
+                                >
+                                  {variant.stock} {variant.stock > 0 ? 'sẵn có' : 'hết hàng'}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-foreground group-hover:text-primary transition-colors">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(variant.price || row.original.originalPrice)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             />
           </div>
         </CardContent>
@@ -618,42 +782,48 @@ const ProductsManagement: React.FC = () => {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="originalPrice">Giá gốc (VNĐ)</Label>
+              <Label htmlFor="originalPrice" className={hasVariants ? "text-muted-foreground flex items-center gap-2" : ""}>
+                Giá gốc (VNĐ)
+                {hasVariants && (
+                  <span className="text-[10px] font-normal italic text-primary">
+                    (Tự động lấy giá thấp nhất từ biến thể)
+                  </span>
+                )}
+              </Label>
               <Input
                 id="originalPrice"
                 type="number"
                 value={formData.originalPrice}
+                disabled={hasVariants}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
                     originalPrice: Number(e.target.value),
                   })
                 }
+                className={hasVariants ? "bg-muted/50" : ""}
                 placeholder="100000"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="stock">Số lượng</Label>
+                <Label htmlFor="stock" className={hasVariants ? "text-muted-foreground flex items-center gap-2" : ""}>
+                  Số lượng
+                  {hasVariants && (
+                    <span className="text-[10px] font-normal italic text-primary">
+                      (Tổng kho biến thể)
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="stock"
                   type="number"
                   value={formData.stock}
+                  disabled={hasVariants}
                   onChange={(e) =>
                     setFormData({ ...formData, stock: Number(e.target.value) })
                   }
-                  placeholder="0"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="weight">Cân nặng (GRAM)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={formData.weight}
-                  onChange={(e) =>
-                    setFormData({ ...formData, weight: Number(e.target.value) })
-                  }
+                  className={hasVariants ? "bg-muted/50" : ""}
                   placeholder="0"
                 />
               </div>
@@ -711,6 +881,227 @@ const ProductsManagement: React.FC = () => {
               </div>
             )}
 
+            {/* Variants Section */}
+            {groupedAttributes.length > 0 && (
+              <div className="grid gap-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">
+                    Biến thể sản phẩm
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 gap-1 text-primary border-primary/50 hover:bg-primary/5"
+                      onClick={() => {
+                        // 1. Get all selected attribute values in a grouped format
+                        const selectedAttributeGroups = groupedAttributes
+                          .map(attr => ({
+                            attributeId: attr.attributeId,
+                            values: attr.values.filter(v => 
+                              (selectedAttributes[attr.attributeId] || []).includes(v.id.toString())
+                            )
+                          }))
+                          .filter(group => group.values.length > 0);
+
+                        if (selectedAttributeGroups.length === 0) {
+                          toast.error("Vui lòng chọn ít nhất một tổ hợp thuộc tính phía trên!");
+                          return;
+                        }
+
+                        // 2. Cartesian Product Logic
+                        interface AttrValue { id: number; value: string }
+                        interface AttrGroup { attributeId: number; values: AttrValue[] }
+
+                        const generateCombinations = (groups: AttrGroup[], index = 0): number[][] => {
+                          if (index === groups.length) return [[]];
+                          const res: number[][] = [];
+                          const currentGroup = groups[index];
+                          const nextCombs = generateCombinations(groups, index + 1);
+                          
+                          currentGroup.values.forEach((val) => {
+                            nextCombs.forEach(comb => {
+                              res.push([val.id, ...comb]);
+                            });
+                          });
+                          return res;
+                        };
+
+                        const allCombinations = generateCombinations(selectedAttributeGroups);
+                        
+                        // 3. Convert to Variants
+                        const newVariants = allCombinations.map((comb, idx) => ({
+                          sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${idx + 1}-${Date.now()}`,
+                          price: null,
+                          stock: 0,
+                          weight: 200, // Default weight for variants
+                          attributeValues: comb
+                        }));
+
+                        setFormData({
+                          ...formData,
+                          variants: [...(formData.variants || []), ...newVariants]
+                        });
+                        
+                        toast.success(`Đã tạo nhanh ${newVariants.length} biến thể!`);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Tạo nhanh tổ hợp
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 gap-1"
+                      onClick={() => {
+                        const newVariant = {
+                          sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                          price: null,
+                          stock: 0,
+                          weight: 0,
+                          attributeValues: []
+                        };
+                        setFormData({
+                          ...formData,
+                          variants: [...(formData.variants || []), newVariant]
+                        });
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Thêm biến thể
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {(formData.variants || []).map((v, vIndex) => (
+                    <Card key={vIndex} className="relative overflow-hidden border-border bg-muted/20">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          const newVariants = [...(formData.variants || [])];
+                          newVariants.splice(vIndex, 1);
+                          setFormData({ ...formData, variants: newVariants });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      
+                      <CardContent className="p-4 grid gap-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">SKU</Label>
+                            <Input
+                              value={v.sku}
+                              onChange={(e) => {
+                                const newVariants = [...(formData.variants || [])];
+                                newVariants[vIndex].sku = e.target.value;
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="h-8 text-xs"
+                              placeholder="SKU biến thể"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Giá ghi đè (VNĐ)</Label>
+                            <Input
+                              type="number"
+                              value={v.price || ""}
+                              onChange={(e) => {
+                                const newVariants = [...(formData.variants || [])];
+                                newVariants[vIndex].price = e.target.value ? Number(e.target.value) : null;
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="h-8 text-xs"
+                              placeholder="Sử dụng giá gốc nếu trống"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Kho hàng</Label>
+                            <Input
+                              type="number"
+                              value={v.stock}
+                              onChange={(e) => {
+                                const newVariants = [...(formData.variants || [])];
+                                newVariants[vIndex].stock = Number(e.target.value);
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="h-8 text-xs"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Cân nặng (g)</Label>
+                            <Input
+                              type="number"
+                              value={v.weight}
+                              onChange={(e) => {
+                                const newVariants = [...(formData.variants || [])];
+                                newVariants[vIndex].weight = Number(e.target.value);
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="h-8 text-xs"
+                              placeholder="0"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Thuộc tính</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {groupedAttributes.map((attr) => {
+                                // Find which value of this attribute is selected for this variant
+                                const selectedValueId = v.attributeValues.find(id => 
+                                  attr.values.some(av => av.id === id)
+                                );
+                                
+                                return (
+                                  <div key={attr.attributeId} className="w-full">
+                                    <SearchableSelect
+                                      options={attr.values.map(av => ({
+                                        value: av.id.toString(),
+                                        label: av.value
+                                      }))}
+                                      value={selectedValueId?.toString() || "none"}
+                                      onValueChange={(val) => {
+                                        const newVariants = [...(formData.variants || [])];
+                                        const attrValueIds = newVariants[vIndex].attributeValues.filter(id => 
+                                          !attr.values.some(av => av.id === id)
+                                        );
+                                        if (val !== "none") {
+                                          attrValueIds.push(Number(val));
+                                        }
+                                        newVariants[vIndex].attributeValues = attrValueIds;
+                                        setFormData({ ...formData, variants: newVariants });
+                                      }}
+                                      placeholder={attr.attributeName}
+                                      className="h-8 text-xs w-full"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {formData.variants?.length === 0 && (
+                    <div className="text-center py-8 rounded-lg border-2 border-dashed border-border bg-muted/30">
+                      <p className="text-sm text-muted-foreground">Chưa có biến thể nào. Nhấn "Thêm biến thể" để bắt đầu.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {formData.categoryId && filteredAttributes.length === 0 && (
               <p className="text-sm text-muted-foreground italic">
                 Không có thuộc tính nào cho danh mục này.
@@ -762,17 +1153,17 @@ const ProductsManagement: React.FC = () => {
                 </div>
               )}
 
-              {/* Upload button */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
-              >
-                <ImageIcon className="h-6 w-6" />
-                <span className="text-sm font-medium">Nhấn để tải ảnh lên</span>
-                <span className="text-xs">PNG, JPG, WEBP (tối đa 5MB/ảnh)</span>
-              </div>
+            {/* Upload button */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <ImageIcon className="h-6 w-6" />
+              <span className="text-sm font-medium">Nhấn để tải ảnh lên</span>
+              <span className="text-xs">PNG, JPG, WEBP (tối đa 5MB/ảnh)</span>
             </div>
           </div>
+        </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
               Hủy

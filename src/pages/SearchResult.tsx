@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,6 +7,7 @@ import {
   Grid3X3,
   LayoutGrid,
   X,
+  Loader2
 } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Header from "../components/Header";
@@ -14,8 +15,8 @@ import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
 import CartSidebar from "../components/CartSidebar";
 import ProductCard from "../components/ProductCard";
-import { products } from "../data/products";
 import type { IProduct } from "../types/product.type";
+import { ProductService } from "../service/productService";
 import {
   Select,
   SelectContent,
@@ -25,96 +26,65 @@ import {
 } from "../components/ui/select";
 
 const SearchResults: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
-  const [sortBy, setSortBy] = useState("relevant");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const brandParam = searchParams.get("brand") || "";
+  const categoryParam = searchParams.get("category") || "";
+
+  const [products, setProducts] = useState<IProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState("id,desc");
+  const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || "all");
   const [priceRange, setPriceRange] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
 
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    let results = products as unknown as IProduct[];
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      let filter = "";
+      const conditions: string[] = [];
 
-    // Search filter
-    if (query.trim()) {
-      const searchTerm = query.toLowerCase().trim();
-      results = results.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm) ||
-          (typeof product.brand === "string" ? product.brand : product.brand.name).toLowerCase().includes(searchTerm) ||
-          (typeof product.category === "string" ? product.category : product.category.name).toLowerCase().includes(searchTerm) ||
-          product.concern?.some((c) => c.toLowerCase().includes(searchTerm)) ||
-          product.skinType?.some((s) => s.toLowerCase().includes(searchTerm)),
-      );
-    }
+      if (query) conditions.push(`name~'${query}'`);
+      if (brandParam) conditions.push(`brand.name:'${brandParam}'`);
+      if (categoryParam) conditions.push(`category.name:'${categoryParam}'`);
+      if (selectedCategory !== "all" && !categoryParam) conditions.push(`category.name:'${selectedCategory}'`);
 
-    // Category filter
-    if (selectedCategory !== "all") {
-      results = results.filter(
-        (product) => (typeof product.category === "string" ? product.category : product.category.name) === selectedCategory,
-      );
-    }
+      filter = conditions.join(" and ");
 
-    // Price range filter
-    if (priceRange !== "all") {
-      switch (priceRange) {
-        case "under200":
-          results = results.filter((product) => (product.finalPrice || product.price || 0) < 200000);
-          break;
-        case "200-500":
-          results = results.filter(
-            (product) => (product.finalPrice || product.price || 0) >= 200000 && (product.finalPrice || product.price || 0) <= 500000,
-          );
-          break;
-        case "500-1000":
-          results = results.filter(
-            (product) => (product.finalPrice || product.price || 0) >= 500000 && (product.finalPrice || product.price || 0) <= 1000000,
-          );
-          break;
-        case "over1000":
-          results = results.filter((product) => (product.finalPrice || product.price || 0) > 1000000);
-          break;
+      const res = await ProductService.getAll(0, 50, undefined, sortBy, filter || undefined);
+      if (res.data) {
+        setProducts(res.data.result);
       }
+    } catch (error) {
+      console.error("Error fetching search results:", error);
+    } finally {
+      setLoading(false);
     }
+  }, [query, brandParam, categoryParam, selectedCategory, sortBy]);
 
-    // Sort
-    switch (sortBy) {
-      case "price-asc":
-        results = [...results].sort((a, b) => (a.finalPrice || a.price || 0) - (b.finalPrice || b.price || 0));
-        break;
-      case "price-desc":
-        results = [...results].sort((a, b) => (b.finalPrice || b.price || 0) - (a.finalPrice || a.price || 0));
-        break;
-      case "discount":
-        results = [...results].sort((a, b) => (b.discount || 0) - (a.discount || 0));
-        break;
-      case "rating":
-        results = [...results].sort((a, b) => (b.averageRating || b.rating || 0) - (a.averageRating || a.rating || 0));
-        break;
-      case "relevant":
-      default:
-        break;
-    }
-
-    return results;
-  }, [query, selectedCategory, priceRange, sortBy]);
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const uniqueCategories = useMemo(() => {
-    const cats = new Set((products as unknown as IProduct[]).map((p) => 
-      typeof p.category === "string" ? p.category : p.category.name
-    ));
-    return Array.from(cats);
+    // In a real app, this should come from a Categories API
+    return ["Skin Care", "Makeup", "Hair Care", "Body Care", "Fragrance"];
   }, []);
 
   const clearFilters = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("brand");
+    newParams.delete("category");
+    setSearchParams(newParams);
+    
     setSelectedCategory("all");
     setPriceRange("all");
-    setSortBy("relevant");
+    setSortBy("id,desc");
   };
 
-  const hasActiveFilters = selectedCategory !== "all" || priceRange !== "all";
+  const hasActiveFilters = selectedCategory !== "all" || priceRange !== "all" || brandParam || categoryParam;
+  const filteredProducts = products; // Sorting and filtering is now mostly handled by API
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -134,7 +104,7 @@ const SearchResults: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1">
-                Kết quả tìm kiếm cho "{query}"
+                {brandParam ? `Thương hiệu: ${brandParam}` : categoryParam ? `Danh mục: ${categoryParam}` : `Kết quả tìm kiếm cho "${query}"`}
               </h1>
               <p className="text-muted-foreground">
                 Tìm thấy {filteredProducts.length} sản phẩm
@@ -204,11 +174,11 @@ const SearchResults: React.FC = () => {
                 <SelectValue placeholder="Sắp xếp" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="relevant">Liên quan nhất</SelectItem>
-                <SelectItem value="price-asc">Giá thấp đến cao</SelectItem>
-                <SelectItem value="price-desc">Giá cao đến thấp</SelectItem>
-                <SelectItem value="discount">Giảm giá nhiều</SelectItem>
-                <SelectItem value="rating">Đánh giá cao</SelectItem>
+                <SelectItem value="id,desc">Mới nhất</SelectItem>
+                <SelectItem value="price,asc">Giá thấp đến cao</SelectItem>
+                <SelectItem value="price,desc">Giá cao đến thấp</SelectItem>
+                <SelectItem value="discount,desc">Giảm giá nhiều</SelectItem>
+                <SelectItem value="averageRating,desc">Đánh giá cao</SelectItem>
               </SelectContent>
             </Select>
 
@@ -268,7 +238,12 @@ const SearchResults: React.FC = () => {
           </motion.div>
         )}
 
-        {filteredProducts.length > 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Đang tải sản phẩm...</p>
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

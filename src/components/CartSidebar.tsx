@@ -156,7 +156,7 @@ const CartSidebar: React.FC = () => {
 
                     return (
                       <motion.div
-                        key={item.id}
+                        key={item.cartItemId}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.04 }}
@@ -168,7 +168,7 @@ const CartSidebar: React.FC = () => {
                           <div className="flex items-start pt-0.5">
                             <Checkbox
                               checked={item.selected}
-                              onCheckedChange={() => toggleSelectItem(item.id)}
+                              onCheckedChange={() => toggleSelectItem(item.cartItemId)}
                               className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4"
                             />
                           </div>
@@ -207,6 +207,17 @@ const CartSidebar: React.FC = () => {
                               {item.name}
                             </Link>
 
+                            {/* Attributes */}
+                            {item.variantAttributes && item.variantAttributes.length > 0 && (
+                              <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                                {item.variantAttributes.map((attr, i) => (
+                                  <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
+                                    {attr.name}: {attr.value}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             {/* Price */}
                             <div className="flex items-center gap-1.5">
                               <span className="text-primary font-bold text-sm">
@@ -222,7 +233,7 @@ const CartSidebar: React.FC = () => {
 
                           {/* Delete Button */}
                           <button
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => removeFromCart(item.cartItemId)}
                             className="self-start p-1 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-full transition-all opacity-0 group-hover:opacity-100"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -234,7 +245,7 @@ const CartSidebar: React.FC = () => {
                           {/* Quantity Controls */}
                           <div className="flex items-center gap-0.5">
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                               className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors disabled:opacity-30"
                               disabled={item.quantity <= 1}
                             >
@@ -244,7 +255,7 @@ const CartSidebar: React.FC = () => {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                               className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors"
                             >
                               <Plus className="w-3 h-3" />

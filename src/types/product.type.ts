@@ -14,6 +14,8 @@ export interface IProductAttributeValueResponse {
 export interface IProductAttributeValue {
   id: number;
   value: string;
+  attributeId?: number;
+  attributeName?: string;
 }
 
 export interface IProduct {
@@ -24,7 +26,7 @@ export interface IProduct {
   discountPrice?: number;
   finalPrice: number;
   stock: number;
-  weight: number;
+  weight?: number; // Legacy/Optional
   thumbnail?: string;
   image: string[] | string | null;
   category: { id: number; name: string } | string;
@@ -41,17 +43,40 @@ export interface IProduct {
   skinType?: string[];
   concern?: string[];
   volume?: string;
+  variants?: IVariant[];
+}
+
+export interface IVariantAttribute {
+  name: string;
+  value: string;
+}
+
+export interface IVariant {
+  id: number;
+  sku: string;
+  price: number | null;
+  stock: number;
+  weight: number;
+  variantAttributes: IVariantAttribute[];
+}
+
+export interface IVariantCreate {
+  sku: string;
+  price: number | null;
+  stock: number;
+  weight: number;
+  attributeValues: number[];
 }
 
 export interface ICreateProduct {
   name: string;
   originalPrice: number;
   stock: number;
-  weight: number;
   image: string[] | null;
   categoryId: number | null;
   brandId: number | null;
   attributeValue: number[] | undefined;
+  variants?: IVariantCreate[];
 }
 
 export interface IUpdateProduct {
@@ -59,11 +84,11 @@ export interface IUpdateProduct {
   name: string;
   originalPrice: number;
   stock: number;
-  weight: number;
   image: string[] | null;
   categoryId: number | null;
   brandId: number | null;
   attributeValue: number[] | null;
+  variants?: IVariantCreate[];
 }
 
 export interface IPrice {
