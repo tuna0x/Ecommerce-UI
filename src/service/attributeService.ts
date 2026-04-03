@@ -62,10 +62,10 @@ export const attributeService = {
 
 export const attributeValueService = {
   getAll: async (
-    search?: string,
+    filter?: string,
   ): Promise<IApiResponse<IPagination<IAttributeValue>>> => {
     const params: Record<string, unknown> = {
-      filter: search ? `attribute.id='${search}'` : undefined,
+      filter: filter,
     };
 
     const res = await axiosInstance.get(ATTRIBUTE_VALUE_URL, { params });

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   MapPin,
@@ -12,45 +12,66 @@ import {
   Wallet,
   Building2,
   Smartphone,
-} from "lucide-react";
-import { useCart, FREE_SHIPPING_THRESHOLD } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
-import { toast } from "sonner";
+  Plus
+} from 'lucide-react';
+import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
+import { Badge } from '../components/ui/badge';
+import { toast } from 'sonner';
+import { ShippingAddress } from '../components/AddressManagement';
+
+
+const STORAGE_KEY = 'beautylux_addresses';
+
+const getAddresses = (userId: string): ShippingAddress[] => {
+  const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
+  return data ? JSON.parse(data) : [];
+};
 
 const Checkout: React.FC = () => {
-  const { selectedItems, selectedTotal, selectedCount, clearSelectedItems } =
-    useCart();
+  const { selectedItems, selectedTotal, selectedCount, clearSelectedItems } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const hasAddresses = addresses.length > 0;
+
+  useEffect(() => {
+    if (user) {
+      const saved = getAddresses(user.id);
+      setAddresses(saved);
+      const defaultAddr = saved.find((a) => a.isDefault) || saved[0];
+      if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+    }
+  }, [user]);
+
   const [formData, setFormData] = useState({
-    fullName: user?.name || "",
-    phone: "",
-    email: user?.email || "",
-    address: "",
-    city: "",
-    district: "",
-    ward: "",
-    note: "",
+    fullName: user?.name || '',
+    phone: '',
+    email: user?.email || '',
+    address: '',
+    city: '',
+    district: '',
+    ward: '',
+    note: '',
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN").format(price);
+    return new Intl.NumberFormat('vi-VN').format(price);
   };
 
   const hasFreeShipping = selectedTotal >= FREE_SHIPPING_THRESHOLD;
   const shippingFee = hasFreeShipping ? 0 : 30000;
   const totalAmount = selectedTotal + shippingFee;
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -59,32 +80,55 @@ const Checkout: React.FC = () => {
     e.preventDefault();
 
     // Validate
-    if (
-      !formData.fullName ||
-      !formData.phone ||
-      !formData.address ||
-      !formData.city
-    ) {
-      toast.error("Vui lòng điền đầy đủ thông tin giao hàng");
-      return;
+    if (hasAddresses) {
+      if (!selectedAddressId) {
+        toast.error('Vui lòng chọn địa chỉ giao hàng');
+        return;
+      }
+    } else {
+      if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
+        toast.error('Vui lòng điền đầy đủ thông tin giao hàng');
+        return;
+      }
     }
 
     if (selectedItems.length === 0) {
-      toast.error("Không có sản phẩm nào để thanh toán");
+      toast.error('Không có sản phẩm nào để thanh toán');
       return;
     }
 
     setIsSubmitting(true);
 
-    // Simulate order processing
+    if (paymentMethod === 'banking') {
+      try {
+        const returnUrl = `${window.location.origin}/payment-result`;
+        const { data, error } = await supabase.functions.invoke('vnpay-create-payment', {
+          body: {
+            amount: totalAmount,
+            orderInfo: `Thanh toan don hang BeautyLux`,
+            returnUrl,
+            items: selectedItems.map(i => ({ id: i.id, variantId: i.variantId, name: i.name, quantity: i.quantity, price: i.finalPrice || i.price })),
+          },
+        });
+
+        if (error) throw error;
+        if (data?.paymentUrl) {
+          window.location.href = data.paymentUrl;
+          return;
+        }
+        throw new Error('Không nhận được URL thanh toán');
+      } catch (err: any) {
+        toast.error(err.message || 'Lỗi khi tạo thanh toán VNPay');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    // COD / MoMo - simulate
     await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Clear selected items from cart
     clearSelectedItems();
-
-    toast.success("Đặt hàng thành công! Cảm ơn bạn đã mua sắm.");
-    navigate("/");
-
+    toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm.');
+    navigate('/');
     setIsSubmitting(false);
   };
 
@@ -95,9 +139,7 @@ const Checkout: React.FC = () => {
           <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
             <CreditCard className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h1 className="text-2xl font-bold mb-3">
-            Không có sản phẩm để thanh toán
-          </h1>
+          <h1 className="text-2xl font-bold mb-3">Không có sản phẩm để thanh toán</h1>
           <p className="text-muted-foreground mb-6">
             Vui lòng chọn sản phẩm trong giỏ hàng để tiến hành thanh toán.
           </p>
@@ -115,10 +157,7 @@ const Checkout: React.FC = () => {
       {/* Header */}
       <header className="bg-background border-b border-border sticky top-0 z-40">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-5 h-5" />
             <span className="hidden sm:inline">Quay lại</span>
           </Link>
@@ -147,102 +186,88 @@ const Checkout: React.FC = () => {
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <MapPin className="w-5 h-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h2 className="font-bold text-lg">Thông tin giao hàng</h2>
                     <p className="text-sm text-muted-foreground">
-                      Điền đầy đủ để chúng tôi giao hàng cho bạn
+                      {hasAddresses ? 'Chọn địa chỉ giao hàng đã lưu' : 'Điền đầy đủ để chúng tôi giao hàng cho bạn'}
                     </p>
                   </div>
+                  {hasAddresses && (
+                    <Link to="/account" className="text-sm text-primary hover:underline flex items-center gap-1">
+                      <Plus className="w-4 h-4" />
+                      Quản lý
+                    </Link>
+                  )}
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Họ và tên *</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      placeholder="Nguyễn Văn A"
-                      required
-                    />
+                {hasAddresses ? (
+                  <RadioGroup value={selectedAddressId || ''} onValueChange={setSelectedAddressId} className="space-y-3">
+                    {addresses.map((addr) => (
+                      <label
+                        key={addr.id}
+                        className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedAddressId === addr.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                          }`}
+                      >
+                        <RadioGroupItem value={addr.id} className="mt-1" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-foreground">{addr.fullName}</span>
+                            <span className="text-muted-foreground">|</span>
+                            <span className="text-sm text-muted-foreground">{addr.phone}</span>
+                            {addr.isDefault && (
+                              <Badge variant="outline" className="border-primary text-primary text-xs">Mặc định</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {[addr.street, addr.ward, addr.district, addr.province].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                        {selectedAddressId === addr.id && (
+                          <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shrink-0">
+                            <Check className="w-4 h-4 text-primary-foreground" />
+                          </div>
+                        )}
+                      </label>
+                    ))}
+                  </RadioGroup>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Họ và tên *</Label>
+                      <Input id="fullName" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Nguyễn Văn A" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Số điện thoại *</Label>
+                      <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="0912 345 678" required />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="email@example.com" />
+                    </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="address">Địa chỉ *</Label>
+                      <Input id="address" name="address" value={formData.address} onChange={handleInputChange} placeholder="Số nhà, tên đường" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">Tỉnh/Thành phố *</Label>
+                      <Input id="city" name="city" value={formData.city} onChange={handleInputChange} placeholder="Hồ Chí Minh" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="district">Quận/Huyện</Label>
+                      <Input id="district" name="district" value={formData.district} onChange={handleInputChange} placeholder="Quận 1" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ward">Phường/Xã</Label>
+                      <Input id="ward" name="ward" value={formData.ward} onChange={handleInputChange} placeholder="Phường Bến Nghé" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="note">Ghi chú</Label>
+                      <Input id="note" name="note" value={formData.note} onChange={handleInputChange} placeholder="Ghi chú cho đơn hàng" />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Số điện thoại *</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="0912 345 678"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="email@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address">Địa chỉ *</Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Số nhà, tên đường"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Tỉnh/Thành phố *</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      placeholder="Hồ Chí Minh"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="district">Quận/Huyện</Label>
-                    <Input
-                      id="district"
-                      name="district"
-                      value={formData.district}
-                      onChange={handleInputChange}
-                      placeholder="Quận 1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ward">Phường/Xã</Label>
-                    <Input
-                      id="ward"
-                      name="ward"
-                      value={formData.ward}
-                      onChange={handleInputChange}
-                      placeholder="Phường Bến Nghé"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="note">Ghi chú</Label>
-                    <Input
-                      id="note"
-                      name="note"
-                      value={formData.note}
-                      onChange={handleInputChange}
-                      placeholder="Ghi chú cho đơn hàng"
-                    />
-                  </div>
-                </div>
+                )}
               </motion.div>
 
               {/* Payment Method */}
@@ -257,40 +282,27 @@ const Checkout: React.FC = () => {
                     <CreditCard className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-lg">
-                      Phương thức thanh toán
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Chọn cách thanh toán phù hợp với bạn
-                    </p>
+                    <h2 className="font-bold text-lg">Phương thức thanh toán</h2>
+                    <p className="text-sm text-muted-foreground">Chọn cách thanh toán phù hợp với bạn</p>
                   </div>
                 </div>
 
-                <RadioGroup
-                  value={paymentMethod}
-                  onValueChange={setPaymentMethod}
-                  className="space-y-3"
-                >
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-3">
                   <label
-                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === "cod"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
+                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'cod'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                      }`}
                   >
                     <RadioGroupItem value="cod" id="cod" />
                     <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
                       <Wallet className="w-5 h-5" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">
-                        Thanh toán khi nhận hàng (COD)
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Thanh toán bằng tiền mặt khi nhận hàng
-                      </p>
+                      <p className="font-medium">Thanh toán khi nhận hàng (COD)</p>
+                      <p className="text-sm text-muted-foreground">Thanh toán bằng tiền mặt khi nhận hàng</p>
                     </div>
-                    {paymentMethod === "cod" && (
+                    {paymentMethod === 'cod' && (
                       <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>
@@ -298,11 +310,10 @@ const Checkout: React.FC = () => {
                   </label>
 
                   <label
-                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === "banking"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
+                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'banking'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                      }`}
                   >
                     <RadioGroupItem value="banking" id="banking" />
                     <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
@@ -310,11 +321,9 @@ const Checkout: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">Chuyển khoản ngân hàng</p>
-                      <p className="text-sm text-muted-foreground">
-                        Chuyển khoản qua tài khoản ngân hàng
-                      </p>
+                      <p className="text-sm text-muted-foreground">Chuyển khoản qua tài khoản ngân hàng</p>
                     </div>
-                    {paymentMethod === "banking" && (
+                    {paymentMethod === 'banking' && (
                       <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>
@@ -322,11 +331,10 @@ const Checkout: React.FC = () => {
                   </label>
 
                   <label
-                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    }`}
+                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'momo'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                      }`}
                   >
                     <RadioGroupItem value="momo" id="momo" />
                     <div className="w-10 h-10 bg-[#A50064] rounded-lg flex items-center justify-center">
@@ -334,11 +342,9 @@ const Checkout: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">Ví MoMo</p>
-                      <p className="text-sm text-muted-foreground">
-                        Thanh toán qua ví điện tử MoMo
-                      </p>
+                      <p className="text-sm text-muted-foreground">Thanh toán qua ví điện tử MoMo</p>
                     </div>
-                    {paymentMethod === "momo" && (
+                    {paymentMethod === 'momo' && (
                       <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>
@@ -366,7 +372,7 @@ const Checkout: React.FC = () => {
                     const image = item.thumbnail || (Array.isArray(item.image) ? item.image[0] : (item.image ?? ''));
 
                     return (
-                      <div key={item.id} className="flex gap-3">
+                      <div key={item.cartItemId} className="flex gap-3">
                         <div className="relative w-16 h-16 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
                           <img
                             src={image}
@@ -378,12 +384,18 @@ const Checkout: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium line-clamp-2">
-                            {item.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {brandName}
-                          </p>
+                          <p className="text-sm font-medium line-clamp-2">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">{brandName}</p>
+                          {/* Attributes Display */}
+                          {item.variantAttributes && item.variantAttributes.length > 0 && (
+                            <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
+                              {item.variantAttributes.map((attr, i) => (
+                                <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
+                                  {attr.name}: {attr.value}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <p className="text-sm font-semibold whitespace-nowrap">
                           {formatPrice(price * item.quantity)}₫
@@ -397,12 +409,12 @@ const Checkout: React.FC = () => {
                 <div className="flex gap-2 mb-4">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input placeholder="Mã giảm giá" className="pl-10" />
+                    <Input
+                      placeholder="Mã giảm giá"
+                      className="pl-10"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    className="px-4 bg-secondary hover:bg-secondary/80 rounded-lg font-medium text-sm transition-colors"
-                  >
+                  <button type="button" className="px-4 bg-secondary hover:bg-secondary/80 rounded-lg font-medium text-sm transition-colors">
                     Áp dụng
                   </button>
                 </div>
@@ -410,19 +422,13 @@ const Checkout: React.FC = () => {
                 {/* Summary */}
                 <div className="space-y-3 py-4 border-t border-border">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Tạm tính ({selectedCount} sản phẩm)
-                    </span>
+                    <span className="text-muted-foreground">Tạm tính ({selectedCount} sản phẩm)</span>
                     <span>{formatPrice(selectedTotal)}₫</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Phí vận chuyển
-                    </span>
-                    <span className={hasFreeShipping ? "text-accent" : ""}>
-                      {hasFreeShipping
-                        ? "Miễn phí"
-                        : `${formatPrice(shippingFee)}₫`}
+                    <span className="text-muted-foreground">Phí vận chuyển</span>
+                    <span className={hasFreeShipping ? 'text-accent' : ''}>
+                      {hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}₫`}
                     </span>
                   </div>
                   {hasFreeShipping && (
@@ -436,9 +442,7 @@ const Checkout: React.FC = () => {
                 {/* Total */}
                 <div className="flex items-center justify-between py-4 border-t border-border">
                   <span className="text-lg font-bold">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary">
-                    {formatPrice(totalAmount)}₫
-                  </span>
+                  <span className="text-2xl font-bold text-primary">{formatPrice(totalAmount)}₫</span>
                 </div>
 
                 {/* Submit Button */}
@@ -451,11 +455,7 @@ const Checkout: React.FC = () => {
                     <span className="flex items-center justify-center gap-2">
                       <motion.div
                         animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                         className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full"
                       />
                       Đang xử lý...
@@ -466,14 +466,10 @@ const Checkout: React.FC = () => {
                 </button>
 
                 <p className="text-xs text-center text-muted-foreground mt-4">
-                  Bằng việc đặt hàng, bạn đồng ý với{" "}
-                  <a href="#" className="text-primary hover:underline">
-                    Điều khoản sử dụng
-                  </a>{" "}
-                  và{" "}
-                  <a href="#" className="text-primary hover:underline">
-                    Chính sách bảo mật
-                  </a>
+                  Bằng việc đặt hàng, bạn đồng ý với{' '}
+                  <a href="#" className="text-primary hover:underline">Điều khoản sử dụng</a>
+                  {' '}và{' '}
+                  <a href="#" className="text-primary hover:underline">Chính sách bảo mật</a>
                 </p>
               </motion.div>
             </div>

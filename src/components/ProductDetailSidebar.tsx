@@ -1,25 +1,51 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Shield, RotateCcw } from 'lucide-react';
+import { Truck, Shield, RotateCcw, Loader2 } from 'lucide-react';
 import type { IProduct } from '../types/product.type';
-import { products, brands } from '../data/products';
+import type { IBrand } from '../types/brand.type';
+import { BrandService } from '../service/brandService';
+import { ProductService } from '../service/productService';
 
 interface ProductDetailSidebarProps {
     product: IProduct;
 }
 
 const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) => {
-    const brandName = typeof product.brand === 'string' ? product.brand : product.brand.name;
-    const brand = brands.find((b) => b.name === brandName);
+    const [brand, setBrand] = useState<IBrand | null>(null);
+    const [sameBrandProducts, setSameBrandProducts] = useState<IProduct[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const sameBrandProducts = useMemo(() => {
-        return (products as unknown as IProduct[])
-            .filter((p) => {
-                const pBrandName = typeof p.brand === 'string' ? p.brand : p.brand.name;
-                return pBrandName === brandName && p.id !== product.id;
-            })
-            .slice(0, 4);
-    }, [product, brandName]);
+    const brandObj = typeof product.brand === 'object' ? product.brand : null;
+    const brandId = brandObj ? (brandObj as { id: number }).id : null;
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!brandId) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const [brandRes, productsRes] = await Promise.all([
+                    BrandService.getById(brandId),
+                    ProductService.getAll(0, 4, undefined, "id,desc", `brand.id:'${brandId}'`)
+                ]);
+
+                if (brandRes.data) {
+                    setBrand(brandRes.data);
+                }
+                
+                if (productsRes.data) {
+                    setSameBrandProducts(productsRes.data.result.filter(p => p.id !== product.id));
+                }
+            } catch (error) {
+                console.error("Error fetching sidebar data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [brandId, product.id]);
 
     const formatPrice = (price: number) =>
         new Intl.NumberFormat('vi-VN').format(price);
@@ -70,11 +96,15 @@ const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) 
             </div>
 
             {/* Brand Card */}
-            {brand && (
+            {loading ? (
+                <div className="bg-card border border-border rounded-xl p-8 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+            ) : brand && (
                 <div className="bg-card border border-border rounded-xl p-5 flex flex-col items-center gap-3">
                     <div className="w-24 h-24 rounded-full overflow-hidden bg-secondary/30 border border-border">
                         <img
-                            src={brand.logo}
+                            src={brand.image || '/brand-placeholder.png'}
                             alt={brand.name}
                             className="w-full h-full object-cover"
                         />
@@ -95,12 +125,12 @@ const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) 
                     <h3 className="font-bold text-foreground mb-4">Sản phẩm cùng hãng</h3>
                     <div className="space-y-3">
                         {sameBrandProducts.map((p) => {
-                             const price = p.finalPrice || p.price || 0;
-                             const originalPrice = p.originalPrice || 0;
-                             const discount = p.discount || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
-                             const image = p.thumbnail || (Array.isArray(p.image) ? p.image[0] : (p.image ?? ''));
+                            const price = p.finalPrice || p.price || 0;
+                            const originalPrice = p.originalPrice || 0;
+                            const discount = p.discount || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
+                            const image = p.thumbnail || (Array.isArray(p.image) ? p.image[0] : (p.image ?? ''));
 
-                             return (
+                            return (
                                 <Link
                                     key={p.id}
                                     to={`/product/${p.id}`}
@@ -128,7 +158,7 @@ const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) 
                                         </div>
                                     </div>
                                 </Link>
-                             );
+                            );
                         })}
                     </div>
                 </div>
