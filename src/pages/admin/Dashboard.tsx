@@ -8,7 +8,7 @@ import {
   TrendingDown,
   ArrowUpRight,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+
 import {
   Card,
   CardContent,
@@ -20,11 +20,8 @@ import { mockUsers } from "../../data/mockUsers";
 import { products } from "../../data/products";
 
 const Dashboard: React.FC = () => {
-  const [isLoading, setIsLoading] = React.useState(true);
-
   React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    // Optionally fetch realtime stats here
   }, []);
   const totalRevenue = mockOrders
     .filter((o) => o.status !== "cancelled")
@@ -77,7 +74,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4 transition-all duration-500", isLoading ? "opacity-30 scale-95" : "opacity-100 scale-100")}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Doanh thu</CardTitle>
@@ -137,7 +134,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Orders */}
-      <Card className={cn("transition-all duration-500", isLoading ? "opacity-30" : "opacity-100")}>
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Đơn hàng gần đây</CardTitle>
           <a

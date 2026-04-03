@@ -9,11 +9,21 @@ export const BrandService = {
     size?: number,
     search?: string,
     sort?: string,
+    isFeatured?: boolean,
   ): Promise<IApiResponse<IPagination<IBrand>>> => {
+    let filterString = search ? `name~'${search}'` : '';
+    if (isFeatured) {
+        if (filterString) {
+            filterString += ` and isFeatured:'true'`;
+        } else {
+            filterString = `isFeatured:'true'`;
+        }
+    }
+
     const params: Record<string, unknown> = {
       page: page && page > 0 ? page - 1 : 0,
       size,
-      filter: search ? `name~'${search}'` : undefined,
+      filter: filterString ? filterString : undefined,
       sort: sort,
     };
 

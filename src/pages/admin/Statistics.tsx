@@ -178,7 +178,7 @@ const Statistics: React.FC = () => {
       </div>
 
       {/* Charts Row 1 */}
-      <div className={cn("grid gap-6 lg:grid-cols-2 transition-all duration-700 delay-100", isLoading ? "opacity-0 translate-y-8" : "opacity-100 translate-y-0")}>
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Revenue Chart */}
         <Card className="hover:shadow-lg transition-all border-primary/10">
           <CardHeader>

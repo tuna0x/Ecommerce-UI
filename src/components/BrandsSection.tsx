@@ -1,8 +1,24 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { brands } from "../data/products";
+import { BrandService } from "../service/brandService";
+import type { IBrand } from "../types/brand.type";
 
 const BrandsSection: React.FC = () => {
+  const [brands, setBrands] = useState<IBrand[]>([]);
+
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const res = await BrandService.getAll(1, 8, undefined, undefined, true); // true for isFeatured
+        if (res.data?.result) {
+          setBrands(res.data.result);
+        }
+      } catch (error) {
+        console.error("Failed to fetch brands", error);
+      }
+    };
+    fetchBrands();
+  }, []);
   return (
     <section className="py-8 md:py-12 bg-secondary/50">
       <div className="container mx-auto">
@@ -25,9 +41,17 @@ const BrandsSection: React.FC = () => {
               whileHover={{ scale: 1.05 }}
               className="bg-background rounded-xl p-4 flex items-center justify-center cursor-pointer card-hover aspect-square"
             >
-              <span className="text-xs md:text-sm font-medium text-center text-muted-foreground hover:text-foreground transition-colors">
-                {brand.name}
-              </span>
+              {brand.image ? (
+                <img
+                  src={brand.image}
+                  alt={brand.name}
+                  className="w-full h-full object-contain p-2 grayscale hover:grayscale-0 transition-all duration-300"
+                />
+              ) : (
+                <span className="text-xs md:text-sm font-medium text-center text-muted-foreground hover:text-foreground transition-colors">
+                  {brand.name}
+                </span>
+              )}
             </motion.div>
           ))}
         </div>

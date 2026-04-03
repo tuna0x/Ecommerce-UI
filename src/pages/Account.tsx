@@ -60,7 +60,7 @@ const Account = () => {
           description: 'Thông tin cá nhân đã được cập nhật.',
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         variant: 'destructive',
         title: 'Lỗi',
@@ -104,7 +104,7 @@ const Account = () => {
                   <Avatar className="w-24 h-24">
                     <AvatarImage src={user.image} />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                      {user.name.charAt(0).toUpperCase()}
+                      {user.name && user.name.length > 0 ? user.name.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <button className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full hover:bg-primary/90">

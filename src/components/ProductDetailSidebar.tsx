@@ -1,20 +1,25 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Shield, RotateCcw, Star } from 'lucide-react';
-// import { Product, products, brands } from '@/data/products';
+import { Truck, Shield, RotateCcw } from 'lucide-react';
+import type { IProduct } from '../types/product.type';
+import { products, brands } from '../data/products';
 
 interface ProductDetailSidebarProps {
-    product: Product;
+    product: IProduct;
 }
 
 const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) => {
-    const brand = brands.find((b) => b.name === product.brand);
+    const brandName = typeof product.brand === 'string' ? product.brand : product.brand.name;
+    const brand = brands.find((b) => b.name === brandName);
 
     const sameBrandProducts = useMemo(() => {
-        return products
-            .filter((p) => p.brand === product.brand && p.id !== product.id)
+        return (products as unknown as IProduct[])
+            .filter((p) => {
+                const pBrandName = typeof p.brand === 'string' ? p.brand : p.brand.name;
+                return pBrandName === brandName && p.id !== product.id;
+            })
             .slice(0, 4);
-    }, [product]);
+    }, [product, brandName]);
 
     const formatPrice = (price: number) =>
         new Intl.NumberFormat('vi-VN').format(price);
@@ -89,35 +94,42 @@ const ProductDetailSidebar: React.FC<ProductDetailSidebarProps> = ({ product }) 
                 <div className="bg-card border border-border rounded-xl p-5">
                     <h3 className="font-bold text-foreground mb-4">Sản phẩm cùng hãng</h3>
                     <div className="space-y-3">
-                        {sameBrandProducts.map((p) => (
-                            <Link
-                                key={p.id}
-                                to={`/product/${p.id}`}
-                                className="flex gap-3 group"
-                            >
-                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary/30 shrink-0 relative">
-                                    <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
-                                    {p.discount > 0 && (
-                                        <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-bold px-1 rounded">
-                                            -{p.discount}%
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
-                                        {p.name}
-                                    </p>
-                                    <div className="flex items-center gap-1 mt-1">
-                                        <span className="text-sm font-bold text-primary">{formatPrice(p.price)}₫</span>
-                                        {p.originalPrice > p.price && (
-                                            <span className="text-xs text-muted-foreground line-through">
-                                                {formatPrice(p.originalPrice)}₫
+                        {sameBrandProducts.map((p) => {
+                             const price = p.finalPrice || p.price || 0;
+                             const originalPrice = p.originalPrice || 0;
+                             const discount = p.discount || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
+                             const image = p.thumbnail || (Array.isArray(p.image) ? p.image[0] : (p.image ?? ''));
+
+                             return (
+                                <Link
+                                    key={p.id}
+                                    to={`/product/${p.id}`}
+                                    className="flex gap-3 group"
+                                >
+                                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-secondary/30 shrink-0 relative">
+                                        <img src={image} alt={p.name} className="w-full h-full object-cover" />
+                                        {discount > 0 && (
+                                            <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-bold px-1 rounded">
+                                                -{discount}%
                                             </span>
                                         )}
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                                            {p.name}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-1">
+                                            <span className="text-sm font-bold text-primary">{formatPrice(price)}₫</span>
+                                            {originalPrice > price && (
+                                                <span className="text-xs text-muted-foreground line-through">
+                                                    {formatPrice(originalPrice)}₫
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </Link>
+                             );
+                        })}
                     </div>
                 </div>
             )}

@@ -1,24 +1,40 @@
-import HeroSlider from "../components/HeroSlider";
-import Header from "../components/Header";
-import TopBar from "../components/TopBar";
-import FlashSale from "../components/FlashSale";
-import BrandsSection from "../components/BrandsSection";
-import ProductGrid from "../components/ProductGird";
-import CartSidebar from "../components/CartSidebar";
-import Footer from "../components/Footer";
-import MobileNavBar from "../components/MobileNavBar";
-import ChatBot from "../components/ChatBot";
+import React from 'react';
+import TopBar from '../components/TopBar';
+import Header from '../components/Header';
+import HeroSlider from '../components/HeroSlider';
+import FlashSale from '../components/FlashSale';
+import FeaturedCategories from '../components/FeaturedCategories';
+import BrandsSection from '../components/BrandsSection';
+import ProductGrid from '../components/ProductGird';
+import NewArrivals from '../components/NewArrivals';
+import Testimonials from '../components/Testimonials';
+import PromoBanner from '../components/PromoBanner';
+import CartSidebar from '../components/CartSidebar';
+import Footer from '../components/Footer';
+import MobileNavBar from '../components/MobileNavBar';
+import ChatBot from '../components/ChatBot';
+import ScrollReveal from '../components/ScrollReveal';
 
-function Index() {
+const Index: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <TopBar />
       <Header />
       <main>
         <HeroSlider />
-        <FlashSale />
-        <BrandsSection />
-        <ProductGrid />
+        <ScrollReveal>
+          <FlashSale />
+        </ScrollReveal>
+        <FeaturedCategories />
+        <ScrollReveal>
+          <BrandsSection />
+        </ScrollReveal>
+        <ScrollReveal>
+          <ProductGrid />
+        </ScrollReveal>
+        <NewArrivals />
+        <PromoBanner />
+        <Testimonials />
       </main>
       <CartSidebar />
       <Footer />
@@ -26,6 +42,6 @@ function Index() {
       <ChatBot />
     </div>
   );
-}
+};
 
 export default Index;

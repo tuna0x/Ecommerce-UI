@@ -93,7 +93,7 @@ const ProductDetailManagement: React.FC = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await ProductService.getAll(0, 100); // Fetch up to 100 products
+            const res = await ProductService.getAll(0, 100); 
             if (res.data) {
                 setProducts(res.data.result);
             }
@@ -139,10 +139,8 @@ const ProductDetailManagement: React.FC = () => {
         if (productIdFromQuery && products.length > 0) {
             const existingDetail = details.find(d => d.product.id.toString() === productIdFromQuery);
             if (existingDetail) {
-                // If detail exists, open edit dialog
                 handleOpenDialog(existingDetail);
             } else {
-                // If no detail exists, check if product is valid then open add dialog
                 const product = products.find(p => p.id.toString() === productIdFromQuery);
                 if (product) {
                     handleOpenDialog();
@@ -286,12 +284,15 @@ const ProductDetailManagement: React.FC = () => {
             },
             cell: ({ row }) => {
                 const detail = row.original;
+                const brandName = typeof detail.product?.brand === 'string' 
+                    ? detail.product.brand 
+                    : (detail.product?.brand as { name: string } | undefined)?.name || 'No Brand';
                 return (
                     <div className="flex flex-col gap-0.5">
                         <span className="font-semibold text-foreground line-clamp-1">{detail.product?.name}</span>
                         <div className="flex items-center gap-2">
                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
-                                {detail.product?.brand?.name || 'No Brand'}
+                                {brandName}
                              </Badge>
                              <span className="text-[10px] text-muted-foreground">ID: {detail.product?.id}</span>
                         </div>
@@ -367,7 +368,7 @@ const ProductDetailManagement: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-sm">
+                <div className="relative flex-1 max-sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Tìm kiếm sản phẩm hoặc mô tả..."
@@ -382,7 +383,7 @@ const ProductDetailManagement: React.FC = () => {
                 </Button>
             </div>
 
-            <div className={cn("relative transition-opacity duration-300", loading ? "opacity-50" : "opacity-100")}>
+            <div className="relative">
                 {loading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -391,8 +392,6 @@ const ProductDetailManagement: React.FC = () => {
                 <DataTable
                 columns={columns}
                 data={details}
-                searchKey="product_name"
-                placeholder="Lọc nhanh trong trang..."
                 onDeleteSelected={handleBulkDelete}
                 currentPage={meta.current}
                 totalPages={meta.pages}
@@ -400,7 +399,6 @@ const ProductDetailManagement: React.FC = () => {
             />
           </div>
 
-            {/* Edit/Add Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
@@ -420,11 +418,14 @@ const ProductDetailManagement: React.FC = () => {
                                     <SelectValue placeholder="Chọn sản phẩm trong kho..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {availableProducts.map((p) => (
-                                        <SelectItem key={p.id} value={p.id.toString()}>
-                                            [{p.id}] {p.name} - {p.brand.name}
-                                        </SelectItem>
-                                    ))}
+                                    {availableProducts.map((p) => {
+                                        const brandName = typeof p.brand === 'string' ? p.brand : p.brand?.name || 'No Brand';
+                                        return (
+                                            <SelectItem key={p.id} value={p.id.toString()}>
+                                                [{p.id}] {p.name} - {brandName}
+                                            </SelectItem>
+                                        );
+                                    })}
                                 </SelectContent>
                             </Select>
                             <p className="text-[11px] text-muted-foreground">Mỗi sản phẩm chỉ được có 1 bản chi tiết duy nhất.</p>
@@ -480,7 +481,6 @@ const ProductDetailManagement: React.FC = () => {
                 </DialogContent>
             </Dialog>
 
-            {/* Preview Dialog */}
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
                 <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>

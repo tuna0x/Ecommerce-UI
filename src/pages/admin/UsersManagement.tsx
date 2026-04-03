@@ -59,9 +59,9 @@ const UsersManagement: React.FC = () => {
 
       const res = await UserService.getAll(page, pageSize, filter || undefined);
       if (res.data) {
-        setUsers(res.data.result);
-        setTotalPages(res.data.meta.pages);
-        setTotalElements(res.data.meta.total);
+        setUsers(res.data.result || (Array.isArray(res.data) ? res.data : []));
+        setTotalPages(res.data.meta?.pages || 1);
+        setTotalElements(res.data.meta?.total || 0);
       }
     } catch (error) {
       console.error(error);
@@ -221,7 +221,7 @@ const UsersManagement: React.FC = () => {
           <CardTitle>Danh sách người dùng ({totalElements})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className={cn("relative", isLoading ? "opacity-50" : "opacity-100")}>
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -259,7 +259,7 @@ const UsersManagement: React.FC = () => {
                           <Avatar className="w-8 h-8 border border-border/50">
                             <AvatarImage src={user.image} alt={user.name} />
                             <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                              {user.name.charAt(0).toUpperCase()}
+                              {user.name && user.name.length > 0 ? user.name.charAt(0).toUpperCase() : 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -300,7 +300,7 @@ const UsersManagement: React.FC = () => {
                         {formatDate(user.createdAt)}
                       </td>
                       <td className="py-4 px-4">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"

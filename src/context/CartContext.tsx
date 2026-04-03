@@ -1,15 +1,15 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import type { Product } from "../data/products";
+import type { IProduct } from "../types/product.type";
 
-export interface CartItem extends Product {
+export interface CartItem extends IProduct {
   quantity: number;
   selected: boolean;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product) => void;
+  addToCart: (product: IProduct) => void;
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
   toggleSelectItem: (productId: number) => void;
@@ -29,13 +29,30 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const FREE_SHIPPING_THRESHOLD = 500000;
 
+const getInitialCart = (): CartItem[] => {
+  const savedCart = localStorage.getItem("beautylux_cart");
+  if (savedCart) {
+    try {
+      return JSON.parse(savedCart);
+    } catch (error) {
+      console.error("Failed to parse cart", error);
+    }
+  }
+  return [];
+};
+
 export const CartProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(getInitialCart);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const addToCart = (product: Product) => {
+  // Save cart to localStorage
+  useEffect(() => {
+    localStorage.setItem("beautylux_cart", JSON.stringify(cartItems));
+  }, [cartItems]);
+
+  const addToCart = (product: IProduct) => {
     setCartItems((prev) => {
       const existingItem = prev.find((item) => item.id === product.id);
       if (existingItem) {
@@ -86,9 +103,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     setCartItems((prev) => prev.filter((item) => !item.selected));
   };
 
+  const getPrice = (item: IProduct) => item.finalPrice || item.price || 0;
+
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + getPrice(item) * item.quantity,
     0,
   );
 
@@ -98,7 +117,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     0,
   );
   const selectedTotal = selectedItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + getPrice(item) * item.quantity,
     0,
   );
 
@@ -127,6 +146,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCart = () => {
   const context = useContext(CartContext);
   if (context === undefined) {

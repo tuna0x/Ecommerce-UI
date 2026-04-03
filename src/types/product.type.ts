@@ -1,5 +1,16 @@
 
 
+export interface IProductAttributeValueResponse {
+  attributeValue: {
+    id: number;
+    value: string;
+    attribute: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
 export interface IProductAttributeValue {
   id: number;
   value: string;
@@ -15,7 +26,7 @@ export interface IProduct {
   stock: number;
   weight: number;
   thumbnail?: string;
-  image: string[] | null;
+  image: string[] | string | null;
   category: { id: number; name: string } | string;
   brand: { id: number; name: string } | string;
   attributeValue: IProductAttributeValue[] | null;
@@ -24,7 +35,12 @@ export interface IProduct {
   // UI-specific legacy support
   price?: number; 
   rating?: number;
+  soldCount?: number;
   hoverImage?: string;
+  discount?: number;
+  skinType?: string[];
+  concern?: string[];
+  volume?: string;
 }
 
 export interface ICreateProduct {

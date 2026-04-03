@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Star,
   ThumbsUp,
-  ImageIcon,
   Camera,
   X,
   Check,
@@ -162,9 +161,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Rating Summary */}
       <div className="flex flex-col md:flex-row gap-8 p-6 bg-secondary/30 rounded-2xl">
-        {/* Average */}
         <div className="flex flex-col items-center justify-center min-w-[140px]">
           <span className="text-5xl font-bold text-foreground">
             {productRating}
@@ -182,7 +179,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           </span>
         </div>
 
-        {/* Distribution */}
         <div className="flex-1 space-y-2">
           {[5, 4, 3, 2, 1].map((star) => {
             const count = ratingDistribution[star - 1];
@@ -212,7 +208,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         </div>
       </div>
 
-      {/* Write Review Button / Info */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         {hasPurchased && !hasReviewed ? (
           <Button
@@ -234,7 +229,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           </div>
         )}
 
-        {/* Sort */}
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Sắp xếp:</span>
           <div className="flex gap-1">
@@ -260,7 +254,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         </div>
       </div>
 
-      {/* Filter indicator */}
       {filterRating && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Đang lọc:</span>
@@ -274,7 +267,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         </div>
       )}
 
-      {/* Write Review Form */}
       <AnimatePresence>
         {showWriteReview && (
           <motion.div
@@ -286,7 +278,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
             <div className="p-6 border border-border rounded-2xl space-y-4 bg-background">
               <h3 className="font-semibold text-lg">Viết đánh giá của bạn</h3>
 
-              {/* Star rating */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Đánh giá
@@ -321,7 +312,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </div>
               </div>
 
-              {/* Comment */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Nhận xét
@@ -338,7 +328,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </span>
               </div>
 
-              {/* Image upload */}
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   Hình ảnh (tùy chọn)
@@ -382,7 +371,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3 pt-2">
                 <Button onClick={handleSubmitReview}>Gửi đánh giá</Button>
                 <Button
@@ -397,7 +385,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Reviews List */}
       <div className="space-y-4">
         {productReviews.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -417,7 +404,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               animate={{ opacity: 1, y: 0 }}
               className="p-5 bg-secondary/20 rounded-xl border border-border/50"
             >
-              {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10 border border-border/50">
@@ -459,12 +445,10 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </div>
               </div>
 
-              {/* Comment */}
               <p className="text-sm text-foreground/80 leading-relaxed mb-3">
                 {review.comment}
               </p>
 
-              {/* Images */}
               {review.images && review.images.length > 0 && (
                 <div className="flex gap-2 mb-3">
                   {review.images.map((img, idx) => (
@@ -482,7 +466,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 </div>
               )}
 
-              {/* Helpful */}
               <button
                 onClick={() => handleHelpful(review.id)}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"

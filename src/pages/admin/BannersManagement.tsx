@@ -234,7 +234,7 @@ const BannersManagement: React.FC = () => {
           <CardTitle>Danh sách Banner ({bannerList.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className="relative">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

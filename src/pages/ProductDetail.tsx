@@ -53,7 +53,8 @@ const ProductDetail: React.FC = () => {
       if (prodRes.data) {
         setProduct(prodRes.data);
         // Fetch related products
-        const relatedRes = await ProductService.getAll(0, 4, undefined, `category.name:'${prodRes.data.category.name}'`);
+        const categoryName = typeof prodRes.data.category === 'string' ? prodRes.data.category : prodRes.data.category.name;
+        const relatedRes = await ProductService.getAll(0, 4, undefined, `category.name:'${categoryName}'`);
         if (relatedRes.data) {
           setRelatedProducts(relatedRes.data.result.filter(p => p.id !== prodId));
         }
@@ -119,8 +120,7 @@ const ProductDetail: React.FC = () => {
   const reviewsCount = product.reviewCount || 0;
 
   const handleAddToCart = () => {
-    // Note: addToCart might need type adjustment if it still expects mock Product
-    addToCart(product as any);
+    addToCart(product);
   };
 
   return (
@@ -135,8 +135,8 @@ const ProductDetail: React.FC = () => {
             Trang chủ
           </Link>
           <span>/</span>
-          <Link to={`/category/${product.category.name}`} className="hover:text-primary">
-            {product.category.name}
+          <Link to={`/category/${typeof product.category === 'string' ? product.category : product.category.name}`} className="hover:text-primary">
+            {typeof product.category === 'string' ? product.category : product.category.name}
           </Link>
           <span>/</span>
           <span className="text-foreground truncate">{product.name}</span>
@@ -187,12 +187,12 @@ const ProductDetail: React.FC = () => {
           {/* Info */}
           <div className="space-y-8">
             <div className="space-y-2">
-              <Link to={`/search?brand=${product.brand.name}`} className="text-primary font-bold tracking-wider text-sm uppercase hover:underline">
-                {product.brand.name}
-              </Link>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight leading-tight">
-                {product.name}
-              </h1>
+            <Link to={`/search?brand=${typeof product.brand === 'string' ? product.brand : product.brand.name}`} className="text-primary font-bold tracking-wider text-sm uppercase hover:underline">
+              {typeof product.brand === 'string' ? product.brand : product.brand.name}
+            </Link>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight leading-tight">
+              {product.name}
+            </h1>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5 bg-yellow-400/10 px-2 py-1 rounded-lg">
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -211,11 +211,11 @@ const ProductDetail: React.FC = () => {
             <div className="bg-secondary/30 p-6 rounded-3xl border border-border/50">
               <div className="flex items-baseline gap-4">
                 <span className="text-4xl font-black text-primary">
-                  {formatPrice(displayPrice)}
+                  {formatPrice(displayPrice || 0)}
                 </span>
-                {product.originalPrice > displayPrice && (
+                {(product.originalPrice || 0) > (displayPrice || 0) && (
                   <span className="text-xl text-muted-foreground line-through">
-                    {formatPrice(product.originalPrice)}
+                    {formatPrice(product.originalPrice || 0)}
                   </span>
                 )}
               </div>
@@ -259,7 +259,7 @@ const ProductDetail: React.FC = () => {
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                {product.stock > 0 && (
+                {(product.stock || 0) > 0 && (
                   <div className="text-sm font-medium">
                     <span className="text-primary">{product.stock}</span> còn lại
                   </div>
@@ -403,11 +403,11 @@ const ProductDetail: React.FC = () => {
           <div className="pt-12 border-t border-border/50">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-black tracking-tight uppercase italic text-primary">Sản phẩm liên quan</h2>
-              <Link to={`/category/${product.category.name}`} className="text-primary font-bold hover:underline">Xem tất cả</Link>
+              <Link to={`/category/${typeof product.category === 'string' ? product.category : product.category.name}`} className="text-primary font-bold hover:underline">Xem tất cả</Link>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {relatedProducts.map((p) => (
-                <ProductCard key={p.id} product={p as any} />
+                <ProductCard key={p.id} product={p} />
               ))}
             </div>
           </div>

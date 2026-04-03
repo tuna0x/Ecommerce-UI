@@ -177,7 +177,7 @@ const OrdersManagement: React.FC = () => {
           <CardTitle>Danh sách đơn hàng ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className="relative">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -267,7 +267,7 @@ const OrdersManagement: React.FC = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-all"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
                               onClick={() => setSelectedOrder(order)}
                             >
                               <Eye className="h-4 w-4" />
