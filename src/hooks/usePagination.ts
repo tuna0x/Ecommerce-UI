@@ -5,17 +5,13 @@ export function usePagination<T>(items: T[], itemsPerPage: number = 12) {
 
   const totalPages = Math.ceil(items.length / itemsPerPage);
 
-  const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return items.slice(start, start + itemsPerPage);
-  }, [items, currentPage, itemsPerPage]);
+  // Clamp the page at render time — no side effects needed
+  const safePage = totalPages > 0 && currentPage > totalPages ? 1 : currentPage;
 
-  // Reset to page 1 when items change
-  useMemo(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [items.length]);
+  const paginatedItems = useMemo(() => {
+    const start = (safePage - 1) * itemsPerPage;
+    return items.slice(start, start + itemsPerPage);
+  }, [items, safePage, itemsPerPage]);
 
   const goToPage = (page: number) => {
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));

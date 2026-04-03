@@ -51,7 +51,8 @@ const AddressManager: React.FC = () => {
             setIsLoading(true);
             const res = await AddressService.getAll(0, 50);
             if (res.data) {
-                const mapped = res.data.result.map(addr => ({
+                const addressList = Array.isArray(res.data) ? res.data : (res.data.result || []);
+                const mapped = addressList.map(addr => ({
                     id: addr.id,
                     fullName: addr.receiverName,
                     phone: addr.phone,

@@ -38,6 +38,7 @@ import type {
   ICreateProduct,
   IPrice,
   IProduct,
+  IProductAttributeValueResponse,
   IUpdateProduct,
 } from "../../types/product.type";
 import type {
@@ -84,11 +85,31 @@ const ProductsManagement: React.FC = () => {
     Record<string, string[]>
   >({});
 
+  const fetchProducts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await ProductService.getAll(
+        currentPage - 1,
+        pageSize,
+        debouncedSearch,
+        sort,
+      );
+      if (!res.error) {
+        setProducts(res.data?.result || []);
+        setTotalPages(res.data?.meta.pages || 0);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách sản phẩm");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch, sort]);
+
   const openDialog = useCallback(async (product: IProduct | null) => {
     if (product) {
       setEditingProductId(product.id);
       const groupedAttrs: Record<string, string[]> = {};
-      product.attributeValue?.forEach((attr) => {
+      (product.attributeValue as unknown as IProductAttributeValueResponse[])?.forEach((attr) => {
         const attribute = attr.attributeValue?.attribute;
         if (attribute) {
           const attrId = attribute.id.toString();
@@ -102,11 +123,11 @@ const ProductsManagement: React.FC = () => {
         name: product.name,
         originalPrice: product.originalPrice,
         stock: product.stock,
-        image: product.image,
+        image: null, // Reset images for update unless explicitly unchanged
         weight: product.weight,
-        categoryId: product.category.id,
-        brandId: product.brand.id || null,
-        attributeValue: product.attributeValue?.map((attr) => attr.attributeValue?.id) ?? [],
+        categoryId: typeof product.category === 'object' ? product.category.id : null,
+        brandId: typeof product.brand === 'object' ? product.brand.id : null,
+        attributeValue: (product.attributeValue as unknown as IProductAttributeValueResponse[])?.map((attr) => attr.attributeValue?.id) ?? [],
       });
     } else {
       setEditingProductId(null);
@@ -158,26 +179,6 @@ const ProductsManagement: React.FC = () => {
     }));
   };
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const res = await ProductService.getAll(
-        currentPage - 1,
-        pageSize,
-        debouncedSearch,
-        sort,
-      );
-      if (!res.error) {
-        setProducts(res.data?.result || []);
-        setTotalPages(res.data?.meta.pages || 0);
-      }
-    } catch {
-      toast.error("Không thể tải danh sách sản phẩm");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, pageSize, debouncedSearch, sort]);
-
   useEffect(() => {
     const fetchData = async () => {
       const [brandRes, categoryRes, valueRes] = await Promise.all([
@@ -210,7 +211,7 @@ const ProductsManagement: React.FC = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, debouncedSearch, sort, fetchProducts]);
+  }, [fetchProducts]);
 
   // Handle search debounce
   useEffect(() => {
@@ -226,6 +227,21 @@ const ProductsManagement: React.FC = () => {
       style: "currency",
       currency: "VND",
     }).format(value);
+  }, []);
+
+  const resetForm = useCallback(() => {
+    setFormData({
+      name: "",
+      originalPrice: 0,
+      stock: 0,
+      weight: 0,
+      image: null,
+      categoryId: null,
+      brandId: null,
+      attributeValue: [],
+    });
+    setSelectedAttributes({});
+    setEditingProductId(null);
   }, []);
 
   const handleSave = async () => {
@@ -258,7 +274,7 @@ const ProductsManagement: React.FC = () => {
           weight: formData.weight,
           brandId: formData.brandId,
           categoryId: formData.categoryId,
-          image: formData.image,
+          image: null,
           attributeValue: attrIds || [],
         };
 
@@ -279,21 +295,6 @@ const ProductsManagement: React.FC = () => {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      originalPrice: 0,
-      stock: 0,
-      weight: 0,
-      image: null,
-      categoryId: null,
-      brandId: null,
-      attributeValue: [],
-    });
-    setSelectedAttributes({});
-    setEditingProductId(null);
-  };
-
   const handleDelete = useCallback(async (productId: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
       await ProductService.remove(productId);
@@ -307,10 +308,6 @@ const ProductsManagement: React.FC = () => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const filteredAttributes = value.filter(
-    (v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId),
-  );
-
   type AttributeValue = {
     id: number;
     value: string;
@@ -322,10 +319,14 @@ const ProductsManagement: React.FC = () => {
     values: AttributeValue[];
   };
 
+  const filteredAttributes = value.filter(
+    (v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId),
+  );
+
   const groupedAttributes: GroupedAttribute[] = useMemo(() => {
     return Object.values(
       value
-        .filter((v) => v.attribute.categories.some((cat) => cat.id === formData.categoryId))
+        .filter((v) => v.attribute?.categories?.some((cat) => cat.id === formData.categoryId))
         .reduce((acc: Record<number, GroupedAttribute>, item: IAttributeValue) => {
           const attrId = item.attribute.id;
 
@@ -370,15 +371,18 @@ const ProductsManagement: React.FC = () => {
     {
       accessorKey: "image",
       header: "Hình ảnh",
-      cell: ({ row }) => (
-        <div className="w-12 h-12">
-          <img
-            src={row.original.image?.[0] || "/no-image.png"}
-            alt={row.original.name}
-            className="w-12 h-12 object-cover rounded shadow-sm"
-          />
-        </div>
-      ),
+      cell: ({ row }) => {
+        const image = Array.isArray(row.original.image) ? row.original.image[0] : (row.original.image || "/no-image.png");
+        return (
+          <div className="w-12 h-12">
+            <img
+              src={image}
+              alt={row.original.name}
+              className="w-12 h-12 object-cover rounded shadow-sm"
+            />
+          </div>
+        );
+      },
     },
     {
       accessorKey: "name",
@@ -393,15 +397,18 @@ const ProductsManagement: React.FC = () => {
       ),
     },
     {
-      accessorKey: "brand.name",
+      accessorKey: "brand",
       header: "Thương hiệu",
+      cell: ({ row }) => (
+        <span>{typeof row.original.brand === 'string' ? row.original.brand : row.original.brand?.name}</span>
+      )
     },
     {
-      accessorKey: "category.name",
+      accessorKey: "category",
       header: "Danh mục",
       cell: ({ row }) => (
         <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-normal text-[11px]">
-          {row.original.category.name}
+          {typeof row.original.category === 'string' ? row.original.category : row.original.category?.name}
         </Badge>
       ),
     },
@@ -411,15 +418,17 @@ const ProductsManagement: React.FC = () => {
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {row.original.attributeValue?.length ? (
-            row.original.attributeValue.map((attr, index) => (
-              <Badge
-                key={index}
-                variant="outline"
-                className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
-              >
-                {attr.attributeValue?.value || "N/A"}
-              </Badge>
-            ))
+            (row.original.attributeValue as unknown as IProductAttributeValueResponse[]).map((attr, index) => {
+                return (
+                    <Badge
+                        key={index}
+                        variant="outline"
+                        className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
+                    >
+                        {attr.attributeValue?.value || "N/A"}
+                    </Badge>
+                );
+            })
           ) : (
             <span className="text-[10px] text-muted-foreground italic">Trống</span>
           )}
@@ -444,7 +453,7 @@ const ProductsManagement: React.FC = () => {
           <span className="text-sm font-bold text-primary">
             {formatCurrency(price[row.original.id]?.finalPrice || row.original.originalPrice)}
           </span>
-          {price[row.original.id]?.discountPrice > 0 && (
+          {(price[row.original.id]?.discountPrice ?? 0) > 0 && (
             <span className="text-[10px] text-muted-foreground line-through">
               {formatCurrency(price[row.original.id]?.originalPrice)}
             </span>
@@ -547,7 +556,7 @@ const ProductsManagement: React.FC = () => {
           <CardTitle>Danh sách sản phẩm ({products.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className="relative">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

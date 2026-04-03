@@ -1,10 +1,12 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
 import ProductCard from "../components/ProductCard";
-import { products, categories, brands } from "../data/products";
+import { products, brands } from "../data/products";
+import { useCategories } from "../hooks/useCategories";
+import type { IProduct } from "../types/product.type";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Checkbox } from "../components/ui/Checkbox";
@@ -31,14 +33,17 @@ const Category = () => {
   const [searchParams] = useSearchParams();
   const subcategory = searchParams.get("sub");
 
+  const { data: categories = [] } = useCategories();
+
   // Find category by slug
   const category = useMemo(() => {
     return categories.find(
       (c) =>
+        c.slug === slug ||
         c.name.toLowerCase().replace(/\s+/g, "-") === slug ||
         c.name === decodeURIComponent(slug || ""),
     );
-  }, [slug]);
+  }, [slug, categories]);
 
   // Filter states
   const [priceRange, setPriceRange] = useState([0, 2000000]);
@@ -57,11 +62,11 @@ const Category = () => {
 
   // Filter products
   const filteredProducts = useMemo(() => {
-    let result = [...products];
+    let result = [...products] as unknown as IProduct[];
 
     // Filter by category
     if (category) {
-      result = result.filter((p) => p.category === category.name);
+      result = result.filter((p) => (typeof p.category === 'string' ? p.category : p.category.name) === category.name);
     }
 
     // Filter by subcategory
@@ -78,12 +83,12 @@ const Category = () => {
 
     // Filter by price
     result = result.filter(
-      (p) => p.price >= priceRange[0] && p.price <= priceRange[1],
+      (p) => (p.finalPrice || p.price || 0) >= priceRange[0] && (p.finalPrice || p.price || 0) <= priceRange[1],
     );
 
     // Filter by brands
     if (selectedBrands.length > 0) {
-      result = result.filter((p) => selectedBrands.includes(p.brand));
+      result = result.filter((p) => selectedBrands.includes(typeof p.brand === 'string' ? p.brand : p.brand.name));
     }
 
     // Filter by skin type
@@ -97,10 +102,10 @@ const Category = () => {
     // Sort
     switch (sortBy) {
       case "price-asc":
-        result.sort((a, b) => a.price - b.price);
+        result.sort((a, b) => (a.finalPrice || a.price || 0) - (b.finalPrice || b.price || 0));
         break;
       case "price-desc":
-        result.sort((a, b) => b.price - a.price);
+        result.sort((a, b) => (b.finalPrice || b.price || 0) - (a.finalPrice || a.price || 0));
         break;
       case "name":
         result.sort((a, b) => a.name.localeCompare(b.name));
@@ -122,10 +127,6 @@ const Category = () => {
     selectedSkinTypes,
     sortBy,
   ]);
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN").format(price) + "₫";
-  };
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
@@ -358,19 +359,21 @@ const Category = () => {
                 <CardContent className="p-4">
                   <h2 className="font-semibold text-lg mb-3">Danh mục con</h2>
                   <div className="space-y-2">
-                    {category.subcategories.map((sub, index) => (
-                      <Link
-                        key={index}
-                        to={`/category/${slug}?sub=${encodeURIComponent(sub)}`}
-                        className={`block text-sm py-1.5 px-2 rounded hover:bg-secondary transition-colors ${
-                          subcategory === sub
-                            ? "bg-primary/10 text-primary font-medium"
-                            : ""
-                        }`}
-                      >
-                        {sub}
-                      </Link>
-                    ))}
+                    {category.subcategories.map((sub, index) => {
+                      const subName = typeof sub === 'string' ? sub : sub.name;
+                      return (
+                        <Link
+                          key={index}
+                          to={`/category/${slug}?sub=${encodeURIComponent(subName)}`}
+                          className={`block text-sm py-1.5 px-2 rounded hover:bg-secondary transition-colors ${subcategory === subName
+                              ? "bg-primary/10 text-primary font-medium"
+                              : ""
+                            }`}
+                        >
+                          {subName}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>

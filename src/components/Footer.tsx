@@ -1,56 +1,44 @@
-import React from "react";
-import {
-  Instagram,
-  Twitter,
-  Facebook,
-  Youtube,
-  Mail,
-  MapPin,
-  Phone,
-} from "lucide-react";
+import React from 'react';
+import { Instagram, Twitter, Facebook, Youtube, Mail, MapPin, Phone } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const footerLinks = {
-    shop: ["All Products", "New Arrivals", "Best Sellers", "Sale"],
-    company: ["About Us", "Careers", "Press", "Blog"],
-    support: ["Contact", "FAQs", "Shipping", "Returns"],
+    shop: ['Chăm sóc da', 'Trang điểm', 'Chăm sóc tóc', 'Nước hoa'],
+    support: ['Liên hệ', 'Câu hỏi thường gặp', 'Vận chuyển', 'Đổi trả'],
+    company: ['Về chúng tôi', 'Tuyển dụng', 'Tin tức', 'Blog'],
   };
 
   const socialLinks = [
-    { icon: Instagram, href: "#" },
-    { icon: Twitter, href: "#" },
-    { icon: Facebook, href: "#" },
-    { icon: Youtube, href: "#" },
+    { icon: Instagram, href: '#' },
+    { icon: Twitter, href: '#' },
+    { icon: Facebook, href: '#' },
+    { icon: Youtube, href: '#' },
   ];
 
   return (
-    <footer className="bg-foreground text-background">
-      <div className="container mx-auto py-16 md:py-20">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
+    <footer className="bg-foreground text-background border-t border-background/10">
+      <div className="container mx-auto py-14 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 items-start">
           {/* Brand Column */}
           <div className="lg:col-span-2">
-            <a
-              href="/"
-              className="text-2xl font-bold tracking-tight inline-block mb-4"
-            >
-              Bông<span className="text-primary"> Cosmetic.</span>
+            <a href="/" className="text-xl font-bold tracking-tight inline-block mb-3">
+              BEAUTY<span className="text-primary">LUX</span>
             </a>
-            <p className="text-background/70 max-w-sm mb-6 leading-relaxed">
-              Curating premium products for the modern lifestyle. Quality,
-              simplicity, and timeless design.
+            <p className="text-background/60 max-w-xs mb-5 text-sm leading-relaxed">
+              Nơi hội tụ những sản phẩm làm đẹp cao cấp, chính hãng. Chất lượng và sự tinh tế trong từng sản phẩm.
             </p>
 
             {/* Social Links */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               {socialLinks.map((social, index) => {
                 const Icon = social.icon;
                 return (
                   <a
                     key={index}
                     href={social.href}
-                    className="p-2.5 bg-background/10 hover:bg-primary hover:text-primary-foreground rounded-full transition-colors duration-200"
+                    className="w-9 h-9 flex items-center justify-center bg-background/10 hover:bg-primary rounded-full transition-all duration-200 group"
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-4 h-4 text-background/50 group-hover:text-primary-foreground transition-colors" />
                   </a>
                 );
               })}
@@ -59,13 +47,13 @@ const Footer: React.FC = () => {
 
           {/* Shop Links */}
           <div>
-            <h4 className="font-semibold mb-4">Shop</h4>
-            <ul className="space-y-3">
+            <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Sản phẩm</h4>
+            <ul className="space-y-2.5">
               {footerLinks.shop.map((link) => (
                 <li key={link}>
                   <a
                     href="#"
-                    className="text-background/70 hover:text-primary transition-colors duration-200"
+                    className="text-[13px] text-background/55 hover:text-primary transition-colors duration-200"
                   >
                     {link}
                   </a>
@@ -74,15 +62,15 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Company Links */}
+          {/* Support Links */}
           <div>
-            <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
+            <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Hỗ trợ</h4>
+            <ul className="space-y-2.5">
+              {footerLinks.support.map((link) => (
                 <li key={link}>
                   <a
                     href="#"
-                    className="text-background/70 hover:text-primary transition-colors duration-200"
+                    className="text-[13px] text-background/55 hover:text-primary transition-colors duration-200"
                   >
                     {link}
                   </a>
@@ -93,35 +81,35 @@ const Footer: React.FC = () => {
 
           {/* Contact Info */}
           <div>
-            <h4 className="font-semibold mb-4">Contact</h4>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-3 text-background/70">
-                <Mail className="w-4 h-4 flex-shrink-0" />
-                <span>tuanzkt2711@gmail.com</span>
+            <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Liên hệ</h4>
+            <ul className="space-y-2.5">
+              <li className="flex items-center gap-2.5 text-background/55">
+                <Mail className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
+                <span className="text-[13px]">hello@beautylux.vn</span>
               </li>
-              <li className="flex items-center gap-3 text-background/70">
-                <Phone className="w-4 h-4 flex-shrink-0" />
-                <span>+84 865190253</span>
+              <li className="flex items-center gap-2.5 text-background/55">
+                <Phone className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
+                <span className="text-[13px]">1900 123 456</span>
               </li>
-              <li className="flex items-start gap-3 text-background/70">
-                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>Thanh xuan, Ha Noi</span>
+              <li className="flex items-start gap-2.5 text-background/55">
+                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-primary/70" />
+                <span className="text-[13px]">123 Nguyễn Huệ, Q.1, TP. Hồ Chí Minh</span>
               </li>
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-background/10 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-background/50 text-sm">
-            © 2026 TUNA. All rights reserved.
+        <div className="border-t border-background/8 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <p className="text-background/40 text-xs">
+            © 2026 BeautyLux. All rights reserved.
           </p>
-          <div className="flex items-center gap-6 text-sm text-background/50">
+          <div className="flex items-center gap-5 text-xs text-background/40">
             <a href="#" className="hover:text-primary transition-colors">
-              Privacy Policy
+              Chính sách bảo mật
             </a>
             <a href="#" className="hover:text-primary transition-colors">
-              Terms of Service
+              Điều khoản sử dụng
             </a>
             <a href="#" className="hover:text-primary transition-colors">
               Cookies

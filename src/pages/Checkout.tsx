@@ -360,31 +360,37 @@ const Checkout: React.FC = () => {
 
                 {/* Products */}
                 <div className="space-y-3 max-h-[300px] overflow-y-auto mb-4">
-                  {selectedItems.map((item) => (
-                    <div key={item.id} className="flex gap-3">
-                      <div className="relative w-16 h-16 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
-                          {item.quantity}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium line-clamp-2">
-                          {item.name}
+                  {selectedItems.map((item) => {
+                    const price = item.finalPrice || item.price || 0;
+                    const brandName = typeof item.brand === 'string' ? item.brand : item.brand.name;
+                    const image = item.thumbnail || (Array.isArray(item.image) ? item.image[0] : (item.image ?? ''));
+
+                    return (
+                      <div key={item.id} className="flex gap-3">
+                        <div className="relative w-16 h-16 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium line-clamp-2">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {brandName}
+                          </p>
+                        </div>
+                        <p className="text-sm font-semibold whitespace-nowrap">
+                          {formatPrice(price * item.quantity)}₫
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.brand}
-                        </p>
                       </div>
-                      <p className="text-sm font-semibold whitespace-nowrap">
-                        {formatPrice(item.price * item.quantity)}₫
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Coupon */}

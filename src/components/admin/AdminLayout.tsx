@@ -14,7 +14,7 @@ const AdminLayout: React.FC = () => {
       />
       <main
         className={cn(
-          "min-h-screen transition-all duration-300",
+          "min-h-screen",
           sidebarCollapsed ? "ml-16" : "ml-64",
         )}
       >

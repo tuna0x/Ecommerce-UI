@@ -2,13 +2,19 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function AdminRoute() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (!user) return null;
+  if (loading) return null;
 
-  if (user?.role.name !== "SUPER_ADMIN") {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const roleName = user.role.name.toUpperCase();
+  if (roleName !== "ADMIN" && roleName !== "SUPER_ADMIN") {
     return <Navigate to="/" replace />;
   }
+
   return <Outlet />;
 }
 

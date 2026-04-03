@@ -10,7 +10,8 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { Switch } from "../../components/ui/switch";
+// import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -32,7 +33,6 @@ import { Textarea } from "../../components/ui/textarea";
 import { BrandService } from "../../service/brandService";
 import type { IBrand, ICreateBrand, IUpdateBrand } from "../../types/brand.type";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
 
 const BrandsManagement: React.FC = () => {
@@ -46,7 +46,7 @@ const BrandsManagement: React.FC = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBrand, setEditingBrand] = useState<IBrand | null>(null);
-  const [formData, setFormData] = useState<ICreateBrand>({ name: "", description: "", image: "" });
+  const [formData, setFormData] = useState<ICreateBrand>({ name: "", description: "", image: "", isFeatured: false, active: true });
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [files, setFiles] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,7 +98,7 @@ const BrandsManagement: React.FC = () => {
 
   const openAddDialog = useCallback(() => {
     setEditingBrand(null);
-    setFormData({ name: "", description: "", image: "" });
+    setFormData({ name: "", description: "", image: "", isFeatured: false, active: true });
     setLogoPreview(null);
     setFiles(null);
     setIsDialogOpen(true);
@@ -106,7 +106,7 @@ const BrandsManagement: React.FC = () => {
 
   const openEditDialog = useCallback((brand: IBrand) => {
     setEditingBrand(brand);
-    setFormData({ name: brand.name, description: brand.description || "", image: brand.image });
+    setFormData({ name: brand.name, description: brand.description || "", image: brand.image, isFeatured: brand.isFeatured || false, active: brand.active ?? true });
     setLogoPreview(brand.image);
     setFiles(null);
     setIsDialogOpen(true);
@@ -125,7 +125,9 @@ const BrandsManagement: React.FC = () => {
           id: editingBrand.id,
           name: formData.name,
           description: formData.description,
-          image: editingBrand.image
+          image: editingBrand.image,
+          isFeatured: formData.isFeatured,
+          active: formData.active
         };
         await BrandService.update(updateData, files || undefined);
         toast.success("Cập nhật thương hiệu thành công");
@@ -153,6 +155,40 @@ const BrandsManagement: React.FC = () => {
       }
     }
   }, [fetchBrands]);
+
+  const toggleActive = async (brand: IBrand) => {
+    try {
+      await BrandService.update({
+        id: brand.id,
+        name: brand.name,
+        description: brand.description,
+        image: brand.image,
+        isFeatured: brand.isFeatured,
+        active: brand.active === false ? true : false
+      });
+      toast.success("Cập nhật trạng thái thành công");
+      fetchBrands();
+    } catch {
+      toast.error("Lỗi khi cập nhật trạng thái");
+    }
+  };
+
+  const toggleFeatured = async (brand: IBrand) => {
+    try {
+      await BrandService.update({
+        id: brand.id,
+        name: brand.name,
+        description: brand.description,
+        image: brand.image,
+        isFeatured: !brand.isFeatured,
+        active: brand.active ?? true
+      });
+      toast.success("Cập nhật nổi bật thành công");
+      fetchBrands();
+    } catch {
+      toast.error("Lỗi khi cập nhật nổi bật");
+    }
+  };
 
 
   return (
@@ -193,7 +229,7 @@ const BrandsManagement: React.FC = () => {
           <CardTitle>Danh sách thương hiệu ({brandList.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className="relative">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -206,7 +242,8 @@ const BrandsManagement: React.FC = () => {
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Logo</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Tên thương hiệu</th>
                     <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">Mô tả</th>
-                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Trạng thái</th>
+                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Hoạt động</th>
+                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Nổi bật</th>
                     <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground">Hành động</th>
                   </tr>
                 </thead>
@@ -226,6 +263,9 @@ const BrandsManagement: React.FC = () => {
                       <td className="py-4 px-2 text-center">
                         <Skeleton className="h-5 w-10 mx-auto rounded-full" />
                       </td>
+                      <td className="py-4 px-2 text-center">
+                        <Skeleton className="h-5 w-10 mx-auto rounded-full" />
+                      </td>
                       <td className="py-4 px-2">
                         <div className="flex justify-end gap-2">
                           <Skeleton className="h-8 w-8" />
@@ -236,7 +276,7 @@ const BrandsManagement: React.FC = () => {
                   ))
                 ) : brandList.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-muted-foreground italic">
+                    <td colSpan={6} className="py-10 text-center text-muted-foreground italic">
                       Không tìm thấy thương hiệu nào
                     </td>
                   </tr>
@@ -259,9 +299,18 @@ const BrandsManagement: React.FC = () => {
                         {brand.description || "—"}
                       </td>
                       <td className="py-3 px-2 text-center">
-                        <Badge variant="secondary" className="bg-green-50 text-green-700 border-none">
-                          Hoạt động
-                        </Badge>
+                        <Switch
+                          checked={brand.active ?? true}
+                          onCheckedChange={() => toggleActive(brand)}
+                          className="data-[state=checked]:bg-green-500 mx-auto"
+                        />
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <Switch
+                          checked={brand.isFeatured || false}
+                          onCheckedChange={() => toggleFeatured(brand)}
+                          className="data-[state=checked]:bg-amber-500 mx-auto"
+                        />
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex items-center justify-end gap-1">
@@ -332,6 +381,28 @@ const BrandsManagement: React.FC = () => {
                 placeholder="Mô tả ngắn về thương hiệu"
                 rows={3}
               />
+            </div>
+            <div className="flex items-center space-x-2 mt-1">
+              <Switch
+                id="isFeatured"
+                checked={formData.isFeatured || false}
+                onCheckedChange={(checked) => setFormData({ ...formData, isFeatured: checked })}
+                className="data-[state=checked]:bg-amber-500"
+              />
+              <Label htmlFor="isFeatured" className="cursor-pointer font-medium text-sm text-foreground">
+                Thương hiệu Nổi bật (Hiển thị trang chủ)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isActive"
+                checked={formData.active ?? true}
+                onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
+                className="data-[state=checked]:bg-green-500"
+              />
+              <Label htmlFor="isActive" className="cursor-pointer font-medium text-sm text-foreground">
+                Đang hoạt động (Hiển thị trên website)
+              </Label>
             </div>
             <div className="grid gap-2">
               <Label>Logo thương hiệu</Label>

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { products } from "../data/products";
-import type { Product } from "../data/products";
+import type { IProduct } from "../types/product.type";
+
 interface SearchDropdownProps {
   className?: string;
   isMobile?: boolean;
@@ -15,27 +16,31 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
 }) => {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<IProduct[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   // Filter products based on query
   useEffect(() => {
-    if (query.trim().length > 0) {
-      const searchTerm = query.toLowerCase().trim();
-      const filtered = products.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchTerm) ||
-          product.brand.toLowerCase().includes(searchTerm) ||
-          product.category.toLowerCase().includes(searchTerm),
-      );
-      setFilteredProducts(filtered.slice(0, 6)); // Limit to 6 results
-      setIsOpen(true);
-    } else {
-      setFilteredProducts([]);
-      setIsOpen(false);
-    }
+    const handler = setTimeout(() => {
+      if (query.trim().length > 0) {
+        const searchTerm = query.toLowerCase().trim();
+        const filtered = (products as unknown as IProduct[]).filter(
+          (product) =>
+            product.name.toLowerCase().includes(searchTerm) ||
+            (typeof product.brand === 'string' ? product.brand : product.brand.name).toLowerCase().includes(searchTerm) ||
+            (typeof product.category === 'string' ? product.category : product.category.name).toLowerCase().includes(searchTerm)
+        );
+        setFilteredProducts(filtered.slice(0, 6)); // Limit to 6 results
+        setIsOpen(true);
+      } else {
+        setFilteredProducts([]);
+        setIsOpen(false);
+      }
+    }, 150); // Small debounce to avoid cascading renders and improve performance
+
+    return () => clearTimeout(handler);
   }, [query]);
 
   // Close dropdown when clicking outside
@@ -138,39 +143,44 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
               </p>
 
               <div className="space-y-1">
-                {filteredProducts.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => handleProductClick(product.id)}
-                    className="w-full flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors text-left"
-                  >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {product.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {product.brand}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-semibold text-primary">
-                        {formatPrice(product.price)}
-                      </p>
-                      {product.discount > 0 && (
-                        <p className="text-xs text-muted-foreground line-through">
-                          {formatPrice(product.originalPrice)}
+                {filteredProducts.map((product) => {
+                  const displayPrice = product.finalPrice || product.price || 0;
+                  const displayOriginalPrice = product.originalPrice || 0;
+                  
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => handleProductClick(product.id)}
+                      className="w-full flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors text-left"
+                    >
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                        <img
+                          src={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''))}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {product.name}
                         </p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                        <p className="text-xs text-muted-foreground">
+                          {typeof product.brand === 'string' ? product.brand : product.brand.name}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-semibold text-primary">
+                          {formatPrice(displayPrice)}
+                        </p>
+                        {displayOriginalPrice > displayPrice && (
+                          <p className="text-xs text-muted-foreground line-through">
+                            {formatPrice(displayOriginalPrice)}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

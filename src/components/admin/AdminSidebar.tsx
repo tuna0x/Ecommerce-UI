@@ -15,6 +15,7 @@ import {
   Image,
   Store,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
@@ -37,6 +38,7 @@ const menuItems = [
   { title: "Banner Quảng cáo", url: "/admin/banners", icon: Image },
   { title: "Thương hiệu", url: "/admin/brands", icon: Store },
   { title: "Thống kê", url: "/admin/statistics", icon: BarChart3 },
+  { title: 'Chat', url: '/admin/chat', icon: MessageCircle },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
@@ -52,7 +54,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300",
+        "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border",
         collapsed ? "w-16" : "w-64",
       )}
     >

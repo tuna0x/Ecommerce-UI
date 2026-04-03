@@ -284,7 +284,7 @@ const AttributesManagement: React.FC = () => {
               </Button>
             )}
           </div>
-          <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+          <div className="relative">
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

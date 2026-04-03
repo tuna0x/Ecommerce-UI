@@ -1,17 +1,18 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { Home, Grid3X3, Bell, User } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Home, Grid3X3, MessageCircle, Bell, User } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 const MobileNavBar: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
 
   const navItems = [
-    { icon: Home, label: "Trang chủ", path: "/" },
-    { icon: Grid3X3, label: "Danh mục", path: "/categories" },
-    { icon: Bell, label: "Thông báo", path: "/notifications" },
-    { icon: User, label: "Tài khoản", path: "/account" },
+    { icon: Home, label: 'Trang chủ', path: '/' },
+    { icon: Grid3X3, label: 'Danh mục', path: '/categories' },
+    { icon: MessageCircle, label: 'Chat', path: '/chat' },
+    { icon: Bell, label: 'Thông báo', path: '/notifications' },
+    { icon: User, label: 'Tài khoản', path: '/account' },
   ];
 
   return (
@@ -27,14 +28,13 @@ const MobileNavBar: React.FC = () => {
             >
               <motion.div
                 whileTap={{ scale: 0.9 }}
-                className={`p-1 rounded-lg ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                className={`p-1 rounded-lg ${isActive ? 'text-primary' : 'text-muted-foreground'}`}
               >
                 <item.icon className="w-5 h-5" />
               </motion.div>
               <span
-                className={`text-[10px] font-medium ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
+                className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`}
               >
                 {item.label}
               </span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,7 +7,6 @@ import {
   Grid3X3,
   LayoutGrid,
   X,
-  ChevronDown,
 } from "lucide-react";
 import TopBar from "../components/TopBar";
 import Header from "../components/Header";
@@ -15,8 +14,8 @@ import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
 import CartSidebar from "../components/CartSidebar";
 import ProductCard from "../components/ProductCard";
-import { products, categories } from "../data/products";
-import type { Product } from "../data/products";
+import { products } from "../data/products";
+import type { IProduct } from "../types/product.type";
 import {
   Select,
   SelectContent,
@@ -26,7 +25,7 @@ import {
 } from "../components/ui/select";
 
 const SearchResults: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const [sortBy, setSortBy] = useState("relevant");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -36,7 +35,7 @@ const SearchResults: React.FC = () => {
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let results = products;
+    let results = products as unknown as IProduct[];
 
     // Search filter
     if (query.trim()) {
@@ -44,8 +43,8 @@ const SearchResults: React.FC = () => {
       results = results.filter(
         (product) =>
           product.name.toLowerCase().includes(searchTerm) ||
-          product.brand.toLowerCase().includes(searchTerm) ||
-          product.category.toLowerCase().includes(searchTerm) ||
+          (typeof product.brand === "string" ? product.brand : product.brand.name).toLowerCase().includes(searchTerm) ||
+          (typeof product.category === "string" ? product.category : product.category.name).toLowerCase().includes(searchTerm) ||
           product.concern?.some((c) => c.toLowerCase().includes(searchTerm)) ||
           product.skinType?.some((s) => s.toLowerCase().includes(searchTerm)),
       );
@@ -54,7 +53,7 @@ const SearchResults: React.FC = () => {
     // Category filter
     if (selectedCategory !== "all") {
       results = results.filter(
-        (product) => product.category === selectedCategory,
+        (product) => (typeof product.category === "string" ? product.category : product.category.name) === selectedCategory,
       );
     }
 
@@ -62,20 +61,20 @@ const SearchResults: React.FC = () => {
     if (priceRange !== "all") {
       switch (priceRange) {
         case "under200":
-          results = results.filter((product) => product.price < 200000);
+          results = results.filter((product) => (product.finalPrice || product.price || 0) < 200000);
           break;
         case "200-500":
           results = results.filter(
-            (product) => product.price >= 200000 && product.price <= 500000,
+            (product) => (product.finalPrice || product.price || 0) >= 200000 && (product.finalPrice || product.price || 0) <= 500000,
           );
           break;
         case "500-1000":
           results = results.filter(
-            (product) => product.price >= 500000 && product.price <= 1000000,
+            (product) => (product.finalPrice || product.price || 0) >= 500000 && (product.finalPrice || product.price || 0) <= 1000000,
           );
           break;
         case "over1000":
-          results = results.filter((product) => product.price > 1000000);
+          results = results.filter((product) => (product.finalPrice || product.price || 0) > 1000000);
           break;
       }
     }
@@ -83,20 +82,19 @@ const SearchResults: React.FC = () => {
     // Sort
     switch (sortBy) {
       case "price-asc":
-        results = [...results].sort((a, b) => a.price - b.price);
+        results = [...results].sort((a, b) => (a.finalPrice || a.price || 0) - (b.finalPrice || b.price || 0));
         break;
       case "price-desc":
-        results = [...results].sort((a, b) => b.price - a.price);
+        results = [...results].sort((a, b) => (b.finalPrice || b.price || 0) - (a.finalPrice || a.price || 0));
         break;
       case "discount":
-        results = [...results].sort((a, b) => b.discount - a.discount);
+        results = [...results].sort((a, b) => (b.discount || 0) - (a.discount || 0));
         break;
       case "rating":
-        results = [...results].sort((a, b) => b.rating - a.rating);
+        results = [...results].sort((a, b) => (b.averageRating || b.rating || 0) - (a.averageRating || a.rating || 0));
         break;
       case "relevant":
       default:
-        // Keep original order for relevance
         break;
     }
 
@@ -104,7 +102,9 @@ const SearchResults: React.FC = () => {
   }, [query, selectedCategory, priceRange, sortBy]);
 
   const uniqueCategories = useMemo(() => {
-    const cats = new Set(products.map((p) => p.category));
+    const cats = new Set((products as unknown as IProduct[]).map((p) => 
+      typeof p.category === "string" ? p.category : p.category.name
+    ));
     return Array.from(cats);
   }, []);
 
@@ -122,7 +122,6 @@ const SearchResults: React.FC = () => {
       <Header />
 
       <main className="container mx-auto px-4 py-6">
-        {/* Search Header */}
         <div className="mb-6">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
             <Link to="/" className="hover:text-primary transition-colors">
@@ -144,24 +143,16 @@ const SearchResults: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-border">
           <div className="flex flex-wrap items-center gap-3">
-            {/* Mobile Filter Toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="md:hidden flex items-center gap-2 px-4 py-2 bg-secondary rounded-lg text-sm font-medium"
             >
               <SlidersHorizontal className="w-4 h-4" />
               Bộ lọc
-              {hasActiveFilters && (
-                <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">
-                  !
-                </span>
-              )}
             </button>
 
-            {/* Desktop Filters */}
             <div className="hidden md:flex items-center gap-3">
               <Select
                 value={selectedCategory}
@@ -208,7 +199,6 @@ const SearchResults: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Sắp xếp" />
@@ -222,7 +212,6 @@ const SearchResults: React.FC = () => {
               </SelectContent>
             </Select>
 
-            {/* View Mode Toggle */}
             <div className="hidden md:flex items-center bg-secondary rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
@@ -242,7 +231,6 @@ const SearchResults: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Filters Panel */}
         {showFilters && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
@@ -270,39 +258,16 @@ const SearchResults: React.FC = () => {
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Khoảng giá
-              </label>
-              <Select value={priceRange} onValueChange={setPriceRange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Khoảng giá" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả giá</SelectItem>
-                  <SelectItem value="under200">Dưới 200.000₫</SelectItem>
-                  <SelectItem value="200-500">200.000₫ - 500.000₫</SelectItem>
-                  <SelectItem value="500-1000">
-                    500.000₫ - 1.000.000₫
-                  </SelectItem>
-                  <SelectItem value="over1000">Trên 1.000.000₫</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="flex items-center justify-center gap-2 w-full py-2 text-sm text-destructive hover:text-destructive/80 transition-colors"
-              >
-                <X className="w-4 h-4" />
-                Xóa tất cả bộ lọc
-              </button>
-            )}
+            <button
+              onClick={clearFilters}
+              className="flex items-center justify-center gap-2 w-full py-2 text-sm text-destructive hover:text-destructive/80 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Xóa tất cả bộ lọc
+            </button>
           </motion.div>
         )}
 
-        {/* Results Grid */}
         {filteredProducts.length > 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -324,28 +289,16 @@ const SearchResults: React.FC = () => {
             ))}
           </motion.div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-16 text-center"
-          >
-            <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mb-6">
-              <Search className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">
-              Không tìm thấy sản phẩm
-            </h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              Không có sản phẩm nào phù hợp với từ khóa "{query}". Hãy thử tìm
-              kiếm với từ khóa khác hoặc xem các sản phẩm khác của chúng tôi.
-            </p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+            <h2 className="text-xl font-semibold mb-2">Không tìm thấy sản phẩm</h2>
             <Link
               to="/"
               className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors"
             >
               Quay lại trang chủ
             </Link>
-          </motion.div>
+          </div>
         )}
       </main>
 

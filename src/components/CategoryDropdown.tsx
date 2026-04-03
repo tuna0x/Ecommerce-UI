@@ -2,13 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { CategoryTree } from '../lib/categoryUtils';
+import { useCategories } from '../hooks/useCategories';
 
-interface CategoryDropdownProps {
-    categories: CategoryTree[];
-}
-
-const CategoryDropdown: React.FC<CategoryDropdownProps> = ({ categories }) => {
+const CategoryDropdown: React.FC = () => {
+    const { data: categories = [] } = useCategories();
     const [isOpen, setIsOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);

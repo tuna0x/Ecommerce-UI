@@ -1,177 +1,178 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { BannerService } from "../service/bannerService";
-import type { IBanner } from "../types/banner.type";
-import { Skeleton } from "./ui/skeleton";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const DEFAULT_SUBTITLE = "Khám phá ngay";
-const DEFAULT_DESCRIPTION = "Nâng tầm vẻ đẹp tự nhiên của bạn với bộ sưu tập mỹ phẩm cao cấp và quy trình chăm sóc da chuyên sâu.";
+import { BannerService } from '../service/bannerService';
+import type { IBanner } from '../types/banner.type';
 
 const HeroSlider: React.FC = () => {
-  const [banners, setBanners] = useState<IBanner[]>([]);
+  const [slides, setSlides] = useState<IBanner[]>([]);
   const [current, setCurrent] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [direction, setDirection] = useState(1);
 
-  const fetchHeroBanners = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const res = await BannerService.getAll(0, 10, undefined, "order,asc");
-      if (res.data) {
-        // Filter hero banners - case insensitive to avoid missing data
-        const heroBanners = res.data.result.filter((b) => 
-          b.position && b.position.toLowerCase() === "hero" && b.isActive
-        );
-        setBanners(heroBanners);
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await BannerService.getAll(0, 100);
+        if (res.data?.result) {
+          const activeHeroBanners = res.data.result
+            .filter(b => b.isActive && b.position === 'hero')
+            .sort((a, b) => a.order - b.order);
+          setSlides(activeHeroBanners);
+        }
+      } catch (error) {
+        console.error("Failed to fetch banners", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch banners", error);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    fetchBanners();
   }, []);
 
   useEffect(() => {
-    fetchHeroBanners();
-  }, [fetchHeroBanners]);
-
-  useEffect(() => {
-    if (banners.length <= 1) return;
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % banners.length);
-    }, 5000);
+      setDirection(1);
+      setCurrent((prev) => (prev + 1) % slides.length);
+    }, 6000);
     return () => clearInterval(timer);
-  }, [banners]);
+  }, [slides.length]);
 
   const goToSlide = (index: number) => {
+    setDirection(index > current ? 1 : -1);
     setCurrent(index);
   };
 
   const goToPrev = () => {
-    setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
+    setDirection(-1);
+    setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
   const goToNext = () => {
-    setCurrent((prev) => (prev + 1) % banners.length);
+    setDirection(1);
+    setCurrent((prev) => (prev + 1) % slides.length);
   };
 
-  if (isLoading) {
-    return (
-      <section className="relative overflow-hidden bg-muted/20">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center min-h-[400px] md:min-h-[500px] py-8 md:py-0 gap-8">
-            <div className="flex-1 space-y-6">
-              <Skeleton className="h-8 w-32 rounded-full" />
-              <Skeleton className="h-16 w-full max-w-lg" />
-              <Skeleton className="h-24 w-full max-w-sm" />
-              <Skeleton className="h-12 w-40" />
-            </div>
-            <div className="flex-1">
-              <Skeleton className="w-full max-w-md aspect-square md:aspect-auto h-[250px] md:h-[400px] rounded-2xl" />
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (banners.length === 0) return null;
-
-  const currentBanner = banners[current];
-  const bgGradients = [
-    "bg-gradient-to-r from-pink-50 to-rose-100",
-    "bg-gradient-to-r from-teal-50 to-cyan-100",
-    "bg-gradient-to-r from-purple-50 to-pink-100",
-  ];
+  const slideVariants = {
+    enter: (dir: number) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
+  };
 
   return (
-    <section className="relative overflow-hidden">
-      <AnimatePresence mode="wait">
+    <section className="relative overflow-hidden bg-secondary/30">
+      <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={current}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className={bgGradients[current % bgGradients.length]}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="container mx-auto">
-            <div className="flex flex-col md:flex-row items-center min-h-[400px] md:min-h-[500px] py-8 md:py-0">
+          {slides.length > 0 && (
+          <div className="container mx-auto max-w-7xl">
+            <div className="flex flex-col md:flex-row items-center min-h-[420px] md:min-h-[520px] py-10 md:py-0 gap-8">
               {/* Content */}
-              <motion.div
-                initial={{ opacity: 0, x: -50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="flex-1 text-center md:text-left space-y-4 md:space-y-6 order-2 md:order-1"
-              >
-                <span className="inline-block text-sm font-medium text-primary bg-primary/10 px-4 py-1.5 rounded-full">
-                  {currentBanner.subtitle || DEFAULT_SUBTITLE}
-                </span>
-                <h2 className="text-4xl md:text-6xl font-bold tracking-tight">
-                  {currentBanner.title}
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-md mx-auto md:mx-0">
-                  {currentBanner.description || DEFAULT_DESCRIPTION}
-                </p>
-                <a 
-                  href={currentBanner.link || "#"} 
-                  className="btn-primary inline-flex items-center justify-center"
+              <div className="flex-1 text-center md:text-left space-y-5 order-2 md:order-1">
+                <motion.span
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="inline-block text-xs font-semibold text-primary bg-primary/10 px-4 py-1.5 rounded-full tracking-wide"
                 >
-                  Mua ngay
-                </a>
-              </motion.div>
+                  {slides[current]?.subtitle}
+                </motion.span>
+
+                <motion.h2
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.5 }}
+                  className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
+                >
+                  {slides[current]?.title?.split(' ').map((word, i) => (
+                    <span key={i} className={i === slides[current].title.split(' ').length - 1 ? 'text-primary' : ''}>
+                      {word}{' '}
+                    </span>
+                  ))}
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="text-muted-foreground text-base md:text-lg max-w-md mx-auto md:mx-0 leading-relaxed"
+                >
+                  {slides[current]?.description}
+                </motion.p>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.65, duration: 0.5 }}
+                >
+                  <Link
+                    to={slides[current]?.link || '#'}
+                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-full font-semibold text-sm hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  >
+                    Khám phá ngay
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </motion.div>
+              </div>
 
               {/* Image */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="flex-1 order-1 md:order-2 mb-6 md:mb-0"
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="flex-1 order-1 md:order-2"
               >
                 <img
-                  src={currentBanner.image}
-                  alt={currentBanner.title}
-                  className="w-full max-w-md mx-auto h-[250px] md:h-[400px] object-cover rounded-2xl shadow-2xl"
+                  src={slides[current]?.image}
+                  alt={slides[current]?.title}
+                  className="w-full max-w-lg mx-auto h-[260px] md:h-[420px] object-cover rounded-2xl shadow-2xl"
                 />
               </motion.div>
             </div>
           </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
       {/* Navigation Arrows */}
-      {banners.length > 1 && (
+      {slides.length > 1 && (
         <>
           <button
             onClick={goToPrev}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background rounded-full shadow-lg transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 bg-background/70 backdrop-blur-sm hover:bg-background rounded-full shadow-lg transition-all duration-300 hover:scale-110"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-background/80 hover:bg-background rounded-full shadow-lg transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-background/70 backdrop-blur-sm hover:bg-background rounded-full shadow-lg transition-all duration-300 hover:scale-110"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </>
       )}
 
-      {/* Dots */}
-      {banners.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          {banners.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                current === index
-                  ? "bg-primary w-6"
-                  : "bg-foreground/30 hover:bg-foreground/50"
-              }`}
-            />
-          ))}
-        </div>
+      {/* Progress Dots */}
+      {slides.length > 1 && (
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+        {slides.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToSlide(index)}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              current === index
+                ? 'bg-primary w-8'
+                : 'bg-foreground/20 w-1.5 hover:bg-foreground/40'
+            }`}
+          />
+        ))}
+      </div>
       )}
     </section>
   );

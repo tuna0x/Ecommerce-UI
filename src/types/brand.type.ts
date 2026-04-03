@@ -3,12 +3,16 @@ export interface IBrand {
   name: string;
   description: string;
   image: string;
+  isFeatured?: boolean;
+  active?: boolean;
 }
 
 export interface ICreateBrand {
   name: string;
   description: string;
   image: string;
+  isFeatured?: boolean;
+  active?: boolean;
 }
 
 export interface IUpdateBrand {
@@ -16,4 +20,6 @@ export interface IUpdateBrand {
   name: string;
   description: string;
   image: string;
+  isFeatured?: boolean;
+  active?: boolean;
 }

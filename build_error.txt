@@ -1,0 +1,8 @@
+﻿
+> ecommerce@0.0.0 build
+> tsc -b && vite build
+
+src/components/ChatBot.tsx(4,27): error TS2307: Cannot find module 'react-markdown' or its corresponding type declarations.
+src/components/NotificationDropdown.tsx(4,28): error TS1484: 'Notification' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/TopBar.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/ui/data-table.tsx(1,8): error TS6133: 'React' is declared but its value is never read.

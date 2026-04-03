@@ -203,7 +203,7 @@ const CategoriesManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className={cn("relative transition-opacity duration-300", isLoading ? "opacity-50" : "opacity-100")}>
+      <div className="relative">
         {isLoading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center -top-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -273,7 +273,7 @@ const CategoriesManagement: React.FC = () => {
                     {new Date(category.createdAt).toLocaleDateString("vi-VN")}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-1">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
