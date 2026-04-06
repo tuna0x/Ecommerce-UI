@@ -1,15 +1,14 @@
 import React from 'react';
-import { Bell, Package, Tag, Heart, Info, Check, Trash2 } from 'lucide-react';
+import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationContext';
 import type { Notification } from '../context/NotificationContext';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+} from './ui/dropdown-menu';
 
 const typeIcon: Record<Notification['type'], React.ReactNode> = {
     order: <Package className="w-4 h-4 text-accent" />,
@@ -30,23 +29,15 @@ const formatTimeAgo = (date: Date) => {
 };
 
 const NotificationDropdown: React.FC = () => {
-    const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
-    const { isAuthenticated } = useAuth();
-    const navigate = useNavigate();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+
+    // Show max 5 in dropdown
+    const displayNotifications = notifications.slice(0, 5);
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button 
-                  onClick={(e) => {
-                    if (!isAuthenticated) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      navigate('/login');
-                    }
-                  }}
-                  className="relative p-2 hover:bg-secondary rounded-lg transition-colors"
-                >
+                <button className="relative p-2 hover:bg-secondary rounded-lg transition-colors">
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
                         <motion.span
@@ -59,29 +50,26 @@ const NotificationDropdown: React.FC = () => {
                     )}
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80 sm:w-96 p-0 max-h-[70vh] overflow-hidden flex flex-col">
+            <DropdownMenuContent align="end" className="w-80 sm:w-96 p-0 max-h-[70vh] overflow-hidden flex flex-col rounded-xl">
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                    <h3 className="font-semibold text-sm">Thông báo</h3>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/30">
                     <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-sm">Thông báo</h3>
                         {unreadCount > 0 && (
-                            <button
-                                onClick={markAllAsRead}
-                                className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1"
-                            >
-                                <Check className="w-3 h-3" />
-                                Đánh dấu đã đọc
-                            </button>
-                        )}
-                        {notifications.length > 0 && (
-                            <button
-                                onClick={clearAll}
-                                className="text-[11px] text-muted-foreground hover:text-destructive font-medium flex items-center gap-1"
-                            >
-                                <Trash2 className="w-3 h-3" />
-                            </button>
+                            <span className="text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">
+                                {unreadCount}
+                            </span>
                         )}
                     </div>
+                    {unreadCount > 0 && (
+                        <button
+                            onClick={markAllAsRead}
+                            className="text-[11px] text-primary hover:underline font-medium flex items-center gap-1"
+                        >
+                            <Check className="w-3 h-3" />
+                            Đã đọc tất cả
+                        </button>
+                    )}
                 </div>
 
                 {/* Notifications List */}
@@ -93,29 +81,30 @@ const NotificationDropdown: React.FC = () => {
                         </div>
                     ) : (
                         <AnimatePresence>
-                            {notifications.map((notif) => (
+                            {displayNotifications.map((notif) => (
                                 <motion.div
                                     key={notif.id}
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, height: 0 }}
+                                    className="group"
                                 >
                                     {notif.link ? (
                                         <Link
                                             to={notif.link}
                                             onClick={() => markAsRead(notif.id)}
-                                            className={`flex gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border/50 ${!notif.read ? 'bg-primary/5' : ''
+                                            className={`flex gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border/50 ${!notif.read ? 'bg-primary/[0.04]' : ''
                                                 }`}
                                         >
-                                            <NotifContent notif={notif} />
+                                            <NotifContent notif={notif} onDelete={deleteNotification} />
                                         </Link>
                                     ) : (
                                         <div
                                             onClick={() => markAsRead(notif.id)}
-                                            className={`flex gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border/50 cursor-pointer ${!notif.read ? 'bg-primary/5' : ''
+                                            className={`flex gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border/50 cursor-pointer ${!notif.read ? 'bg-primary/[0.04]' : ''
                                                 }`}
                                         >
-                                            <NotifContent notif={notif} />
+                                            <NotifContent notif={notif} onDelete={deleteNotification} />
                                         </div>
                                     )}
                                 </motion.div>
@@ -123,14 +112,25 @@ const NotificationDropdown: React.FC = () => {
                         </AnimatePresence>
                     )}
                 </div>
+
+                {/* Footer - View All */}
+                {notifications.length > 0 && (
+                    <Link
+                        to="/notifications"
+                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-medium text-primary hover:bg-secondary/50 transition-colors border-t border-border"
+                    >
+                        Xem tất cả thông báo
+                        <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );
 };
 
-const NotifContent: React.FC<{ notif: Notification }> = ({ notif }) => (
+const NotifContent: React.FC<{ notif: Notification; onDelete: (id: string) => void }> = ({ notif, onDelete }) => (
     <>
-        <div className="flex-shrink-0 mt-0.5 p-2 bg-secondary rounded-full h-fit">
+        <div className={`flex-shrink-0 mt-0.5 p-2 rounded-full h-fit ${!notif.read ? 'bg-primary/10' : 'bg-secondary'}`}>
             {typeIcon[notif.type]}
         </div>
         <div className="flex-1 min-w-0">
@@ -138,9 +138,17 @@ const NotifContent: React.FC<{ notif: Notification }> = ({ notif }) => (
                 <p className={`text-sm leading-snug ${!notif.read ? 'font-semibold' : 'font-medium'}`}>
                     {notif.title}
                 </p>
-                {!notif.read && (
-                    <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-1.5" />
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    {!notif.read && (
+                        <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    )}
+                    <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(notif.id); }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-destructive transition-all"
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </button>
+                </div>
             </div>
             <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notif.message}</p>
             <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(notif.createdAt)}</p>

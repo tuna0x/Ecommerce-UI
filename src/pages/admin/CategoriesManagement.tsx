@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle, Loader2 } from "lucide-react";
-import { cn } from "../../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -138,21 +137,17 @@ const CategoriesManagement: React.FC = () => {
   }, [editingId, formData, fetchCategories, resetForm]);
 
   const handleDelete = useCallback(async (id: number) => {
-    const hasChildren = category?.some((cate) => cate.parentCategory?.id === id);
-    if (hasChildren) {
-      toast.error("Không thể xóa thể loại có thể loại con");
-      return;
-    }
     if (window.confirm("Bạn có chắc chắn muốn xóa thể loại này?")) {
       try {
         await categoryService.remove(id);
         toast.success("Đã xóa thể loại thành công");
         fetchCategories();
-      } catch {
-        toast.error("Không thể xóa thể loại");
+      } catch (error: any) {
+        const message = error.response?.data?.message || "Không thể xóa thể loại";
+        toast.error(message);
       }
     }
-  }, [category, fetchCategories]);
+  }, [fetchCategories]);
 
   const handleOpenDialog = useCallback((category?: ICategory) => {
     if (category) {
@@ -215,7 +210,7 @@ const CategoriesManagement: React.FC = () => {
               <TableHead>Tên thể loại</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead>Thể loại cha</TableHead>
-              {/* <TableHead>Số sản phẩm</TableHead> */}
+              <TableHead>Số sản phẩm</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
@@ -226,6 +221,7 @@ const CategoriesManagement: React.FC = () => {
               Array.from({ length: pageSize }).map((_, idx) => (
                 <TableRow key={idx}>
                   <TableCell><Skeleton className="h-5 w-[150px]" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
@@ -235,7 +231,7 @@ const CategoriesManagement: React.FC = () => {
               ))
             ) : category?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   Không tìm thấy thể loại nào.
                 </TableCell>
               </TableRow>
@@ -263,6 +259,11 @@ const CategoriesManagement: React.FC = () => {
                     ) : (
                       <span className="text-muted-foreground text-sm italic">Gốc</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-medium">
+                      {category.productCount || 0}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={category.active ? "default" : "secondary"} className="rounded-full">

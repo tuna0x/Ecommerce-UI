@@ -3,7 +3,7 @@
 export interface IProductAttributeValueResponse {
   attributeValue: {
     id: number;
-    value: string;
+    attributeValue: string;
     attribute: {
       id: number;
       name: string;
@@ -13,7 +13,7 @@ export interface IProductAttributeValueResponse {
 
 export interface IProductAttributeValue {
   id: number;
-  value: string;
+  attributeValue: string;
   attributeId?: number;
   attributeName?: string;
 }
@@ -48,7 +48,7 @@ export interface IProduct {
 
 export interface IVariantAttribute {
   name: string;
-  value: string;
+  attributeValue: string;
 }
 
 export interface IVariant {

@@ -5,7 +5,7 @@ import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon } from 'lu
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { categories } from '../data/products';
+import { useCategories } from '../hooks/useCategories';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { data: categories = [] } = useCategories();
 
   return (
     <header className="sticky top-0 z-40 bg-background border-b border-border">
@@ -183,7 +184,7 @@ const Header: React.FC = () => {
           >
             <div className="p-4 space-y-4">
               {categories.map((category) => {
-                const categorySlug = category.name.toLowerCase().replace(/\s+/g, '-');
+                const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
                 return (
                   <div key={category.id}>
                     <Link
@@ -194,27 +195,26 @@ const Header: React.FC = () => {
                       {category.name}
                     </Link>
                     <div className="space-y-1 ml-2 mb-3">
-                      {category.subcategories.map((sub, index) => {
-                        const subName = typeof sub === 'string' ? sub : sub.name;
+                      {category.children.map((sub, index) => {
                         return (
                           <div key={index}>
                             <Link
-                              to={`/category/${categorySlug}?sub=${encodeURIComponent(subName)}`}
+                              to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}`}
                               className="text-sm font-medium text-muted-foreground hover:text-primary block py-0.5"
                               onClick={() => setIsMenuOpen(false)}
                             >
-                              {subName}
+                              {sub.name}
                             </Link>
-                            {typeof sub !== 'string' && sub.children && sub.children.length > 0 && (
+                            {sub.children && sub.children.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 ml-3 mt-0.5">
                                 {sub.children.map((child, cIndex) => (
                                   <Link
                                     key={cIndex}
-                                    to={`/category/${categorySlug}?sub=${encodeURIComponent(subName)}&sub2=${encodeURIComponent(child)}`}
+                                    to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
                                     className="text-xs text-muted-foreground hover:text-primary px-2 py-0.5 bg-secondary rounded-full"
                                     onClick={() => setIsMenuOpen(false)}
                                   >
-                                    {child}
+                                    {child.name}
                                   </Link>
                                 ))}
                               </div>

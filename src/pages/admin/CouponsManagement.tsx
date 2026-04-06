@@ -56,7 +56,7 @@ const CouponsManagement: React.FC = () => {
     name: "",
     description: "",
     type: "PERCENT" as CouponType,
-    value: 0,
+    discountValue: 0,
     minOrderValue: 0,
     maxDiscountValue: 0,
     usageLimit: 0,
@@ -120,7 +120,7 @@ const CouponsManagement: React.FC = () => {
         name: coupon.name,
         description: coupon.description,
         type: coupon.type,
-        value: coupon.value,
+        discountValue: coupon.discountValue,
         minOrderValue: coupon.minOrderValue || 0,
         maxDiscountValue: coupon.maxDiscountValue || 0,
         usageLimit: coupon.usageLimit,
@@ -136,7 +136,7 @@ const CouponsManagement: React.FC = () => {
         name: "",
         description: "",
         type: "PERCENT",
-        value: 0,
+        discountValue: 0,
         minOrderValue: 0,
         maxDiscountValue: 0,
         usageLimit: 0,
@@ -294,8 +294,8 @@ const CouponsManagement: React.FC = () => {
                         <div className="flex items-center gap-1">
                           <TypeIcon className="h-3 w-3" />
                           {coupon.type === "PERCENT"
-                            ? `${coupon.value}%`
-                            : `${coupon.value.toLocaleString()}đ`}
+                            ? `${coupon.discountValue}%`
+                            : `${(coupon.discountValue || 0).toLocaleString()}đ`}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -447,9 +447,9 @@ const CouponsManagement: React.FC = () => {
                 </Label>
                 <Input
                   type="number"
-                  value={formData.value}
+                  value={formData.discountValue}
                   onChange={(e) =>
-                    setFormData({ ...formData, value: Number(e.target.value) })
+                    setFormData({ ...formData, discountValue: Number(e.target.value) })
                   }
                 />
               </div>

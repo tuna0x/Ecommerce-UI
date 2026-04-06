@@ -9,6 +9,30 @@ const CategoryDropdown: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleMouseEnter = () => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        setIsOpen(true);
+    };
+
+    const handleMouseLeave = () => {
+        timeoutRef.current = setTimeout(() => {
+            setIsOpen(false);
+            setActiveCategory(null);
+        }, 300); // 300ms grace period
+    };
+
+    const handleCategoryMouseEnter = (id: number) => {
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+        setActiveCategory(id);
+    };
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -18,21 +42,21 @@ const CategoryDropdown: React.FC = () => {
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
     }, []);
 
     return (
         <div
             ref={dropdownRef}
             className="relative"
-            onMouseLeave={() => {
-                setIsOpen(false);
-                setActiveCategory(null);
-            }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             {/* Trigger Button */}
             <button
-                onMouseEnter={() => setIsOpen(true)}
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
@@ -48,7 +72,7 @@ const CategoryDropdown: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
                         transition={{ duration: 0.15, ease: 'easeOut' }}
-                        className="absolute top-full left-0 mt-1 z-50 flex"
+                        className="absolute top-full left-0 pt-1 z-50 flex"
                     >
                         {/* Category List (Level 1) */}
                         <div className="w-56 bg-background border border-border rounded-lg shadow-lg overflow-hidden">
@@ -58,7 +82,7 @@ const CategoryDropdown: React.FC = () => {
                                 return (
                                     <div
                                         key={category.id}
-                                        onMouseEnter={() => setActiveCategory(category.id)}
+                                        onMouseEnter={() => handleCategoryMouseEnter(category.id)}
                                         className="relative"
                                     >
                                         <Link
@@ -84,12 +108,12 @@ const CategoryDropdown: React.FC = () => {
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -8 }}
                                     transition={{ duration: 0.12 }}
-                                    className="ml-0.5 w-[480px] bg-background border border-border rounded-lg shadow-lg p-5"
+                                    className="pl-1 w-[480px] bg-background border border-border rounded-lg shadow-lg p-5"
                                 >
                                     <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                         {categories
                                             .find((c) => c.id === activeCategory)
-                                            ?.subcategories.map((sub, i) => {
+                                            ?.children.map((sub, i) => {
                                                 const parentCategory = categories.find((c) => c.id === activeCategory)!;
                                                 const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase().replace(/\s+/g, '-');
                                                 return (
@@ -105,11 +129,11 @@ const CategoryDropdown: React.FC = () => {
                                                             {sub.children.map((child, j) => (
                                                                 <Link
                                                                     key={j}
-                                                                    to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child)}`}
+                                                                    to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
                                                                     onClick={() => { setIsOpen(false); setActiveCategory(null); }}
                                                                     className="block text-xs text-muted-foreground hover:text-primary transition-colors py-0.5"
                                                                 >
-                                                                    {child}
+                                                                    {child.name}
                                                                 </Link>
                                                             ))}
                                                         </div>

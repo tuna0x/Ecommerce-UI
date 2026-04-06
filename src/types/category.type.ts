@@ -6,6 +6,7 @@ export interface ICategory {
   active: boolean;
   createdAt: string;
   parentCategory: ICategory | null;
+  productCount: number;
 }
 
 export interface ICreateCategory {

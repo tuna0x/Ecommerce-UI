@@ -5,7 +5,7 @@ export interface IPromotion {
   name: string;
   description: string;
   type: PromotionType;
-  value: number;
+  discountValue: number;
   minOrderValue?: number;
   maxDiscountValue?: number;
   startAt: string;
@@ -21,7 +21,7 @@ export interface IReqCreatePromotion {
   name: string;
   description: string;
   type: PromotionType;
-  value: number;
+  discountValue: number;
   minOrderValue?: number;
   maxDiscountValue?: number;
   startAt: string;
