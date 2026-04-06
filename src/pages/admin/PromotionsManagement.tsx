@@ -11,8 +11,9 @@ import {
   Box,
   Clock,
   Loader2,
+  Globe,
+  LayoutGrid,
 } from "lucide-react";
-import { cn } from "../../lib/utils";
 import PaginationControl from "../../components/PaginationControl";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -43,6 +44,8 @@ import { Badge } from "../../components/ui/badge";
 import type { IPromotion, PromotionType } from "../../types/promotion.type";
 import { PromotionService } from "../../service/promotionService";
 import { ProductService } from "../../service/productService";
+import { categoryService } from "../../service/categoryService";
+import type { ICategory } from "../../types/category.type";
 import { toast } from "sonner";
 import type { IMeta } from "../../types/api.type";
 import { Checkbox } from "../../components/ui/Checkbox";
@@ -78,7 +81,10 @@ const PromotionsManagement: React.FC = () => {
     startAt: "",
     endAt: "",
     active: true,
+    global: false,
+    categoryId: undefined as number | undefined,
   });
+  const [categories, setCategories] = useState<ICategory[]>([]);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [allProducts, setAllProducts] = useState<IProduct[]>([]);
   const [productSearchTerm, setProductSearchTerm] = useState("");
@@ -111,9 +117,21 @@ const PromotionsManagement: React.FC = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await categoryService.getAll(0, 100);
+      if (res && res.data && res.data.result) {
+        setCategories(res.data.result);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
   useEffect(() => {
     fetchPromotions(meta.page);
     fetchAllProducts();
+    fetchCategories();
   }, [meta.page, fetchPromotions]);
 
   const filteredPromotions = useMemo(() => {
@@ -174,6 +192,8 @@ const PromotionsManagement: React.FC = () => {
         startAt: promotion.startAt ? promotion.startAt.split("T")[0] : "",
         endAt: promotion.endAt ? promotion.endAt.split("T")[0] : "",
         active: promotion.active,
+        global: promotion.global,
+        categoryId: promotion.categoryId,
       });
 
       // Fetch assigned products
@@ -196,6 +216,8 @@ const PromotionsManagement: React.FC = () => {
         startAt: new Date().toISOString().split("T")[0],
         endAt: "",
         active: true,
+        global: false,
+        categoryId: undefined,
       });
     }
     setActiveTab("info");
@@ -294,6 +316,7 @@ const PromotionsManagement: React.FC = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Tên khuyến mãi</TableHead>
+                <TableHead>Đối tượng</TableHead>
                 <TableHead>Loại</TableHead>
                 <TableHead>Giá trị</TableHead>
                 <TableHead>Thời gian</TableHead>
@@ -322,6 +345,24 @@ const PromotionsManagement: React.FC = () => {
                             {promotion.description}
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {promotion.global ? (
+                          <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-700 hover:bg-blue-200 border-none">
+                            <Globe className="h-3 w-3" />
+                            Toàn hệ thống
+                          </Badge>
+                        ) : promotion.categoryId ? (
+                          <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-700 hover:bg-purple-200 border-none">
+                            <LayoutGrid className="h-3 w-3" />
+                            {categories.find(c => c.id === promotion.categoryId)?.name || "Danh mục"}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1">
+                            <Box className="h-3 w-3" />
+                            Sản phẩm lẻ
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="gap-1">
@@ -406,7 +447,9 @@ const PromotionsManagement: React.FC = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="info">Thông tin chung</TabsTrigger>
-              <TabsTrigger value="products">Sản phẩm áp dụng</TabsTrigger>
+              <TabsTrigger value="products" disabled={formData.global || formData.categoryId !== undefined}>
+                Sản phẩm áp dụng
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="info" className="space-y-4 py-4 pr-2">
@@ -431,6 +474,54 @@ const PromotionsManagement: React.FC = () => {
                   rows={2}
                 />
               </div>
+
+              <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50/50">
+                <div className="space-y-0.5">
+                  <Label className="text-blue-700 flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Khuyến mãi Toàn hệ thống
+                  </Label>
+                  <p className="text-xs text-blue-600/70">
+                    Áp dụng cho tất cả sản phẩm hiện có
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.global}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, global: checked, categoryId: undefined })
+                  }
+                />
+              </div>
+
+              {!formData.global && (
+                <div className="space-y-2">
+                  <Label>Áp dụng cho Danh mục</Label>
+                  <Select
+                    value={formData.categoryId?.toString() || "none"}
+                    onValueChange={(value) =>
+                      setFormData({ 
+                        ...formData, 
+                        categoryId: value === "none" ? undefined : Number(value) 
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn danh mục (Không bắt buộc)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Không chọn (Áp dụng SP lẻ)</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id.toString()}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground italic">
+                    * Nếu chọn danh mục, khuyến mãi sẽ áp dụng cho tất cả sản phẩm trong danh mục này.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Loại khuyến mãi</Label>
