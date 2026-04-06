@@ -27,6 +27,14 @@ export const ProductService = {
     const res = await axiosInstance.get(BASE_URL, { params });
     return res.data;
   },
+  getFlashSaleProducts: async (
+    page: number,
+    size: number
+  ): Promise<IApiResponse<IPagination<IProduct>>> => {
+    const params = { page, size };
+    const res = await axiosInstance.get(`${BASE_URL}/flash-sale`, { params });
+    return res.data;
+  },
 
   getById: async (id: number): Promise<IApiResponse<IProduct>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}`);

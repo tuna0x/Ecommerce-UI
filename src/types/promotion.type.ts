@@ -11,6 +11,8 @@ export interface IPromotion {
   startAt: string;
   endAt: string;
   active: boolean;
+  global: boolean;
+  categoryId?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -25,6 +27,8 @@ export interface IReqCreatePromotion {
   startAt: string;
   endAt: string;
   active: boolean;
+  global: boolean;
+  categoryId?: number;
 }
 
 export interface IReqUpdatePromotion extends IReqCreatePromotion {

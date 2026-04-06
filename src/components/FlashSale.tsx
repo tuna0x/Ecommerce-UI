@@ -14,10 +14,9 @@ const FlashSale: React.FC = () => {
     const fetchFlashSales = async () => {
       try {
         setIsLoading(true);
-        const res = await ProductService.getAll(1, 100);
+        const res = await ProductService.getFlashSaleProducts(0, 10);
         if (res.data?.result) {
-          const discounted = res.data.result.filter(p => p.originalPrice > p.finalPrice);
-          setFlashSaleProducts(discounted);
+          setFlashSaleProducts(res.data.result);
         }
       } catch (error) {
         console.error("Failed to fetch flash sale products", error);
