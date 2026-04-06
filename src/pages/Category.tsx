@@ -47,7 +47,7 @@ const Category = () => {
   const [brandsList, setBrandsList] = useState<IBrand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [meta, setMeta] = useState<IMeta>({
-    page: 1,
+    page: 0,
     pageSize: 12,
     pages: 1,
     total: 0,
@@ -68,19 +68,19 @@ const Category = () => {
   // Find active node in the hierarchy (Level 1, 2, or 3)
   const activeCategoryNode = useMemo(() => {
     if (!category) return undefined;
-    
+
     // Level 3 Check
     if (subcategoryName && subSubcategoryName) {
       const level2 = category.children?.find(c => c.name === subcategoryName);
       const level3 = level2?.children?.find(c => c.name === subSubcategoryName);
       if (level3) return level3;
     }
-    
+
     // Level 2 Check
     if (subcategoryName) {
       return category.children?.find(c => c.name === subcategoryName) || category;
     }
-    
+
     return category;
   }, [category, subcategoryName, subSubcategoryName]);
 
@@ -117,7 +117,7 @@ const Category = () => {
     try {
       setIsLoading(true);
       const filters = [];
-      
+
       // Hierarchical Category Filter
       if (activeCategoryNode && slug !== "all") {
         const allIds = getDescendantIds(activeCategoryNode);
@@ -128,24 +128,24 @@ const Category = () => {
           filters.push(`category.id in (${allIds.join(" ")})`);
         }
       }
-      
+
       // Brand filter
       if (selectedBrands.length > 0) {
         const brandFilters = selectedBrands.map(b => `brand.name:'${b}'`).join(" OR ");
         filters.push(`(${brandFilters})`);
       }
-      
+
       // Price filter
       filters.push(`originalPrice >= ${priceRange[0]}`);
       filters.push(`originalPrice <= ${priceRange[1]}`);
-      
+
       const filterString = filters.join(" AND ");
-      
+
       const res = await ProductService.getAll(
         currentPage, // Use 0-indexed page
-        meta.pageSize, 
-        undefined, 
-        sortBy, 
+        meta.pageSize,
+        undefined,
+        sortBy,
         filterString
       );
 
