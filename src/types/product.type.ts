@@ -35,7 +35,7 @@ export interface IProduct {
   averageRating?: number;
   reviewCount?: number;
   // UI-specific legacy support
-  price?: number; 
+  price?: number;
   rating?: number;
   soldCount?: number;
   hoverImage?: string;
@@ -55,6 +55,8 @@ export interface IVariant {
   id: number;
   sku: string;
   price: number | null;
+  discountPrice?: number;
+  finalPrice?: number;
   stock: number;
   weight: number;
   variantAttributes: IVariantAttribute[];

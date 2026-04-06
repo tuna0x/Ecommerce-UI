@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { X, Bot, Sparkles, Send } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +22,8 @@ const quickQuestions = [
 ];
 
 const ChatBot: React.FC = () => {
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -125,7 +129,13 @@ const ChatBot: React.FC = () => {
                         className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50"
                     >
                         <Button
-                            onClick={() => setIsOpen(true)}
+                            onClick={() => {
+                                if (!isAuthenticated) {
+                                    navigate('/login');
+                                } else {
+                                    setIsOpen(true);
+                                }
+                            }}
                             className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-fuchsia-500 hover:from-pink-600 hover:via-rose-600 hover:to-fuchsia-600 border-0 relative overflow-hidden"
                             size="icon"
                         >

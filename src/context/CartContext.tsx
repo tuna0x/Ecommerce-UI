@@ -7,30 +7,30 @@ import type { ICartItemResponse, ICartResponse } from "../types/cart.type";
 import type { IApiResponse } from "../types/api.type";
 
 export interface CartItem extends IProduct {
-  cartItemId: string; // Unique ID: v-{variantId} or p-{productId}
-  dbItemId?: number; // Backend database ID for the CartItem
-  quantity: number;
-  selected: boolean;
-  variantId?: number | null;
-  variantAttributes?: IVariantAttribute[] | null;
+    cartItemId: string; // Unique ID: v-{variantId} or p-{productId}
+    dbItemId?: number; // Backend database ID for the CartItem
+    quantity: number;
+    selected: boolean;
+    variantId?: number | null;
+    variantAttributes?: IVariantAttribute[] | null;
 }
 
 interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: IProduct, variantId?: number | null, variantAttributes?: IVariantAttribute[] | null, quantity?: number) => void;
-  removeFromCart: (cartItemId: string) => void;
-  updateQuantity: (cartItemId: string, quantity: number) => void;
-  toggleSelectItem: (cartItemId: string) => void;
-  selectAllItems: (selected: boolean) => void;
-  clearCart: () => void;
-  clearSelectedItems: () => void;
-  cartCount: number;
-  cartTotal: number;
-  selectedTotal: number;
-  selectedCount: number;
-  selectedItems: CartItem[];
-  isCartOpen: boolean;
-  setIsCartOpen: (open: boolean) => void;
+    cartItems: CartItem[];
+    addToCart: (product: IProduct, variantId?: number | null, variantAttributes?: IVariantAttribute[] | null, quantity?: number) => void;
+    removeFromCart: (cartItemId: string) => void;
+    updateQuantity: (cartItemId: string, quantity: number) => void;
+    toggleSelectItem: (cartItemId: string) => void;
+    selectAllItems: (selected: boolean) => void;
+    clearCart: () => void;
+    clearSelectedItems: () => void;
+    cartCount: number;
+    cartTotal: number;
+    selectedTotal: number;
+    selectedCount: number;
+    selectedItems: CartItem[];
+    isCartOpen: boolean;
+    setIsCartOpen: (open: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -38,15 +38,15 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const FREE_SHIPPING_THRESHOLD = 500000;
 
 const getInitialCart = (): CartItem[] => {
-  const savedCart = localStorage.getItem("beautylux_cart");
-  if (savedCart) {
-    try {
-      return JSON.parse(savedCart);
-    } catch (error) {
-      console.error("Failed to parse cart", error);
+    const savedCart = localStorage.getItem("beautylux_cart");
+    if (savedCart) {
+        try {
+            return JSON.parse(savedCart);
+        } catch (error) {
+            console.error("Failed to parse cart", error);
+        }
     }
-  }
-  return [];
+    return [];
 };
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({
@@ -66,7 +66,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                     if (res?.data?.item) {
                         const dbItems: CartItem[] = res.data.item.map((item: ICartItemResponse) => {
                             const cartItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
-                            
+
                             return {
                                 ...item.product,
                                 id: item.product.id,
@@ -80,7 +80,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                                 variantAttributes: item.variantAttributes
                             };
                         });
-                        
+
                         // Merge or overwrite? Let's overwrite for now if DB is primary
                         setCartItems(dbItems);
                     }
@@ -161,7 +161,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 await addToCartApi(product.id, quantity, variantId);
                 const res = await getCartApi();
                 if (res?.data?.item) {
-                     const dbItems: CartItem[] = res.data.item.map((item: any) => {
+                    const dbItems: CartItem[] = res.data.item.map((item: any) => {
                         const cItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
                         return {
                             ...item.product,
@@ -188,7 +188,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     const removeFromCart = async (cartItemId: string) => {
         const itemToRemove = cartItems.find(item => item.cartItemId === cartItemId);
-        
+
         setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
 
         if (isAuthenticated && itemToRemove?.dbItemId) {
@@ -223,76 +223,76 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         }
     };
 
-  const toggleSelectItem = (cartItemId: string) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.cartItemId === cartItemId ? { ...item, selected: !item.selected } : item,
-      ),
+    const toggleSelectItem = (cartItemId: string) => {
+        setCartItems((prev) =>
+            prev.map((item) =>
+                item.cartItemId === cartItemId ? { ...item, selected: !item.selected } : item,
+            ),
+        );
+    };
+
+    const selectAllItems = (selected: boolean) => {
+        setCartItems((prev) => prev.map((item) => ({ ...item, selected })));
+    };
+
+    const clearCart = () => {
+        setCartItems([]);
+    };
+
+    const clearSelectedItems = () => {
+        setCartItems((prev) => prev.filter((item) => !item.selected));
+    };
+
+    const getPrice = (item: IProduct) => item.finalPrice || item.price || 0;
+
+    const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const cartTotal = cartItems.reduce(
+        (sum, item) => sum + getPrice(item) * item.quantity,
+        0,
     );
-  };
 
-  const selectAllItems = (selected: boolean) => {
-    setCartItems((prev) => prev.map((item) => ({ ...item, selected })));
-  };
+    const selectedItems = cartItems.filter((item) => item.selected);
+    const selectedCount = selectedItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+    );
+    const selectedTotal = selectedItems.reduce(
+        (sum, item) => sum + getPrice(item) * item.quantity,
+        0,
+    );
 
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const clearSelectedItems = () => {
-    setCartItems((prev) => prev.filter((item) => !item.selected));
-  };
-
-  const getPrice = (item: IProduct) => item.finalPrice || item.price || 0;
-
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const cartTotal = cartItems.reduce(
-    (sum, item) => sum + getPrice(item) * item.quantity,
-    0,
-  );
-
-  const selectedItems = cartItems.filter((item) => item.selected);
-  const selectedCount = selectedItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0,
-  );
-  const selectedTotal = selectedItems.reduce(
-    (sum, item) => sum + getPrice(item) * item.quantity,
-    0,
-  );
-
-  return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        toggleSelectItem,
-        selectAllItems,
-        clearCart,
-        clearSelectedItems,
-        cartCount,
-        cartTotal,
-        selectedTotal,
-        selectedCount,
-        selectedItems,
-        isCartOpen,
-        setIsCartOpen,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
-  );
+    return (
+        <CartContext.Provider
+            value={{
+                cartItems,
+                addToCart,
+                removeFromCart,
+                updateQuantity,
+                toggleSelectItem,
+                selectAllItems,
+                clearCart,
+                clearSelectedItems,
+                cartCount,
+                cartTotal,
+                selectedTotal,
+                selectedCount,
+                selectedItems,
+                isCartOpen,
+                setIsCartOpen,
+            }}
+        >
+            {children}
+        </CartContext.Provider>
+    );
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useCart = () => {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error("useCart must be used within a CartProvider");
-  }
-  return context;
+    const context = useContext(CartContext);
+    if (context === undefined) {
+        throw new Error("useCart must be used within a CartProvider");
+    }
+    return context;
 };
 
 export { FREE_SHIPPING_THRESHOLD };

@@ -15,14 +15,23 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: any) => {
     if (error.response && error.response.status === 401) {
-      console.log(localStorage.getItem("access_token"));
-
-      console.log(error.config.url);
+      const token = localStorage.getItem("access_token");
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+
+      // Only redirect to login if we had a token (expired) 
+      // or if we are not on the Home/Product Detail page
+      const publicPaths = ["/", "/product"];
+      const currentPath = window.location.pathname;
+      const isPublicPath = publicPaths.some(path => 
+        currentPath === path || (path !== "/" && currentPath.startsWith(path))
+      );
+
+      if (token || !isPublicPath) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },

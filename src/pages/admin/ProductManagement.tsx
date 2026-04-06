@@ -41,7 +41,6 @@ import {
 import { toast } from "sonner";
 import type {
   ICreateProduct,
-  IPrice,
   IProduct,
   IUpdateProduct,
 } from "../../types/product.type";
@@ -65,7 +64,6 @@ const ProductsManagement: React.FC = () => {
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
   const [sort] = useState("createdAt,desc");
-  const [price, setPrice] = useState<Record<number, IPrice>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -113,9 +111,9 @@ const ProductsManagement: React.FC = () => {
   const openDialog = useCallback(async (product: IProduct | null) => {
     if (product) {
       setEditingProductId(product.id);
-      
+
       const attrValues = product.attributeValue || [];
-      
+
       // Populate selectedAttributes for UI
       const attributeGroups: Record<string, string[]> = {};
       attrValues.forEach((av) => {
@@ -145,8 +143,8 @@ const ProductsManagement: React.FC = () => {
           attributeValues: v.variantAttributes.map(va => {
             // Find the ID in product's attributeValue or current value state
             const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
-               const avName = (av as { attributeName?: string }).attributeName || (av as { attribute?: { name: string } }).attribute?.name;
-               return av.value === va.value && avName === va.name;
+              const avName = (av as { attributeName?: string }).attributeName || (av as { attribute?: { name: string } }).attribute?.name;
+              return av.value === va.value && avName === va.name;
             });
             return attrMatch ? (attrMatch as { id: number }).id : 0;
           }).filter(id => id !== 0)
@@ -154,8 +152,8 @@ const ProductsManagement: React.FC = () => {
       });
 
       // Populate image previews for existing images
-      const existingImages = Array.isArray(product.image) 
-        ? product.image 
+      const existingImages = Array.isArray(product.image)
+        ? product.image
         : (product.image ? [product.image as string] : []);
       setImagePreviews(existingImages);
     } else {
@@ -200,15 +198,6 @@ const ProductsManagement: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFetchPrice = async (id: number) => {
-    const res = await ProductService.getPrice(id);
-
-    if (!res.data) return;
-    setPrice((prev) => ({
-      ...prev,
-      [id]: res.data as IPrice,
-    }));
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -236,7 +225,7 @@ const ProductsManagement: React.FC = () => {
         setValue([]);
         return;
       }
-      
+
       try {
         const res = await attributeValueService.getAll(`attribute.categories.id:'${formData.categoryId}'`);
         if (!res.error) {
@@ -250,11 +239,6 @@ const ProductsManagement: React.FC = () => {
     fetchAttributeValues();
   }, [formData.categoryId]);
 
-  useEffect(() => {
-    products.forEach((p) => {
-      handleFetchPrice(p.id);
-    });
-  }, [products]);
 
   useEffect(() => {
     fetchProducts();
@@ -286,7 +270,7 @@ const ProductsManagement: React.FC = () => {
       brandId: null,
       attributeValue: [],
       variants: []
-    });setSelectedAttributes({});
+    }); setSelectedAttributes({});
     setEditingProductId(null);
   }, []);
 
@@ -353,17 +337,17 @@ const ProductsManagement: React.FC = () => {
 
   const removeImage = (index: number) => {
     const previewToRemove = imagePreviews[index];
-    
+
     // If it's a new upload (blob), find and remove from files state
     if (previewToRemove.startsWith('blob:')) {
       // Find index within only blob previews to match files array
       const blobIndex = imagePreviews
         .slice(0, index)
         .filter(p => p.startsWith('blob:')).length;
-        
+
       setFiles((prev) => prev.filter((_, i) => i !== blobIndex));
     }
-    
+
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -384,12 +368,12 @@ const ProductsManagement: React.FC = () => {
 
   const groupedAttributes: GroupedAttribute[] = useMemo(() => {
     if (!formData.categoryId) return [];
-    
+
     const groups: Record<number, GroupedAttribute> = {};
-    
+
     value.forEach((item) => {
       if (!item.attribute) return;
-      
+
       const attrId = item.attribute.id;
       if (!groups[attrId]) {
         groups[attrId] = {
@@ -398,13 +382,13 @@ const ProductsManagement: React.FC = () => {
           values: [],
         };
       }
-      
+
       groups[attrId].values.push({
         id: item.id,
         value: item.value,
       });
     });
-    
+
     return Object.values(groups);
   }, [value, formData.categoryId]);
 
@@ -497,16 +481,16 @@ const ProductsManagement: React.FC = () => {
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {row.original.attributeValue?.length ? (
             row.original.attributeValue.map((item, index) => {
-                const value = (item as { attributeValue?: { value: string } }).attributeValue?.value || (item as { value?: string }).value || "N/A";
-                return (
-                    <Badge
-                        key={index}
-                        variant="outline"
-                        className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
-                    >
-                        {value}
-                    </Badge>
-                );
+              const value = (item as { attributeValue?: { value: string } }).attributeValue?.value || (item as { value?: string }).value || "N/A";
+              return (
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
+                >
+                  {value}
+                </Badge>
+              );
             })
           ) : (
             <span className="text-[10px] text-muted-foreground italic">Trống</span>
@@ -522,28 +506,31 @@ const ProductsManagement: React.FC = () => {
     {
       id: "price",
       header: "Giá",
-      cell: ({ row }) => (
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-primary">
-            {formatCurrency(price[row.original.id]?.finalPrice || row.original.originalPrice)}
-          </span>
-          {(price[row.original.id]?.discountPrice ?? 0) > 0 && (
-            <span className="text-[10px] text-muted-foreground line-through">
-              {formatCurrency(price[row.original.id]?.originalPrice)}
+      cell: ({ row }) => {
+        const product = row.original;
+        return (
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-primary">
+              {formatCurrency(product.finalPrice || product.originalPrice)}
             </span>
-          )}
-        </div>
-      ),
+            {(product.discountPrice ?? 0) > 0 && (
+              <span className="text-[10px] text-muted-foreground line-through">
+                {formatCurrency(product.originalPrice)}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       id: "discount",
       header: "Giảm giá",
       cell: ({ row }) => {
-        const p = price[row.original.id];
-        const discountPercentage = p?.originalPrice && p?.discountPrice
-          ? Math.round((p.discountPrice / p.originalPrice) * 100)
+        const product = row.original;
+        const discountPercentage = product.originalPrice && product.discountPrice
+          ? Math.round((Number(product.discountPrice) / Number(product.originalPrice)) * 100)
           : 0;
-        
+
         if (discountPercentage <= 0) return <div className="text-center text-muted-foreground">-</div>;
 
         return (
@@ -589,7 +576,7 @@ const ProductsManagement: React.FC = () => {
         </div>
       ),
     },
-  ], [price, formatCurrency, openDialog, handleDelete]);
+  ], [formatCurrency, openDialog, handleDelete]);
 
   return (
     <div className="space-y-6">
@@ -636,10 +623,10 @@ const ProductsManagement: React.FC = () => {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}
-            
-            <DataTable 
-              columns={columns} 
-              data={products} 
+
+            <DataTable
+              columns={columns}
+              data={products}
               onDeleteSelected={(rows) => {
                 if (confirm(`Bạn có chắc chắn muốn xóa ${rows.length} sản phẩm?`)) {
                   Promise.all(rows.map(r => ProductService.remove(r.id))).then(() => {
@@ -707,8 +694,8 @@ const ProductsManagement: React.FC = () => {
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1.5">
                                 {variant.variantAttributes?.map((val, vIdx: number) => (
-                                  <Badge 
-                                    key={vIdx} 
+                                  <Badge
+                                    key={vIdx}
                                     variant="outline"
                                     className="bg-muted/50 border-border/50 text-[10px] px-1.5 py-0 font-normal h-4.5"
                                   >
@@ -723,8 +710,8 @@ const ProductsManagement: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex flex-col items-end gap-1">
-                                <Badge 
-                                  variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")} 
+                                <Badge
+                                  variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")}
                                   className={`text-[10px] h-5 px-1.5 font-medium border-none ${variant.stock > 10 ? 'bg-emerald-50 text-emerald-700' : ''}`}
                                 >
                                   {variant.stock} {variant.stock > 0 ? 'sẵn có' : 'hết hàng'}
@@ -732,7 +719,16 @@ const ProductsManagement: React.FC = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right font-semibold text-foreground group-hover:text-primary transition-colors">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(variant.price || row.original.originalPrice)}
+                              <div className="flex flex-col items-end">
+                                <span className={(variant.finalPrice && variant.price && variant.finalPrice < variant.price) ? "text-primary" : ""}>
+                                  {formatCurrency(variant.finalPrice || variant.price || row.original.originalPrice)}
+                                </span>
+                                {variant.finalPrice && variant.price && variant.finalPrice < variant.price && (
+                                  <span className="text-[10px] text-muted-foreground line-through font-normal">
+                                    {formatCurrency(variant.price)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -889,17 +885,17 @@ const ProductsManagement: React.FC = () => {
                     Biến thể sản phẩm
                   </Label>
                   <div className="flex gap-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="h-8 gap-1 text-primary border-primary/50 hover:bg-primary/5"
                       onClick={() => {
                         // 1. Get all selected attribute values in a grouped format
                         const selectedAttributeGroups = groupedAttributes
                           .map(attr => ({
                             attributeId: attr.attributeId,
-                            values: attr.values.filter(v => 
+                            values: attr.values.filter(v =>
                               (selectedAttributes[attr.attributeId] || []).includes(v.id.toString())
                             )
                           }))
@@ -919,7 +915,7 @@ const ProductsManagement: React.FC = () => {
                           const res: number[][] = [];
                           const currentGroup = groups[index];
                           const nextCombs = generateCombinations(groups, index + 1);
-                          
+
                           currentGroup.values.forEach((val) => {
                             nextCombs.forEach(comb => {
                               res.push([val.id, ...comb]);
@@ -929,7 +925,7 @@ const ProductsManagement: React.FC = () => {
                         };
 
                         const allCombinations = generateCombinations(selectedAttributeGroups);
-                        
+
                         // 3. Convert to Variants
                         const newVariants = allCombinations.map((comb, idx) => ({
                           sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${idx + 1}-${Date.now()}`,
@@ -943,17 +939,17 @@ const ProductsManagement: React.FC = () => {
                           ...formData,
                           variants: [...(formData.variants || []), ...newVariants]
                         });
-                        
+
                         toast.success(`Đã tạo nhanh ${newVariants.length} biến thể!`);
                       }}
                     >
                       <Plus className="h-4 w-4" />
                       Tạo nhanh tổ hợp
                     </Button>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       className="h-8 gap-1"
                       onClick={() => {
                         const newVariant = {
@@ -974,7 +970,7 @@ const ProductsManagement: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   {(formData.variants || []).map((v, vIndex) => (
                     <Card key={vIndex} className="relative overflow-hidden border-border bg-muted/20">
@@ -991,7 +987,7 @@ const ProductsManagement: React.FC = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      
+
                       <CardContent className="p-4 grid gap-4">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
@@ -1022,7 +1018,7 @@ const ProductsManagement: React.FC = () => {
                             />
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <Label className="text-xs">Kho hàng</Label>
@@ -1057,10 +1053,10 @@ const ProductsManagement: React.FC = () => {
                             <div className="flex flex-wrap gap-2">
                               {groupedAttributes.map((attr) => {
                                 // Find which value of this attribute is selected for this variant
-                                const selectedValueId = v.attributeValues.find(id => 
+                                const selectedValueId = v.attributeValues.find(id =>
                                   attr.values.some(av => av.id === id)
                                 );
-                                
+
                                 return (
                                   <div key={attr.attributeId} className="w-full">
                                     <SearchableSelect
@@ -1071,7 +1067,7 @@ const ProductsManagement: React.FC = () => {
                                       value={selectedValueId?.toString() || "none"}
                                       onValueChange={(val) => {
                                         const newVariants = [...(formData.variants || [])];
-                                        const attrValueIds = newVariants[vIndex].attributeValues.filter(id => 
+                                        const attrValueIds = newVariants[vIndex].attributeValues.filter(id =>
                                           !attr.values.some(av => av.id === id)
                                         );
                                         if (val !== "none") {
@@ -1092,7 +1088,7 @@ const ProductsManagement: React.FC = () => {
                       </CardContent>
                     </Card>
                   ))}
-                  
+
                   {formData.variants?.length === 0 && (
                     <div className="text-center py-8 rounded-lg border-2 border-dashed border-border bg-muted/30">
                       <p className="text-sm text-muted-foreground">Chưa có biến thể nào. Nhấn "Thêm biến thể" để bắt đầu.</p>
@@ -1153,17 +1149,17 @@ const ProductsManagement: React.FC = () => {
                 </div>
               )}
 
-            {/* Upload button */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <ImageIcon className="h-6 w-6" />
-              <span className="text-sm font-medium">Nhấn để tải ảnh lên</span>
-              <span className="text-xs">PNG, JPG, WEBP (tối đa 5MB/ảnh)</span>
+              {/* Upload button */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-24 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-foreground"
+              >
+                <ImageIcon className="h-6 w-6" />
+                <span className="text-sm font-medium">Nhấn để tải ảnh lên</span>
+                <span className="text-xs">PNG, JPG, WEBP (tối đa 5MB/ảnh)</span>
+              </div>
             </div>
           </div>
-        </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
               Hủy
