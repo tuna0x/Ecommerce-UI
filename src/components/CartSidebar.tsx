@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Checkbox } from '../components/ui/Checkbox';
@@ -17,6 +17,7 @@ const CartSidebar: React.FC = () => {
     cartCount,
     isCartOpen,
     setIsCartOpen,
+    isLoading,
   } = useCart();
   const navigate = useNavigate();
 
@@ -84,8 +85,9 @@ const CartSidebar: React.FC = () => {
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <Checkbox
                       checked={allSelected}
+                      disabled={isLoading}
                       onCheckedChange={(checked) => selectAllItems(checked as boolean)}
-                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4"
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 disabled:opacity-50"
                     />
                     <span className="text-xs font-medium text-muted-foreground">
                       Chọn tất cả ({cartItems.length})
@@ -151,7 +153,7 @@ const CartSidebar: React.FC = () => {
                     const price = item.finalPrice || item.price || 0;
                     const originalPrice = item.originalPrice || 0;
                     const discount = item.discount || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
-                    const brandName = typeof item.brand === 'string' ? item.brand : item.brand.name;
+                    const brandName = typeof item.brand === 'string' ? item.brand : (item.brand?.name || 'No Brand');
                     const image = item.thumbnail || (Array.isArray(item.image) ? item.image[0] : (item.image ?? ''));
 
                     return (
@@ -168,8 +170,9 @@ const CartSidebar: React.FC = () => {
                           <div className="flex items-start pt-0.5">
                             <Checkbox
                               checked={item.selected}
+                              disabled={isLoading}
                               onCheckedChange={() => toggleSelectItem(item.cartItemId)}
-                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4"
+                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4 disabled:opacity-50"
                             />
                           </div>
 
@@ -212,7 +215,7 @@ const CartSidebar: React.FC = () => {
                               <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                                 {item.variantAttributes.map((attr, i) => (
                                   <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                    {attr.name}: {attr.value}
+                                    {attr.name}: {(attr as unknown as { attributeValue?: string }).attributeValue || (attr as unknown as { value?: string }).value}
                                   </span>
                                 ))}
                               </div>
@@ -234,7 +237,8 @@ const CartSidebar: React.FC = () => {
                           {/* Delete Button */}
                           <button
                             onClick={() => removeFromCart(item.cartItemId)}
-                            className="self-start p-1 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                            disabled={isLoading}
+                            className="self-start p-1 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-full transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -246,17 +250,19 @@ const CartSidebar: React.FC = () => {
                           <div className="flex items-center gap-0.5">
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors disabled:opacity-30"
-                              disabled={item.quantity <= 1}
+                              className={`p-1 rounded transition-colors disabled:opacity-30 ${item.quantity <= 1 ? 'text-destructive hover:bg-destructive/10' : 'text-muted-foreground/60 hover:text-primary hover:bg-primary/5'}`}
+                              disabled={isLoading}
+                              title={item.quantity <= 1 ? "Xóa sản phẩm" : "Giảm số lượng"}
                             >
-                              <Minus className="w-3 h-3" />
+                              {item.quantity <= 1 ? <X className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                             </button>
                             <span className="w-7 text-center text-xs font-semibold tabular-nums">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors"
+                              className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors disabled:opacity-30"
+                              disabled={isLoading}
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -304,10 +310,12 @@ const CartSidebar: React.FC = () => {
                 {/* Checkout Button */}
                 <button
                   onClick={handleCheckout}
-                  disabled={selectedCount === 0}
+                  disabled={selectedCount === 0 || isLoading}
                   className="w-full btn-primary py-3.5 text-sm font-semibold flex items-center justify-center gap-2 group shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {selectedCount === 0 ? (
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : selectedCount === 0 ? (
                     'Chọn sản phẩm để thanh toán'
                   ) : (
                     <>

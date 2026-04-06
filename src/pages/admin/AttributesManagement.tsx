@@ -172,6 +172,22 @@ const AttributesManagement: React.FC = () => {
     }
   }, [editingAttributeId, attrForm, fetchAttributes]);
 
+  const handleToggleActive = useCallback(async (attr: IAttribute) => {
+    try {
+      const updateData: IUpdateAttribute = {
+        id: attr.id,
+        name: attr.name,
+        active: !attr.active,
+        categoryIds: attr.categories.map(c => c.id)
+      };
+      await attributeService.update(updateData);
+      toast.success(attr.active ? "Đã ẩn thuộc tính" : "Đã kích hoạt thuộc tính");
+      fetchAttributes();
+    } catch {
+      toast.error("Không thể thay đổi trạng thái");
+    }
+  }, [fetchAttributes]);
+
   // ---- Value CRUD ----
 
   const fetchAttributeValues = useCallback(async (attributeId: number) => {
@@ -319,9 +335,9 @@ const AttributesManagement: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  attributes?.map((attr) => (
+                  attributes?.map((attr, attrIdx) => (
                     <TableRow
-                      key={attr.id}
+                      key={`attr-${attr.id}-${attrIdx}`}
                       className={`cursor-pointer transition-colors ${selectedAttribute?.id === attr.id ? "bg-accent" : ""}`}
                       onClick={() => setSelectedAttribute(attr)}
                     >
@@ -335,8 +351,8 @@ const AttributesManagement: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {attr.categories.map((cat) => (
-                            <Badge key={cat.id} variant="outline" className="text-[10px] px-1 h-5">
+                          {attr.categories.map((cat, catIdx) => (
+                            <Badge key={`cat-${cat.id}-${catIdx}`} variant="outline" className="text-[10px] px-1 h-5">
                               {cat.name}
                             </Badge>
                           ))}
@@ -345,7 +361,11 @@ const AttributesManagement: React.FC = () => {
                       <TableCell>
                         <Badge
                           variant={attr.active ? "default" : "secondary"}
-                          className="text-xs"
+                          className="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleActive(attr);
+                          }}
                         >
                           {attr.active ? "Hoạt động" : "Ẩn"}
                         </Badge>
@@ -434,8 +454,8 @@ const AttributesManagement: React.FC = () => {
                       </TableRow>
                     )}
 
-                    {attributeValues?.map((val) => (
-                      <TableRow key={val.id}>
+                    {attributeValues?.map((val, valIdx) => (
+                      <TableRow key={`val-${val.id}-${valIdx}`}>
                         <TableCell>
                           {selectedAttribute?.name === "Màu sắc" ? (
                             <span className="flex items-center gap-2">

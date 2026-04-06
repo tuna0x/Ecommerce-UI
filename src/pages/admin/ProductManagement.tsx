@@ -142,9 +142,10 @@ const ProductsManagement: React.FC = () => {
           weight: v.weight,
           attributeValues: v.variantAttributes.map(va => {
             // Find the ID in product's attributeValue or current value state
-            const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
+              const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
               const avName = (av as { attributeName?: string }).attributeName || (av as { attribute?: { name: string } }).attribute?.name;
-              return av.value === va.value && avName === va.name;
+              const avVal = (av as unknown as { attributeValue?: string }).attributeValue;
+              return avVal === va.attributeValue && avName === va.name;
             });
             return attrMatch ? (attrMatch as { id: number }).id : 0;
           }).filter(id => id !== 0)
@@ -385,7 +386,7 @@ const ProductsManagement: React.FC = () => {
 
       groups[attrId].values.push({
         id: item.id,
-        value: item.value,
+        value: item.attributeValue,
       });
     });
 
@@ -481,7 +482,7 @@ const ProductsManagement: React.FC = () => {
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {row.original.attributeValue?.length ? (
             row.original.attributeValue.map((item, index) => {
-              const value = (item as { attributeValue?: { value: string } }).attributeValue?.value || (item as { value?: string }).value || "N/A";
+              const value = (item as unknown as { attributeValue?: string }).attributeValue || "N/A";
               return (
                 <Badge
                   key={index}
@@ -700,7 +701,7 @@ const ProductsManagement: React.FC = () => {
                                     className="bg-muted/50 border-border/50 text-[10px] px-1.5 py-0 font-normal h-4.5"
                                   >
                                     <span className="text-muted-foreground mr-1 opacity-70">{val.name}:</span>
-                                    {val.value}
+                                    {val.attributeValue}
                                   </Badge>
                                 ))}
                               </div>

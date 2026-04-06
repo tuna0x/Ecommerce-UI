@@ -65,6 +65,7 @@ const ProductDetail: React.FC = () => {
         const categoryId = typeof prodRes.data.category === 'object' ? prodRes.data.category.id : null;
         const categoryName = typeof prodRes.data.category === 'string' ? prodRes.data.category : prodRes.data.category?.name;
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const promises: Promise<IApiResponse<any>>[] = [];
 
         if (categoryName) {
@@ -288,14 +289,14 @@ const ProductDetail: React.FC = () => {
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory md:grid md:grid-cols-4 md:overflow-visible">
               {images.map((img, index) => (
                 <button
-                  key={index}
+                  key={img}
                   onClick={() => setSelectedImage(index)}
                   className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 snap-start ${selectedImage === index
                     ? 'border-primary ring-2 ring-primary/20'
                     : 'border-border/50 hover:border-primary/50'
                     }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img} alt={`${product.name} - ảnh ${index + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -340,15 +341,15 @@ const ProductDetail: React.FC = () => {
             </div>
 
             {/* Dynamic Attributes */}
-            {groupedAttributes.map((attr, idx) => (
-              <div key={idx} className="space-y-2">
+            {groupedAttributes.map((attr) => (
+              <div key={attr.name} className="space-y-2">
                 <p className="text-sm font-medium">{attr.name}</p>
                 <div className="flex flex-wrap gap-2">
-                  {attr.values.map((val, vIdx) => {
+                  {attr.values.map((val) => {
                     const isSelected = selectedAttributes[attr.name] === val;
                     return (
                       <button
-                        key={vIdx}
+                        key={val}
                         onClick={() => setSelectedAttributes(prev => ({ ...prev, [attr.name]: val }))}
                         className={cn(
                           "px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -501,7 +502,7 @@ const ProductDetail: React.FC = () => {
                     {staticAttributes.length > 0 ? (
                       <div className="grid gap-4">
                         {staticAttributes.map((attr, idx) => (
-                          <div key={idx} className="flex justify-between py-3 border-b border-border/30 last:border-0">
+                          <div key={attr.id || idx} className="flex justify-between py-3 border-b border-border/30 last:border-0">
                             <span className="text-muted-foreground">{attr.attributeValue}</span>
                           </div>
                         ))}
