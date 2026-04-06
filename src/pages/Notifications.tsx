@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight, Filter } from 'lucide-react';
+import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationContext';
-import type { Notification } from '../context/NotificationContext';
+import type { Notification } from '../types/notification.type';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Badge } from '../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+
 import TopBar from '../components/TopBar';
 import Header from '../components/Header';
 import Footer from '../components/Footer';

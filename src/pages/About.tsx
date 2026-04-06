@@ -1,6 +1,6 @@
-import React from 'react';
+
 import { motion } from 'framer-motion';
-import { Heart, Leaf, Shield, Star, Users, Award } from 'lucide-react';
+import { Heart, Leaf, Shield, Star, Award } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 

@@ -31,6 +31,10 @@ import ChatManagement from "../pages/admin/ChatManagement";
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
+import Blog from "../pages/Blog";
+import Contact from "../pages/Contact";
+import FAQ from "../pages/FAQ";
+import About from "../pages/About";
 
 const AnimatedRoutes = () => {
   return (
@@ -49,6 +53,10 @@ const AnimatedRoutes = () => {
       <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
       <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
       <Route path="/brands" element={<ProtectedRoute><Category /></ProtectedRoute>} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/faq" element={<FAQ />} />
+      <Route path="/about" element={<About />} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminRoute />}>

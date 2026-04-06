@@ -11,7 +11,7 @@ export interface Order {
     price: number;
   }[];
   total: number;
-  status: "pending" | "confirmed" | "shipping" | "delivered" | "cancelled";
+  status: "pending" | "confirmed" | "delivering" | "delivered" | "cancelled";
   paymentMethod: "cod" | "bank" | "momo";
   createdAt: string;
 }
@@ -82,7 +82,7 @@ export const mockOrders: Order[] = [
       },
     ],
     total: 1160000,
-    status: "shipping",
+    status: "delivering",
     paymentMethod: "bank",
     createdAt: "2024-01-13T09:15:00Z",
   },

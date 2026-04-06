@@ -118,17 +118,24 @@ const Checkout: React.FC = () => {
       const { checkoutApi } = await import('../service/orderService');
       const cartItemIds = selectedItems.map(item => item.dbItemId).filter(id => id !== undefined) as number[];
       
-      const payload = {
+      interface OrderPayload {
+        addressId: number;
+        cartItemId: number[];
+        couponCode: string | null;
+        paymentMethod: 'VNPAY' | 'COD';
+      }
+
+      const payload: OrderPayload = {
         addressId: parseInt(selectedAddressId as string),
         cartItemId: cartItemIds,
-        couponCode: null, // Add coupon state later if needed
-        paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD' as any
+        couponCode: null,
+        paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD'
       };
 
       const res = await checkoutApi(payload);
 
       if (payload.paymentMethod === 'VNPAY') {
-        const data = res.data?.data || res.data; // Handle potential wrapping
+        const data = (res.data?.data || res.data) as { paymentUrl?: string, url?: string };
         const urlToRedirect = data.paymentUrl || data.url;
         
         if (urlToRedirect) {
@@ -138,14 +145,12 @@ const Checkout: React.FC = () => {
           setIsSubmitting(false);
         }
       } else {
-        // EXTREME LOGGING - Please check console F12 to see this!
-        console.log("FULL SERVER RESPONSE:", JSON.stringify(res.data, null, 2));
-
-        const findField = (obj: any, field: string): any => {
+        const findField = (obj: unknown, field: string): unknown => {
           if (!obj || typeof obj !== 'object') return null;
-          if (obj[field]) return obj[field];
-          for (const key in obj) {
-            const found = findField(obj[key], field);
+          const target = obj as Record<string, unknown>;
+          if (target[field]) return target[field];
+          for (const key in target) {
+            const found = findField(target[key], field);
             if (found) return found;
           }
           return null;
@@ -154,8 +159,6 @@ const Checkout: React.FC = () => {
         const responseData = res.data?.data || res.data;
         const orderId = findField(responseData, 'id');
         const transactionId = findField(responseData, 'transactionId') || findField(responseData, 'transactionID');
-        
-        console.log("EXTRACTED INFO:", { orderId, transactionId });
         
         navigate(`/payment-result?status=success&orderId=${orderId}&transactionId=${transactionId}&method=cod`);
       }
@@ -406,7 +409,7 @@ const Checkout: React.FC = () => {
                             <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                               {item.variantAttributes.map((attr, i) => (
                                 <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                  {attr.name}: {(attr as any).value || attr.attributeValue}
+                                  {attr.name}: {attr.attributeValue}
                                 </span>
                               ))}
                             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Search, ShieldCheck, RotateCcw, Truck, CreditCard, HelpCircle, Package } from 'lucide-react';
 import { Input } from '../components/ui/input';

@@ -46,3 +46,12 @@ export const getMyOrdersApi = async (page: number, size: number) => {
 export const getOrderByIdApi = async (id: number) => {
     return axiosInstance.get(`/order/${id}`);
 };
+
+export const getAllOrdersAdminApi = async (page: number, size: number, status?: string) => {
+    const statusParam = status && status !== "all" ? `&status=${status}` : "";
+    return axiosInstance.get(`/order/admin/all?page=${page - 1}&size=${size}${statusParam}`);
+};
+
+export const updateOrderStatusApi = async (id: number, status: string) => {
+    return axiosInstance.put(`/order/${id}/status?status=${status}`);
+};

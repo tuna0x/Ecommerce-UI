@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
@@ -50,7 +50,7 @@ const statusConfig = {
     color: "bg-blue-100 text-blue-800",
     icon: Check,
   },
-  SHIPPING: {
+  DELIVERING: {
     label: "Đang giao",
     color: "bg-purple-100 text-purple-800",
     icon: Truck,
@@ -227,7 +227,7 @@ const Orders = () => {
     return {
       all: currentOrders,
       PENDING: currentOrders.filter((o) => o.status === "PENDING"),
-      SHIPPING: currentOrders.filter((o) => o.status === "SHIPPING"),
+      DELIVERING: currentOrders.filter((o) => o.status === "DELIVERING"),
       DELIVERED: currentOrders.filter((o) => o.status === "DELIVERED"),
       CANCELLED: currentOrders.filter((o) => o.status === "CANCELLED"),
     };
@@ -272,8 +272,8 @@ const Orders = () => {
                     <TabsTrigger value="PENDING" className="rounded-xl px-5 py-3 data-[state=active]:bg-pink-600 data-[state=active]:text-white font-black transition-[background-color,color] duration-200 text-[11px] uppercase tracking-wider shadow-none outline-none">
                         Chờ xác nhận ({filteredOrders.PENDING.length})
                     </TabsTrigger>
-                    <TabsTrigger value="SHIPPING" className="rounded-xl px-5 py-3 data-[state=active]:bg-pink-600 data-[state=active]:text-white font-black transition-[background-color,color] duration-200 text-[11px] uppercase tracking-wider shadow-none outline-none">
-                        Đang giao ({filteredOrders.SHIPPING.length})
+                    <TabsTrigger value="DELIVERING" className="rounded-xl px-5 py-3 data-[state=active]:bg-pink-600 data-[state=active]:text-white font-black transition-[background-color,color] duration-200 text-[11px] uppercase tracking-wider shadow-none outline-none">
+                        Đang giao ({filteredOrders.DELIVERING.length})
                     </TabsTrigger>
                     <TabsTrigger value="DELIVERED" className="rounded-xl px-5 py-3 data-[state=active]:bg-pink-600 data-[state=active]:text-white font-black transition-[background-color,color] duration-200 text-[11px] uppercase tracking-wider shadow-none outline-none">
                         Đã giao ({filteredOrders.DELIVERED.length})
@@ -284,7 +284,7 @@ const Orders = () => {
                 </TabsList>
             </div>
 
-            {["all", "PENDING", "SHIPPING", "DELIVERED", "CANCELLED"].map(
+            {["all", "PENDING", "DELIVERING", "DELIVERED", "CANCELLED"].map(
               (status) => (
                 <TabsContent key={status} value={status} className="mt-0 outline-none">
                   {(filteredOrders[status as keyof typeof filteredOrders] || filteredOrders.all).length === 0 ? (

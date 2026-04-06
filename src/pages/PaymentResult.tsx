@@ -43,7 +43,7 @@ const PaymentResult: React.FC = () => {
                 description: `Mã đơn hàng: #${displayId}. Cảm ơn bạn đã mua sắm tại BeautyLux!`,
             });
         }
-    }, [isSuccess, isCod, clearSelectedItems, toast, orderId, transactionId]);
+    }, [isSuccess, isCod, clearSelectedItems, toast, orderId, transactionId, status, method]);
 
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-muted/30 px-4">
