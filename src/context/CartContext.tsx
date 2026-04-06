@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import type { IProduct, IVariantAttribute } from "../types/product.type";
 import { useAuth } from "./AuthContext";
 import { addToCartApi, getCartApi, removeCartItemApi, updateCartItemQuantityApi } from "../service/cartService";
-import type { ICartItemResponse, ICartResponse } from "../types/cart.type";
-import type { IApiResponse } from "../types/api.type";
+import type { ICartItemResponse } from "../types/cart.type";
+import { toast } from "sonner";
 
 export interface CartItem extends IProduct {
     cartItemId: string; // Unique ID: v-{variantId} or p-{productId}
@@ -31,6 +31,7 @@ interface CartContextType {
     selectedItems: CartItem[];
     isCartOpen: boolean;
     setIsCartOpen: (open: boolean) => void;
+    isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -55,132 +56,115 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     const { isAuthenticated } = useAuth();
     const [cartItems, setCartItems] = useState<CartItem[]>(getInitialCart);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const hasSyncedRef = React.useRef(false);
+    const updateTimeoutsRef = React.useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-    // Initial Fetch from DB if authenticated
+    // Function to map DB item to CartItem interface
+    const mapDbItemToCartItem = useCallback((item: ICartItemResponse): CartItem => {
+        const cartItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
+        return {
+            ...item.product,
+            id: item.product.id,
+            name: item.product.name,
+            finalPrice: item.unitPrice,
+            cartItemId,
+            dbItemId: item.id,
+            quantity: item.quantity,
+            selected: true,
+            variantId: item.variantId,
+            variantAttributes: item.variantAttributes
+        };
+    }, []);
+
+    // Initial Fetch & Sync
     useEffect(() => {
-        if (isAuthenticated && !isSyncing) {
-            const fetchCart = async () => {
-                try {
-                    const res = (await getCartApi()).data as IApiResponse<ICartResponse>;
-                    if (res?.data?.item) {
-                        const dbItems: CartItem[] = res.data.item.map((item: ICartItemResponse) => {
-                            const cartItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
+        const syncAndFetch = async () => {
+            if (!isAuthenticated) {
+                hasSyncedRef.current = false;
+                return;
+            }
 
-                            return {
-                                ...item.product,
-                                id: item.product.id,
-                                name: item.product.name,
-                                finalPrice: item.unitPrice,
-                                cartItemId,
-                                dbItemId: item.id,
-                                quantity: item.quantity,
-                                selected: true,
-                                variantId: item.variantId,
-                                variantAttributes: item.variantAttributes
-                            };
-                        });
+            if (hasSyncedRef.current) return;
 
-                        // Merge or overwrite? Let's overwrite for now if DB is primary
-                        setCartItems(dbItems);
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch cart from DB", error);
-                }
-            };
-            fetchCart();
-        }
-    }, [isAuthenticated, isSyncing]);
+            setIsLoading(true);
+            try {
+                // 1. Fetch current DB cart
+                const res = await getCartApi();
+                let currentDbItems = res.data?.data?.item || [];
 
-    // Simple Sync local items to DB on login
-    useEffect(() => {
-        const syncLocalCart = async () => {
-            if (isAuthenticated && cartItems.length > 0 && !isSyncing) {
-                // If any item doesn't have a dbItemId, it's local only
-                const localItems = cartItems.filter(item => !item.dbItemId);
+                // 2. Sync local items if any
+                const localItems = getInitialCart().filter(li => !currentDbItems.some((di: ICartItemResponse) => 
+                    (li.variantId ? li.variantId === di.variantId : li.id === di.product.id)
+                ));
+
                 if (localItems.length > 0) {
-                    setIsSyncing(true);
                     for (const item of localItems) {
                         try {
                             await addToCartApi(item.id, item.quantity, item.variantId);
-                        } catch (err) {
-                            console.error("Failed to sync local item", (item as any).name);
+                        } catch (e) {
+                            console.error("Sync failed for", item.name, e);
                         }
                     }
-                    // Re-fetch full cart from DB after sync
-                    const res = (await getCartApi()).data as IApiResponse<ICartResponse>;
-                    if (res?.data?.item) {
-                        const dbItems: CartItem[] = res.data.item.map((item: ICartItemResponse) => {
-                            const cartItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
-                            return {
-                                ...item.product,
-                                id: item.product.id,
-                                name: item.product.name,
-                                finalPrice: item.unitPrice,
-                                cartItemId,
-                                dbItemId: item.id,
-                                quantity: item.quantity,
-                                selected: true,
-                                variantId: item.variantId,
-                                variantAttributes: item.variantAttributes
-                            };
-                        });
-                        setCartItems(dbItems);
-                    }
-                    setIsSyncing(false);
+                    // Re-fetch after sync
+                    const finalRes = await getCartApi();
+                    currentDbItems = finalRes.data?.data?.item || [];
                 }
+
+                // BUGFIX: Clear local cart to prevent deleted legacy items from resurrecting on refresh
+                localStorage.removeItem("beautylux_cart");
+
+                const mappedItems = currentDbItems.map(mapDbItemToCartItem);
+                setCartItems(mappedItems);
+                hasSyncedRef.current = true;
+            } catch (error) {
+                console.error("Cart sync failed", error);
+            } finally {
+                setIsLoading(false);
             }
         };
-        syncLocalCart();
-    }, [isAuthenticated, cartItems, isSyncing]);
 
-    // Save cart to localStorage fall-back
+        syncAndFetch();
+    }, [isAuthenticated, mapDbItemToCartItem]);
+
+    // Persist to localStorage (as backup/guest cart)
     useEffect(() => {
-        localStorage.setItem("beautylux_cart", JSON.stringify(cartItems));
-    }, [cartItems]);
+        if (!isAuthenticated) {
+            localStorage.setItem("beautylux_cart", JSON.stringify(cartItems));
+        }
+    }, [cartItems, isAuthenticated]);
 
     const addToCart = async (product: IProduct, variantId: number | null = null, variantAttributes: IVariantAttribute[] | null = null, quantity: number = 1) => {
         const cartItemId = variantId ? `v-${variantId}` : `p-${product.id}`;
 
-        // 2. Local State Update
-        setCartItems((prev) => {
-            const existingItem = prev.find((item) => item.cartItemId === cartItemId);
-            if (existingItem) {
-                return prev.map((item) =>
-                    item.cartItemId === cartItemId
-                        ? { ...item, quantity: item.quantity + quantity }
-                        : item,
-                );
-            }
-            return [...prev, { ...product, cartItemId, quantity, selected: true, variantId, variantAttributes }];
-        });
-
-        // 3. API Sync if logged in
         if (isAuthenticated) {
             try {
+                setIsLoading(true);
                 await addToCartApi(product.id, quantity, variantId);
                 const res = await getCartApi();
-                if (res?.data?.item) {
-                    const dbItems: CartItem[] = res.data.item.map((item: any) => {
-                        const cItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
-                        return {
-                            ...item.product,
-                            id: item.product.id,
-                            name: item.product.name,
-                            finalPrice: item.unitPrice,
-                            cartItemId: cItemId,
-                            dbItemId: item.id,
-                            quantity: item.quantity,
-                            selected: true,
-                            variantId: item.variantId,
-                            variantAttributes: item.variantAttributes
-                        };
-                    });
-                    setCartItems(dbItems);
+                if (res.data?.data?.item) {
+                    setCartItems(res.data.data.item.map(mapDbItemToCartItem));
                 }
+                toast.success("Đã thêm sản phẩm vào giỏ hàng");
             } catch (err) {
                 console.error("API addToCart failed", err);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                toast.error((err as any)?.response?.data?.message || "Thêm vào giỏ hàng thất bại. Vui lòng thử lại.");
+            } finally {
+                setIsLoading(false);
             }
+        } else {
+            setCartItems((prev) => {
+                const existingItem = prev.find((item) => item.cartItemId === cartItemId);
+                if (existingItem) {
+                    return prev.map((item) =>
+                        item.cartItemId === cartItemId
+                            ? { ...item, quantity: item.quantity + quantity }
+                            : item,
+                    );
+                }
+                return [...prev, { ...product, cartItemId, quantity, selected: true, variantId, variantAttributes }];
+            });
         }
 
         setIsCartOpen(true);
@@ -193,9 +177,22 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
         if (isAuthenticated && itemToRemove?.dbItemId) {
             try {
+                setIsLoading(true);
                 await removeCartItemApi(itemToRemove.dbItemId);
+                const res = await getCartApi();
+                if (res.data?.data?.item) {
+                    setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                }
             } catch (err) {
                 console.error("API removeFromCart failed", err);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                toast.error((err as any)?.response?.data?.message || "Xóa sản phẩm thất bại.");
+                // Revert local state delete if API fails
+                if (itemToRemove) {
+                    setCartItems((prev) => [...prev, itemToRemove]);
+                }
+            } finally {
+                setIsLoading(false);
             }
         }
     };
@@ -208,18 +205,39 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
         const itemToUpdate = cartItems.find(item => item.cartItemId === cartItemId);
 
+        // 1. Optimistic UI update for instant feedback
         setCartItems((prev) =>
             prev.map((item) =>
                 item.cartItemId === cartItemId ? { ...item, quantity } : item,
             ),
         );
 
-        if (isAuthenticated && itemToUpdate?.dbItemId) {
-            try {
-                await updateCartItemQuantityApi(itemToUpdate.dbItemId, quantity);
-            } catch (err) {
-                console.error("API updateQuantity failed", err);
+        // 2. Debounced backend API sync
+        const targetDbId = itemToUpdate?.dbItemId;
+        if (isAuthenticated && targetDbId !== undefined) {
+            if (updateTimeoutsRef.current[cartItemId]) {
+                clearTimeout(updateTimeoutsRef.current[cartItemId]);
             }
+
+            updateTimeoutsRef.current[cartItemId] = setTimeout(async () => {
+                try {
+                    await updateCartItemQuantityApi(targetDbId, quantity);
+                    // Silently refresh backend state
+                    const res = await getCartApi();
+                    if (res.data?.data?.item) {
+                        setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                    }
+                } catch (err: unknown) {
+                    console.error("API updateQuantity failed", err);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    toast.error((err as any)?.response?.data?.message || "Cập nhật số lượng thất bại.");
+                    // Revert by refetching known true state
+                    const res = await getCartApi();
+                    if (res.data?.data?.item) {
+                        setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                    }
+                }
+            }, 600); // 600ms delay debouncing
         }
     };
 
@@ -279,6 +297,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 selectedItems,
                 isCartOpen,
                 setIsCartOpen,
+                isLoading,
             }}
         >
             {children}

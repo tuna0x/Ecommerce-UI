@@ -21,15 +21,10 @@ import { Label } from '../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
-import { ShippingAddress } from '../components/AddressManagement';
+import type { ShippingAddress } from '../components/AddressManagement';
 
 
-const STORAGE_KEY = 'beautylux_addresses';
-
-const getAddresses = (userId: string): ShippingAddress[] => {
-  const data = localStorage.getItem(`${STORAGE_KEY}_${userId}`);
-  return data ? JSON.parse(data) : [];
-};
+import { AddressService } from '../service/addressService';
 
 const Checkout: React.FC = () => {
   const { selectedItems, selectedTotal, selectedCount, clearSelectedItems } = useCart();
@@ -41,12 +36,32 @@ const Checkout: React.FC = () => {
   const hasAddresses = addresses.length > 0;
 
   useEffect(() => {
-    if (user) {
-      const saved = getAddresses(user.id);
-      setAddresses(saved);
-      const defaultAddr = saved.find((a) => a.isDefault) || saved[0];
-      if (defaultAddr) setSelectedAddressId(defaultAddr.id);
-    }
+    const loadAddresses = async () => {
+      if (user) {
+        try {
+          const res = await AddressService.getAll(0, 50);
+          if (res.data) {
+            const addressList = Array.isArray(res.data) ? res.data : (res.data.result || []);
+            const mapped = addressList.map(addr => ({
+                id: addr.id,
+                fullName: addr.receiverName,
+                phone: addr.phone,
+                province: addr.province,
+                district: addr.district,
+                ward: addr.ward,
+                street: addr.detail,
+                isDefault: addr.isDefault
+            }));
+            setAddresses(mapped);
+            const defaultAddr = mapped.find((a: ShippingAddress) => a.isDefault) || mapped[0];
+            if (defaultAddr) setSelectedAddressId(String(defaultAddr.id));
+          }
+        } catch (err) {
+          console.error("Failed to load addresses", err);
+        }
+      }
+    };
+    loadAddresses();
   }, [user]);
 
   const [formData, setFormData] = useState({
@@ -99,37 +114,37 @@ const Checkout: React.FC = () => {
 
     setIsSubmitting(true);
 
-    if (paymentMethod === 'banking') {
-      try {
-        const returnUrl = `${window.location.origin}/payment-result`;
-        const { data, error } = await supabase.functions.invoke('vnpay-create-payment', {
-          body: {
-            amount: totalAmount,
-            orderInfo: `Thanh toan don hang BeautyLux`,
-            returnUrl,
-            items: selectedItems.map(i => ({ id: i.id, variantId: i.variantId, name: i.name, quantity: i.quantity, price: i.finalPrice || i.price })),
-          },
-        });
+    try {
+      const { checkoutApi } = await import('../service/orderService');
+      const cartItemIds = selectedItems.map(item => item.dbItemId).filter(id => id !== undefined) as number[];
+      
+      const payload = {
+        addressId: parseInt(selectedAddressId as string),
+        cartItemId: cartItemIds,
+        couponCode: null, // Add coupon state later if needed
+        paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD' as any
+      };
 
-        if (error) throw error;
-        if (data?.paymentUrl) {
-          window.location.href = data.paymentUrl;
-          return;
+      const res = await checkoutApi(payload);
+
+      if (payload.paymentMethod === 'VNPAY') {
+        const data = res.data;
+        if (data?.url) { // Assuming backend ResPaymentVNPAYDTO has 'url'
+          window.location.href = data.url;
+        } else {
+          toast.error('Không nhận được URL thanh toán VNPay từ máy chủ');
+          setIsSubmitting(false);
         }
-        throw new Error('Không nhận được URL thanh toán');
-      } catch (err: any) {
-        toast.error(err.message || 'Lỗi khi tạo thanh toán VNPay');
-        setIsSubmitting(false);
-        return;
+      } else {
+        clearSelectedItems();
+        toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm.');
+        setTimeout(() => navigate('/'), 1000);
       }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || 'Lỗi khi đặt hàng');
+      setIsSubmitting(false);
     }
-
-    // COD / MoMo - simulate
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    clearSelectedItems();
-    toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm.');
-    navigate('/');
-    setIsSubmitting(false);
   };
 
   if (selectedItems.length === 0) {
@@ -203,14 +218,14 @@ const Checkout: React.FC = () => {
                 {hasAddresses ? (
                   <RadioGroup value={selectedAddressId || ''} onValueChange={setSelectedAddressId} className="space-y-3">
                     {addresses.map((addr) => (
-                      <label
+                        <label
                         key={addr.id}
-                        className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedAddressId === addr.id
+                        className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedAddressId === String(addr.id)
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
                           }`}
                       >
-                        <RadioGroupItem value={addr.id} className="mt-1" />
+                        <RadioGroupItem value={String(addr.id)} className="mt-1" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-semibold text-foreground">{addr.fullName}</span>
@@ -224,7 +239,7 @@ const Checkout: React.FC = () => {
                             {[addr.street, addr.ward, addr.district, addr.province].filter(Boolean).join(', ')}
                           </p>
                         </div>
-                        {selectedAddressId === addr.id && (
+                        {selectedAddressId === String(addr.id) && (
                           <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shrink-0">
                             <Check className="w-4 h-4 text-primary-foreground" />
                           </div>
@@ -368,7 +383,7 @@ const Checkout: React.FC = () => {
                 <div className="space-y-3 max-h-[300px] overflow-y-auto mb-4">
                   {selectedItems.map((item) => {
                     const price = item.finalPrice || item.price || 0;
-                    const brandName = typeof item.brand === 'string' ? item.brand : item.brand.name;
+                    const brandName = item.brand ? (typeof item.brand === 'string' ? item.brand : item.brand.name || 'No Brand') : 'No Brand';
                     const image = item.thumbnail || (Array.isArray(item.image) ? item.image[0] : (item.image ?? ''));
 
                     return (
@@ -391,7 +406,7 @@ const Checkout: React.FC = () => {
                             <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                               {item.variantAttributes.map((attr, i) => (
                                 <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                  {attr.name}: {attr.value}
+                                  {attr.name}: {(attr as any).value || attr.attributeValue}
                                 </span>
                               ))}
                             </div>

@@ -44,20 +44,30 @@ export function MultiSearchableSelect({
     }
   }, [open]);
 
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(searchValue.toLowerCase())
-  );
+  const safeOptions = Array.isArray(options) ? options : [];
+  
+  const filteredOptions = safeOptions.filter((option) => {
+    const label = option?.label || "";
+    const search = searchValue || "";
+    return label.toLowerCase().includes(search.toLowerCase());
+  });
 
   const handleSelect = (optionValue: string) => {
-    const newValue = value.includes(optionValue)
-      ? value.filter((v) => v !== optionValue)
-      : [...value, optionValue];
-    onValueChange(newValue);
+    const currentValue = Array.isArray(value) ? value : [];
+    const newValue = currentValue.includes(optionValue)
+      ? currentValue.filter((v) => v !== optionValue)
+      : [...currentValue, optionValue];
+    if (typeof onValueChange === "function") {
+      onValueChange(newValue);
+    }
   };
 
   const removeValue = (e: React.MouseEvent, optionValue: string) => {
     e.stopPropagation();
-    onValueChange(value.filter((v) => v !== optionValue));
+    const currentValue = Array.isArray(value) ? value : [];
+    if (typeof onValueChange === "function") {
+      onValueChange(currentValue.filter((v) => v !== optionValue));
+    }
   };
 
   return (
@@ -74,9 +84,9 @@ export function MultiSearchableSelect({
           )}
         >
           <div className="flex flex-wrap gap-1 items-center max-w-[90%]">
-            {value.length > 0 ? (
+            {Array.isArray(value) && value.length > 0 ? (
               value.map((v) => {
-                const option = options.find((opt) => opt.value === v);
+                const option = safeOptions.find((opt) => opt.value === v);
                 return (
                   <Badge
                     key={v}
@@ -156,7 +166,7 @@ export function MultiSearchableSelect({
           )}
         </div>
         
-        {value.length > 0 && (
+        {Array.isArray(value) && value.length > 0 && (
           <div className="border-t p-2 flex justify-between items-center bg-muted/10">
             <span className="text-xs text-muted-foreground px-1">
               Đã chọn {value.length} mục
