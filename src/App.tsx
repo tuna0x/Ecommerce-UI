@@ -37,6 +37,7 @@ import AdminRoute from "./routes/AdminRoute";
 import BrandsManagement from "./pages/admin/BrandsManagement";
 import BannersManagement from "./pages/admin/BannersManagement";
 import ChatManagement from "./pages/admin/ChatManagement";
+import FlashSalePage from "./pages/FlashSale";
 
 const queryClient = new QueryClient();
 function App() {
@@ -48,21 +49,35 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <CartProvider>
-              <QuickViewProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                  <Router>
+        <Router>
+          <AuthProvider>
+            <NotificationProvider>
+              <CartProvider>
+                <QuickViewProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Sonner />
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
-                      <Route path="/search" element={<SearchResults />} />
-                      <Route path="/chat" element={<Chat />} />
+                      <Route
+                        path="/search"
+                        element={
+                          <ProtectedRoute>
+                            <SearchResults />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/chat"
+                        element={
+                          <ProtectedRoute>
+                            <Chat />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/checkout"
                         element={
@@ -87,9 +102,30 @@ function App() {
                           </ProtectedRoute>
                         }
                       />
-                      <Route path="/category/:slug" element={<Category />} />
-                      <Route path="/flash-sale" element={<Category />} />
-                      <Route path="/brands" element={<Category />} />
+                      <Route
+                        path="/category/:slug"
+                        element={
+                          <ProtectedRoute>
+                            <Category />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/flash-sale"
+                        element={
+                          <ProtectedRoute>
+                            <FlashSalePage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/brands"
+                        element={
+                          <ProtectedRoute>
+                            <Category />
+                          </ProtectedRoute>
+                        }
+                      />
 
                       <Route path="/admin" element={<AdminRoute />}>
                         <Route element={<AdminLayout />}>
@@ -126,12 +162,12 @@ function App() {
 
                       <Route path="*" element={<NotFound />} />
                     </Routes>
-                  </Router>
-                </TooltipProvider>
-              </QuickViewProvider>
-            </CartProvider>
-          </NotificationProvider>
-        </AuthProvider>
+                  </TooltipProvider>
+                </QuickViewProvider>
+              </CartProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </Router>
       </ThemeProvider>
     </QueryClientProvider>
   );

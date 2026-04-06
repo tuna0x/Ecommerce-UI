@@ -1,8 +1,10 @@
 import React from 'react';
 import { Bell, Package, Tag, Heart, Info, Check, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNotifications, Notification } from '../context/NotificationContext';
-import { Link } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
+import type { Notification } from '../context/NotificationContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,11 +31,22 @@ const formatTimeAgo = (date: Date) => {
 
 const NotificationDropdown: React.FC = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotifications();
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
 
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <button className="relative p-2 hover:bg-secondary rounded-lg transition-colors">
+                <button 
+                  onClick={(e) => {
+                    if (!isAuthenticated) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate('/login');
+                    }
+                  }}
+                  className="relative p-2 hover:bg-secondary rounded-lg transition-colors"
+                >
                     <Bell className="w-5 h-5" />
                     {unreadCount > 0 && (
                         <motion.span

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, ShoppingBag, Heart } from 'lucide-react';
 import type { IProduct } from '../types/product.type';
@@ -15,6 +17,8 @@ interface QuickViewProps {
 
 const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
 
 
@@ -22,9 +26,9 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   // Group all attributes by name from variants for the selector
   const groupedAttributes = useMemo(() => {
     if (!product || !product.variants || product.variants.length === 0) return [];
-    
+
     const groups: Record<string, Set<string>> = {};
-    
+
     product.variants.forEach(v => {
       v.variantAttributes.forEach(va => {
         if (!groups[va.name]) groups[va.name] = new Set();
@@ -32,9 +36,9 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
       });
     });
 
-    return Object.entries(groups).map(([name, values]) => ({ 
-      name, 
-      values: Array.from(values) 
+    return Object.entries(groups).map(([name, values]) => ({
+      name,
+      values: Array.from(values)
     }));
   }, [product]);
 
@@ -50,7 +54,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
           changed = true;
         }
       });
-      
+
       if (changed) {
         setSelectedAttributes(prev => ({ ...prev, ...newSelection }));
       }
@@ -60,7 +64,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   // Find the variant that matches selected attributes
   const matchedVariant = useMemo(() => {
     if (!product || !product.variants || product.variants.length === 0) return null;
-    
+
     return product.variants.find(v => {
       // Every selected attribute must match the variant's attributes
       return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
@@ -81,13 +85,23 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   };
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      onClose();
+      navigate('/login');
+      return;
+    }
     addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, 1);
     toast.success('Đã thêm vào giỏ hàng!');
     onClose();
   };
 
   const handleToggleWishlist = () => {
-    toast.info('Tính năng yêu thích đang được phát triển');
+    if (!isAuthenticated) {
+      onClose();
+      navigate('/login');
+    } else {
+      toast.info('Tính năng yêu thích đang được phát triển');
+    }
   };
 
   return (
@@ -153,11 +167,10 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-3.5 h-3.5 ${
-                            i < Math.floor(product.averageRating || product.rating || 0)
+                          className={`w-3.5 h-3.5 ${i < Math.floor(product.averageRating || product.rating || 0)
                               ? 'fill-yellow-400 text-yellow-400'
                               : 'text-muted-foreground/30'
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -176,13 +189,13 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                             {attr.values.map((val, vIdx) => {
                               const isSelected = selectedAttributes[attr.name] === val;
                               return (
-                                <button 
+                                <button
                                   key={vIdx}
                                   onClick={() => setSelectedAttributes(prev => ({ ...prev, [attr.name]: val }))}
                                   className={cn(
                                     "px-3 py-1.5 border rounded-lg text-xs font-medium transition-all duration-200",
-                                    isSelected 
-                                      ? "border-primary bg-primary/10 text-primary" 
+                                    isSelected
+                                      ? "border-primary bg-primary/10 text-primary"
                                       : "border-border text-muted-foreground hover:border-primary/50 hover:bg-primary/5"
                                   )}
                                 >

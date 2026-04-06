@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share2,
@@ -31,6 +31,7 @@ import Footer from "../components/Footer";
 import { cn } from "../lib/utils";
 import CartSidebar from "../components/CartSidebar";
 import MobileNavBar from "../components/MobileNavBar";
+import { useAuth } from "../context/AuthContext";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +40,8 @@ const ProductDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [relatedProducts, setRelatedProducts] = useState<IProduct[]>([]);
   const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -61,19 +64,19 @@ const ProductDetail: React.FC = () => {
         // Fetch related products and category attributes
         const categoryId = typeof prodRes.data.category === 'object' ? prodRes.data.category.id : null;
         const categoryName = typeof prodRes.data.category === 'string' ? prodRes.data.category : prodRes.data.category?.name;
-        
+
         const promises: Promise<IApiResponse<any>>[] = [];
-        
+
         if (categoryName) {
           promises.push(ProductService.getAll(0, 4, undefined, "id,desc", `category.name:'${categoryName}'`));
         }
-        
+
         if (categoryId) {
           promises.push(attributeValueService.getAll(`attribute.categories.id:'${categoryId}'`));
         }
 
         const results = await Promise.all(promises);
-        
+
         if (categoryName && results[0]?.data) {
           setRelatedProducts(results[0].data.result.filter((p: IProduct) => p.id !== prodId));
         }
@@ -118,9 +121,9 @@ const ProductDetail: React.FC = () => {
   // Group all attributes by name from variants for the selector
   const groupedAttributes = useMemo(() => {
     if (!product || !product.variants || product.variants.length === 0) return [];
-    
+
     const groups: Record<string, Set<string>> = {};
-    
+
     product.variants.forEach(v => {
       v.variantAttributes.forEach(va => {
         if (!groups[va.name]) groups[va.name] = new Set();
@@ -128,9 +131,9 @@ const ProductDetail: React.FC = () => {
       });
     });
 
-    return Object.entries(groups).map(([name, values]) => ({ 
-      name, 
-      values: Array.from(values) 
+    return Object.entries(groups).map(([name, values]) => ({
+      name,
+      values: Array.from(values)
     }));
   }, [product]);
 
@@ -143,7 +146,7 @@ const ProductDetail: React.FC = () => {
   // Find the variant that matches selected attributes
   const matchedVariant = useMemo(() => {
     if (!product || !product.variants || product.variants.length === 0) return null;
-    
+
     return product.variants.find(v => {
       // Every selected attribute must match the variant's attributes
       return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
@@ -167,7 +170,7 @@ const ProductDetail: React.FC = () => {
           changed = true; // Stale attribute removed
         }
       });
-      
+
       // 2. Pre-select missing attributes
       groupedAttributes.forEach(attr => {
         if (attr.values.length > 0 && !newSelection[attr.name]) {
@@ -175,7 +178,7 @@ const ProductDetail: React.FC = () => {
           changed = true;
         }
       });
-      
+
       if (changed) {
         setSelectedAttributes(newSelection);
       }
@@ -216,16 +219,21 @@ const ProductDetail: React.FC = () => {
 
   const categoryName = typeof product.category === 'string' ? product.category : product.category?.name || "Sản phẩm";
   const brandName = typeof product.brand === 'string' ? product.brand : product.brand?.name || "Thương hiệu";
-  
+
   // Use price and stock from matched variant if available
-  const displayPrice = matchedVariant?.price || product.finalPrice || product.price || product.originalPrice;
+  const displayPrice = matchedVariant?.finalPrice || matchedVariant?.price || product.finalPrice || product.price || product.originalPrice;
+  const displayOriginalPrice = matchedVariant?.price || product.originalPrice || 0;
   const currentStock = matchedVariant ? matchedVariant.stock : (product.stock || 0);
-  
+
   const ratingValue = product.averageRating || product.rating || 5.0;
   const reviewsCount = product.reviewCount || 0;
-  const discount = product.discount || (product.originalPrice > displayPrice ? Math.round(((product.originalPrice - displayPrice) / product.originalPrice) * 100) : 0);
+  const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
   const handleAddToCart = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
     addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, quantity);
   };
 
@@ -320,10 +328,10 @@ const ProductDetail: React.FC = () => {
                 <span className="text-2xl sm:text-3xl font-bold text-primary">
                   {formatPrice(displayPrice)}
                 </span>
-                {product.originalPrice > displayPrice && (
+                {displayOriginalPrice > displayPrice && (
                   <>
                     <span className="text-base sm:text-lg text-muted-foreground line-through">
-                      {formatPrice(product.originalPrice)}
+                      {formatPrice(displayOriginalPrice)}
                     </span>
                     <span className="bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs font-bold">-{discount}%</span>
                   </>
@@ -339,13 +347,13 @@ const ProductDetail: React.FC = () => {
                   {attr.values.map((val, vIdx) => {
                     const isSelected = selectedAttributes[attr.name] === val;
                     return (
-                      <button 
+                      <button
                         key={vIdx}
                         onClick={() => setSelectedAttributes(prev => ({ ...prev, [attr.name]: val }))}
                         className={cn(
                           "px-4 py-2 border-2 rounded-lg text-sm font-medium transition-all duration-200",
-                          isSelected 
-                            ? "border-primary bg-primary text-white shadow-sm" 
+                          isSelected
+                            ? "border-primary bg-primary text-white shadow-sm"
                             : "border-primary/20 text-primary hover:bg-primary/5"
                         )}
                       >
@@ -393,7 +401,11 @@ const ProductDetail: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  import('sonner').then(({ toast }) => toast.info("Đã thêm vào danh sách yêu thích!"));
+                  if (!isAuthenticated) {
+                    navigate('/login');
+                  } else {
+                    import('sonner').then(({ toast }) => toast.info("Đã thêm vào danh sách yêu thích!"));
+                  }
                 }}
                 className="p-3 sm:p-4 border border-border rounded-lg hover:bg-secondary transition-colors"
               >

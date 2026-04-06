@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { categories } from '../data/products';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +19,9 @@ import CategoryDropdown from './CategoryDropdown';
 
 const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -121,7 +122,13 @@ const Header: React.FC = () => {
 
             {/* Cart */}
             <button
-              onClick={() => setIsCartOpen(true)}
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/login');
+                } else {
+                  setIsCartOpen(true);
+                }
+              }}
               className="relative p-2 hover:bg-secondary rounded-lg transition-colors"
             >
               <ShoppingBag className="w-5 h-5" />

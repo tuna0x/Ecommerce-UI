@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import type { IProduct } from '../types/product.type';
 import { useQuickView } from '../context/QuickViewContext';
 
@@ -11,6 +12,8 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { openQuickView } = useQuickView();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price);
@@ -27,7 +30,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const handleQuickView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    openQuickView(product);
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else {
+      openQuickView(product);
+    }
   };
 
   const mainImage = product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''));

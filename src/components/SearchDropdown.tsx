@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +21,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   // Filter products based on query
   useEffect(() => {
@@ -111,7 +113,13 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
             }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => query.trim() && setIsOpen(true)}
+            onFocus={() => {
+              if (!isAuthenticated) {
+                navigate('/login');
+              } else if (query.trim()) {
+                setIsOpen(true);
+              }
+            }}
             className={`w-full ${isMobile ? "pl-10 pr-10" : "pl-11 pr-10"} py-2.5 bg-secondary rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
           />
           {query && (
