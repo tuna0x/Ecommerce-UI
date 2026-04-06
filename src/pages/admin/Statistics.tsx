@@ -55,7 +55,7 @@ const Statistics: React.FC = () => {
     },
     {
       name: "Đang giao",
-      value: mockOrders.filter((o) => o.status === "shipping").length,
+      value: mockOrders.filter((o) => o.status === "delivering").length,
       color: "#a855f7",
     },
     {

@@ -142,8 +142,9 @@ const CategoriesManagement: React.FC = () => {
         await categoryService.remove(id);
         toast.success("Đã xóa thể loại thành công");
         fetchCategories();
-      } catch (error: any) {
-        const message = error.response?.data?.message || "Không thể xóa thể loại";
+      } catch (error) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const message = axiosError.response?.data?.message || "Không thể xóa thể loại";
         toast.error(message);
       }
     }

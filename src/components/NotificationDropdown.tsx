@@ -2,7 +2,7 @@ import React from 'react';
 import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationContext';
-import type { Notification } from '../context/NotificationContext';
+import type { Notification } from '../types/notification.type';
 import { Link } from 'react-router-dom';
 import {
     DropdownMenu,

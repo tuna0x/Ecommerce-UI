@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1",
@@ -15,7 +15,7 @@ axiosInstance.interceptors.request.use((config) => {
 
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error: any) => {
+  (error: AxiosError) => {
     if (error.response && error.response.status === 401) {
       const token = localStorage.getItem("access_token");
       localStorage.removeItem("access_token");

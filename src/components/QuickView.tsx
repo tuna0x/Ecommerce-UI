@@ -32,7 +32,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
     product.variants.forEach(v => {
       v.variantAttributes.forEach(va => {
         if (!groups[va.name]) groups[va.name] = new Set();
-        groups[va.name].add(va.value);
+        groups[va.name].add(va.attributeValue);
       });
     });
 
@@ -45,19 +45,20 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   // Handle automatic attribute selection when modal opens
   useEffect(() => {
     if (isOpen && groupedAttributes.length > 0) {
-      const newSelection: Record<string, string> = { ...selectedAttributes };
-      let changed = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedAttributes(prev => {
+        const newSelection = { ...prev };
+        let changed = false;
 
-      groupedAttributes.forEach(attr => {
-        if (attr.values.length > 0 && !newSelection[attr.name]) {
-          newSelection[attr.name] = attr.values[0];
-          changed = true;
-        }
+        groupedAttributes.forEach(attr => {
+          if (attr.values.length > 0 && !newSelection[attr.name]) {
+            newSelection[attr.name] = attr.values[0];
+            changed = true;
+          }
+        });
+
+        return changed ? newSelection : prev;
       });
-
-      if (changed) {
-        setSelectedAttributes(prev => ({ ...prev, ...newSelection }));
-      }
     }
   }, [isOpen, groupedAttributes]);
 
@@ -68,7 +69,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
     return product.variants.find(v => {
       // Every selected attribute must match the variant's attributes
       return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
-        return v.variantAttributes.some(va => va.name === attrName && va.value === selectedVal);
+        return v.variantAttributes.some(va => va.name === attrName && va.attributeValue === selectedVal);
       });
     });
   }, [product, selectedAttributes]);
