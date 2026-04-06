@@ -48,6 +48,7 @@ const ProductDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"description" | "ingredient" | "usage" | "specification" | "reviews">("description");
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  const [isAdding, setIsAdding] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -230,12 +231,18 @@ const ProductDetail: React.FC = () => {
   const reviewsCount = product.reviewCount || 0;
   const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-    addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, quantity);
+    
+    setIsAdding(true);
+    try {
+      await addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, quantity);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -395,10 +402,15 @@ const ProductDetail: React.FC = () => {
             <div className="flex gap-2 sm:gap-3">
               <button
                 onClick={handleAddToCart}
-                className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3"
+                disabled={currentStock === 0 || isAdding}
+                className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-3 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-                THÊM VÀO GIỎ HÀNG
+                {isAdding ? (
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                ) : (
+                  <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
+                {currentStock === 0 ? "HẾT HÀNG" : (isAdding ? "ĐANG THÊM..." : "THÊM VÀO GIỎ HÀNG")}
               </button>
               <button
                 onClick={() => {

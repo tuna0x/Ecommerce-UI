@@ -27,7 +27,7 @@ import type { ShippingAddress } from '../components/AddressManagement';
 import { AddressService } from '../service/addressService';
 
 const Checkout: React.FC = () => {
-  const { selectedItems, selectedTotal, selectedCount, clearSelectedItems } = useCart();
+  const { selectedItems, selectedTotal, selectedCount } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -128,44 +128,44 @@ const Checkout: React.FC = () => {
       const res = await checkoutApi(payload);
 
       if (payload.paymentMethod === 'VNPAY') {
-        const data = res.data;
-        if (data?.url) { // Assuming backend ResPaymentVNPAYDTO has 'url'
-          window.location.href = data.url;
+        const data = res.data?.data || res.data; // Handle potential wrapping
+        const urlToRedirect = data.paymentUrl || data.url;
+        
+        if (urlToRedirect) {
+          window.location.href = urlToRedirect;
         } else {
           toast.error('Không nhận được URL thanh toán VNPay từ máy chủ');
           setIsSubmitting(false);
         }
       } else {
-        clearSelectedItems();
-        toast.success('Đặt hàng thành công! Cảm ơn bạn đã mua sắm.');
-        setTimeout(() => navigate('/'), 1000);
+        // EXTREME LOGGING - Please check console F12 to see this!
+        console.log("FULL SERVER RESPONSE:", JSON.stringify(res.data, null, 2));
+
+        const findField = (obj: any, field: string): any => {
+          if (!obj || typeof obj !== 'object') return null;
+          if (obj[field]) return obj[field];
+          for (const key in obj) {
+            const found = findField(obj[key], field);
+            if (found) return found;
+          }
+          return null;
+        };
+
+        const responseData = res.data?.data || res.data;
+        const orderId = findField(responseData, 'id');
+        const transactionId = findField(responseData, 'transactionId') || findField(responseData, 'transactionID');
+        
+        console.log("EXTRACTED INFO:", { orderId, transactionId });
+        
+        navigate(`/payment-result?status=success&orderId=${orderId}&transactionId=${transactionId}&method=cod`);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.message || err.message || 'Lỗi khi đặt hàng');
+    } catch (err: unknown) {
+      console.error("Checkout Error:", err);
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      toast.error(axiosError.response?.data?.message || (err as Error).message || 'Lỗi khi đặt hàng');
       setIsSubmitting(false);
     }
   };
-
-  if (selectedItems.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-24 h-24 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
-            <CreditCard className="w-10 h-10 text-muted-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold mb-3">Không có sản phẩm để thanh toán</h1>
-          <p className="text-muted-foreground mb-6">
-            Vui lòng chọn sản phẩm trong giỏ hàng để tiến hành thanh toán.
-          </p>
-          <Link to="/" className="btn-primary inline-flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Quay lại mua sắm
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-secondary/30">
