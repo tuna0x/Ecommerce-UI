@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, Search, X, ChevronRight, Loader2 } from "lucide-react";
-import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -75,7 +74,7 @@ const AttributesManagement: React.FC = () => {
   const [isValueDialogOpen, setIsValueDialogOpen] = useState(false);
   const [editingValueId, setEditingValueId] = useState<number | null>(null);
   const [valueForm, setValueForm] = useState<ICreateAttributeValue>({
-    value: "",
+    attributeValue: "",
     attributeId: null,
   });
 
@@ -191,10 +190,10 @@ const AttributesManagement: React.FC = () => {
   const handleOpenValueDialog = useCallback((value?: IAttributeValue) => {
     if (value) {
       setEditingValueId(value.id);
-      setValueForm({ value: value.value, attributeId: value.attribute.id });
+      setValueForm({ attributeValue: value.attributeValue, attributeId: value.attribute.id });
     } else {
       setEditingValueId(null);
-      setValueForm({ value: "", attributeId: selectedAttribute?.id ?? null });
+      setValueForm({ attributeValue: "", attributeId: selectedAttribute?.id ?? null });
     }
     setIsValueDialogOpen(true);
   }, [selectedAttribute?.id]);
@@ -213,7 +212,7 @@ const AttributesManagement: React.FC = () => {
 
   const handleSaveValue = useCallback(async () => {
     if (!selectedAttribute) return;
-    if (!valueForm.value.trim()) {
+    if (!valueForm.attributeValue.trim()) {
       toast.error("Vui lòng nhập giá trị");
       return;
     }
@@ -221,14 +220,14 @@ const AttributesManagement: React.FC = () => {
       if (editingValueId) {
         const updateData: IUpdateAttributeValue = {
           id: editingValueId,
-          value: valueForm.value,
+          attributeValue: valueForm.attributeValue,
           attributeId: selectedAttribute.id,
         };
         await attributeValueService.update(updateData);
         toast.success("Đã cập nhật giá trị");
       } else {
         const createData: ICreateAttributeValue = {
-          value: valueForm.value,
+          attributeValue: valueForm.attributeValue,
           attributeId: selectedAttribute.id,
         };
         await attributeValueService.create(createData);
@@ -240,7 +239,7 @@ const AttributesManagement: React.FC = () => {
     } catch {
       toast.error("Đã xảy ra lỗi");
     }
-  }, [selectedAttribute, valueForm.value, editingValueId, fetchAttributeValues]);
+  }, [selectedAttribute, valueForm.attributeValue, editingValueId, fetchAttributeValues]);
 
   return (
     <div className="space-y-6">
@@ -442,18 +441,18 @@ const AttributesManagement: React.FC = () => {
                             <span className="flex items-center gap-2">
                               <span
                                 className="w-5 h-5 rounded-full border"
-                                style={{ backgroundColor: val.value }}
+                                style={{ backgroundColor: val.attributeValue }}
                               />
                               <span className="font-mono text-sm">
-                                {val.value}
+                                {val.attributeValue}
                               </span>
                             </span>
                           ) : (
-                            <span>{val.value}</span>
+                            <span>{val.attributeValue}</span>
                           )}
                         </TableCell>
                         {selectedAttribute?.name === "Màu sắc" && (
-                          <TableCell>{val.value || "—"}</TableCell>
+                          <TableCell>{val.attributeValue || "—"}</TableCell>
                         )}
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -572,9 +571,9 @@ const AttributesManagement: React.FC = () => {
             <div className="space-y-2">
               <Label>Giá trị *</Label>
               <Input
-                value={valueForm.value}
+                value={valueForm.attributeValue}
                 onChange={(e) =>
-                  setValueForm({ ...valueForm, value: e.target.value })
+                  setValueForm({ ...valueForm, attributeValue: e.target.value })
                 }
                 placeholder={
                   selectedAttribute?.name === "Màu sắc"

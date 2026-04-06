@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, ArrowRight } from "lucide-react";
+import { Search, X, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { products } from "../data/products";
+import { ProductService } from "../service/productService";
 import type { IProduct } from "../types/product.type";
 
 interface SearchDropdownProps {
@@ -18,29 +18,38 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [filteredProducts, setFilteredProducts] = useState<IProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  // Filter products based on query
+  // Filter products based on query from API
   useEffect(() => {
-    const handler = setTimeout(() => {
-      if (query.trim().length > 0) {
-        const searchTerm = query.toLowerCase().trim();
-        const filtered = (products as unknown as IProduct[]).filter(
-          (product) =>
-            product.name.toLowerCase().includes(searchTerm) ||
-            (typeof product.brand === 'string' ? product.brand : product.brand.name).toLowerCase().includes(searchTerm) ||
-            (typeof product.category === 'string' ? product.category : product.category.name).toLowerCase().includes(searchTerm)
-        );
-        setFilteredProducts(filtered.slice(0, 6)); // Limit to 6 results
+    if (!query.trim()) {
+      setFilteredProducts([]);
+      setIsOpen(false);
+      setIsLoading(false);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      try {
+        setIsLoading(true);
         setIsOpen(true);
-      } else {
+        const res = await ProductService.getAll(0, 6, query);
+        if (res.data?.result) {
+          setFilteredProducts(res.data.result);
+        } else {
+          setFilteredProducts([]);
+        }
+      } catch (error) {
+        console.error("Search failed:", error);
         setFilteredProducts([]);
-        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
       }
-    }, 150); // Small debounce to avoid cascading renders and improve performance
+    }, 500); // Debounce to 500ms as requested to minimize API calls
 
     return () => clearTimeout(handler);
   }, [query]);
@@ -136,7 +145,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
 
       {/* Dropdown Results */}
       <AnimatePresence>
-        {isOpen && filteredProducts.length > 0 && (
+        {isOpen && (
           <motion.div
             ref={dropdownRef}
             initial={{ opacity: 0, y: 10 }}
@@ -145,79 +154,79 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
             transition={{ duration: 0.15 }}
             className={`absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50 ${isMobile ? "mx-0" : ""}`}
           >
-            <div className="p-2">
-              <p className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Sản phẩm ({filteredProducts.length})
-              </p>
-
-              <div className="space-y-1">
-                {filteredProducts.map((product) => {
-                  const displayPrice = product.finalPrice || product.price || 0;
-                  const displayOriginalPrice = product.originalPrice || 0;
-                  
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => handleProductClick(product.id)}
-                      className="w-full flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors text-left"
-                    >
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
-                        <img
-                          src={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''))}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {typeof product.brand === 'string' ? product.brand : product.brand.name}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-semibold text-primary">
-                          {formatPrice(displayPrice)}
-                        </p>
-                        {displayOriginalPrice > displayPrice && (
-                          <p className="text-xs text-muted-foreground line-through">
-                            {formatPrice(displayOriginalPrice)}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <Loader2 className="w-8 h-8 mx-auto animate-spin text-primary mb-2" />
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  Đang tìm kiếm...
+                </p>
               </div>
-            </div>
+            ) : filteredProducts.length > 0 ? (
+              <>
+                <div className="p-2">
+                  <p className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Sản phẩm ({filteredProducts.length})
+                  </p>
 
-            {/* View All Button */}
-            <button
-              onClick={handleViewAll}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-secondary/50 hover:bg-secondary text-sm font-medium transition-colors border-t border-border"
-            >
-              Xem tất cả kết quả cho "{query}"
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
+                  <div className="space-y-1">
+                    {filteredProducts.map((product) => {
+                      const displayPrice = product.finalPrice || product.price || 0;
+                      const displayOriginalPrice = product.originalPrice || 0;
 
-        {isOpen && query.trim() && filteredProducts.length === 0 && (
-          <motion.div
-            ref={dropdownRef}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-background border border-border rounded-xl shadow-lg overflow-hidden z-50"
-          >
-            <div className="p-8 text-center">
-              <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground">
-                Không tìm thấy sản phẩm nào cho "{query}"
-              </p>
-            </div>
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => handleProductClick(product.id)}
+                          className="w-full flex items-center gap-3 p-2 hover:bg-secondary rounded-lg transition-colors text-left"
+                        >
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                            <img
+                              src={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''))}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {product.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {typeof product.brand === 'string' ? product.brand : product.brand.name}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold text-primary">
+                              {formatPrice(displayPrice)}
+                            </p>
+                            {displayOriginalPrice > displayPrice && (
+                              <p className="text-xs text-muted-foreground line-through">
+                                {formatPrice(displayOriginalPrice)}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* View All Button */}
+                <button
+                  onClick={handleViewAll}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-secondary/50 hover:bg-secondary text-sm font-medium transition-colors border-t border-border"
+                >
+                  Xem tất cả kết quả cho "{query}"
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            ) : query.trim() ? (
+              <div className="p-8 text-center">
+                <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Không tìm thấy sản phẩm nào cho "{query}"
+                </p>
+              </div>
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>

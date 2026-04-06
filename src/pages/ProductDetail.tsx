@@ -127,7 +127,7 @@ const ProductDetail: React.FC = () => {
     product.variants.forEach(v => {
       v.variantAttributes.forEach(va => {
         if (!groups[va.name]) groups[va.name] = new Set();
-        groups[va.name].add(va.value);
+        groups[va.name].add(va.attributeValue);
       });
     });
 
@@ -150,7 +150,7 @@ const ProductDetail: React.FC = () => {
     return product.variants.find(v => {
       // Every selected attribute must match the variant's attributes
       return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
-        return v.variantAttributes.some(va => va.name === attrName && va.value === selectedVal);
+        return v.variantAttributes.some(va => va.name === attrName && va.attributeValue === selectedVal);
       });
     });
   }, [product, selectedAttributes]);
@@ -502,7 +502,7 @@ const ProductDetail: React.FC = () => {
                       <div className="grid gap-4">
                         {staticAttributes.map((attr, idx) => (
                           <div key={idx} className="flex justify-between py-3 border-b border-border/30 last:border-0">
-                            <span className="text-muted-foreground">{attr.value}</span>
+                            <span className="text-muted-foreground">{attr.attributeValue}</span>
                           </div>
                         ))}
                       </div>

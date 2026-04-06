@@ -17,6 +17,7 @@ interface NotificationContextType {
     markAsRead: (id: string) => void;
     markAllAsRead: () => void;
     clearAll: () => void;
+    deleteNotification: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -86,14 +87,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications([]);
     }, []);
 
+    const deleteNotification = useCallback((id: string) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    }, []);
+
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll }}>
+        <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll, deleteNotification }}>
             {children}
         </NotificationContext.Provider>
     );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
     if (!context) throw new Error('useNotifications must be used within NotificationProvider');

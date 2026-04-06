@@ -7,7 +7,7 @@ export interface ICoupon {
   name: string;
   description: string;
   type: CouponType;
-  value: number;
+  discountValue: number;
   startDate: string;
   endDate: string;
   minOrderValue?: number;
@@ -25,7 +25,7 @@ export interface IReqCreateCoupon {
   name: string;
   description: string;
   type: CouponType;
-  value: number;
+  discountValue: number;
   startDate: string;
   endDate: string;
   minOrderValue?: number;

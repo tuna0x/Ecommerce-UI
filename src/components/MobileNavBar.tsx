@@ -22,7 +22,7 @@ const MobileNavBar: React.FC = () => {
           const isActive = currentPath === item.path;
           return (
             <Link
-              key={item.path}
+              key={item.label}
               to={item.path}
               className="flex flex-col items-center gap-1 py-2 px-4"
             >

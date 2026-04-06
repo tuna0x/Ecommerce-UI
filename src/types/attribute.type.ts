@@ -10,7 +10,7 @@ export interface IAttribute {
 
 export interface IAttributeValue {
   id: number;
-  value: string;
+  attributeValue: string;
   attribute: IAttribute;
 }
 
@@ -28,12 +28,12 @@ export interface IUpdateAttribute {
 }
 
 export interface ICreateAttributeValue {
-  value: string;
+  attributeValue: string;
   attributeId: number | null;
 }
 
 export interface IUpdateAttributeValue {
   id: number;
-  value: string;
+  attributeValue: string;
   attributeId: number | null;
 }

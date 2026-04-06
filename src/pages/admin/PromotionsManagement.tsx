@@ -75,7 +75,7 @@ const PromotionsManagement: React.FC = () => {
     name: "",
     description: "",
     type: "PERCENT" as PromotionType,
-    value: 0,
+    discountValue: 0,
     minOrderValue: 0,
     maxDiscountValue: 0,
     startAt: "",
@@ -165,15 +165,15 @@ const PromotionsManagement: React.FC = () => {
   const formatValue = (promo: IPromotion) => {
     switch (promo.type) {
       case "PERCENT":
-        return `${promo.value}%`;
+        return `${promo.discountValue}%`;
       case "FIXED":
-        return `${promo.value.toLocaleString()}đ`;
+        return `${(promo.discountValue || 0).toLocaleString()}đ`;
       case "BUY_X_GET_Y":
-        return `Tặng ${promo.value}`;
+        return `Tặng ${promo.discountValue}`;
       case "FREE_SHIPPING":
         return "Miễn phí";
       default:
-        return String(promo.value);
+        return String(promo.discountValue || 0);
     }
   };
 
@@ -186,7 +186,7 @@ const PromotionsManagement: React.FC = () => {
         name: promotion.name,
         description: promotion.description,
         type: promotion.type,
-        value: promotion.value,
+        discountValue: promotion.discountValue,
         minOrderValue: promotion.minOrderValue || 0,
         maxDiscountValue: promotion.maxDiscountValue || 0,
         startAt: promotion.startAt ? promotion.startAt.split("T")[0] : "",
@@ -210,7 +210,7 @@ const PromotionsManagement: React.FC = () => {
         name: "",
         description: "",
         type: "PERCENT",
-        value: 0,
+        discountValue: 0,
         minOrderValue: 0,
         maxDiscountValue: 0,
         startAt: new Date().toISOString().split("T")[0],
@@ -328,7 +328,7 @@ const PromotionsManagement: React.FC = () => {
             <TableBody>
               {filteredPromotions.length === 0 && !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground italic">
+                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground italic">
                     Không tìm thấy khuyến mãi nào
                   </TableCell>
                 </TableRow>
@@ -556,9 +556,9 @@ const PromotionsManagement: React.FC = () => {
                   </Label>
                   <Input
                     type="number"
-                    value={formData.value}
+                    value={formData.discountValue}
                     onChange={(e) =>
-                      setFormData({ ...formData, value: Number(e.target.value) })
+                      setFormData({ ...formData, discountValue: Number(e.target.value) })
                     }
                     disabled={formData.type === "FREE_SHIPPING"}
                   />

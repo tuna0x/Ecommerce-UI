@@ -1,17 +1,23 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
 import ProductCard from "../components/ProductCard";
-import { products, brands } from "../data/products";
 import { useCategories } from "../hooks/useCategories";
+import type { FrontendCategory } from "../hooks/useCategories";
+import { ProductService } from "../service/productService";
+import { BrandService } from "../service/brandService";
 import type { IProduct } from "../types/product.type";
+import type { IBrand } from "../types/brand.type";
+import type { IMeta } from "../types/api.type";
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { Checkbox } from "../components/ui/Checkbox";
 import { Slider } from "../components/ui/slider";
 import { Input } from "../components/ui/input";
+import PaginationControl from "../components/PaginationControl";
+import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -31,11 +37,25 @@ import { ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 const Category = () => {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  const subcategory = searchParams.get("sub");
+  const subcategoryName = searchParams.get("sub");
+  const subSubcategoryName = searchParams.get("sub2");
 
   const { data: categories = [] } = useCategories();
 
-  // Find category by slug
+  // API Data States
+  const [productsList, setProductsList] = useState<IProduct[]>([]);
+  const [brandsList, setBrandsList] = useState<IBrand[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [meta, setMeta] = useState<IMeta>({
+    page: 1,
+    pageSize: 12,
+    pages: 1,
+    total: 0,
+  });
+
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed for API
+
+  // Find root category by slug
   const category = useMemo(() => {
     return categories.find(
       (c) =>
@@ -45,12 +65,114 @@ const Category = () => {
     );
   }, [slug, categories]);
 
+  // Find active node in the hierarchy (Level 1, 2, or 3)
+  const activeCategoryNode = useMemo(() => {
+    if (!category) return undefined;
+    
+    // Level 3 Check
+    if (subcategoryName && subSubcategoryName) {
+      const level2 = category.children?.find(c => c.name === subcategoryName);
+      const level3 = level2?.children?.find(c => c.name === subSubcategoryName);
+      if (level3) return level3;
+    }
+    
+    // Level 2 Check
+    if (subcategoryName) {
+      return category.children?.find(c => c.name === subcategoryName) || category;
+    }
+    
+    return category;
+  }, [category, subcategoryName, subSubcategoryName]);
+
   // Filter states
   const [priceRange, setPriceRange] = useState([0, 2000000]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("createdAt,desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const fetchBrands = async () => {
+    try {
+      const res = await BrandService.getAll(1, 50, undefined, "name,asc");
+      if (res.data?.result) {
+        setBrandsList(res.data.result);
+      }
+    } catch (error) {
+      console.error("Failed to fetch brands", error);
+    }
+  };
+
+  const fetchProducts = useCallback(async () => {
+    // Collect all category IDs in a subtree
+    const getDescendantIds = (node: FrontendCategory): number[] => {
+      let ids = [node.id];
+      if (node.children && node.children.length > 0) {
+        node.children.forEach(child => {
+          ids = [...ids, ...getDescendantIds(child)];
+        });
+      }
+      return ids;
+    };
+
+    try {
+      setIsLoading(true);
+      const filters = [];
+      
+      // Hierarchical Category Filter
+      if (activeCategoryNode && slug !== "all") {
+        const allIds = getDescendantIds(activeCategoryNode);
+        if (allIds.length === 1) {
+          filters.push(`category.id:${allIds[0]}`);
+        } else {
+          // Use space instead of comma for spring-filter IN clause
+          filters.push(`category.id in (${allIds.join(" ")})`);
+        }
+      }
+      
+      // Brand filter
+      if (selectedBrands.length > 0) {
+        const brandFilters = selectedBrands.map(b => `brand.name:'${b}'`).join(" OR ");
+        filters.push(`(${brandFilters})`);
+      }
+      
+      // Price filter
+      filters.push(`originalPrice >= ${priceRange[0]}`);
+      filters.push(`originalPrice <= ${priceRange[1]}`);
+      
+      const filterString = filters.join(" AND ");
+      
+      const res = await ProductService.getAll(
+        currentPage, // Use 0-indexed page
+        meta.pageSize, 
+        undefined, 
+        sortBy, 
+        filterString
+      );
+
+      if (res.data) {
+        setProductsList(res.data.result);
+        // Update meta for display (e.g. meta.page will be currentPage + 1)
+        setMeta(res.data.meta);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, priceRange, sortBy, slug]);
+
+  useEffect(() => {
+    fetchBrands();
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Reset page to 0 when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [slug, subcategoryName, subSubcategoryName, selectedBrands, priceRange, sortBy]);
 
   const skinTypes = [
     "Da dầu",
@@ -59,74 +181,6 @@ const Category = () => {
     "Da nhạy cảm",
     "Mọi loại da",
   ];
-
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    let result = [...products] as unknown as IProduct[];
-
-    // Filter by category
-    if (category) {
-      result = result.filter((p) => (typeof p.category === 'string' ? p.category : p.category.name) === category.name);
-    }
-
-    // Filter by subcategory
-    if (subcategory) {
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(subcategory.toLowerCase()) ||
-          (p.skinType &&
-            p.skinType.some((st) =>
-              st.toLowerCase().includes(subcategory.toLowerCase()),
-            )),
-      );
-    }
-
-    // Filter by price
-    result = result.filter(
-      (p) => (p.finalPrice || p.price || 0) >= priceRange[0] && (p.finalPrice || p.price || 0) <= priceRange[1],
-    );
-
-    // Filter by brands
-    if (selectedBrands.length > 0) {
-      result = result.filter((p) => selectedBrands.includes(typeof p.brand === 'string' ? p.brand : p.brand.name));
-    }
-
-    // Filter by skin type
-    if (selectedSkinTypes.length > 0) {
-      result = result.filter(
-        (p) =>
-          p.skinType && p.skinType.some((st) => selectedSkinTypes.includes(st)),
-      );
-    }
-
-    // Sort
-    switch (sortBy) {
-      case "price-asc":
-        result.sort((a, b) => (a.finalPrice || a.price || 0) - (b.finalPrice || b.price || 0));
-        break;
-      case "price-desc":
-        result.sort((a, b) => (b.finalPrice || b.price || 0) - (a.finalPrice || a.price || 0));
-        break;
-      case "name":
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "discount":
-        result.sort((a, b) => (b.discount || 0) - (a.discount || 0));
-        break;
-      default:
-        // newest - keep original order
-        break;
-    }
-
-    return result;
-  }, [
-    category,
-    subcategory,
-    priceRange,
-    selectedBrands,
-    selectedSkinTypes,
-    sortBy,
-  ]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
@@ -159,44 +213,22 @@ const Category = () => {
         <h3 className="font-semibold mb-3">Khoảng giá</h3>
         <div className="flex items-center gap-2 mb-3">
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Từ
-            </label>
+            <label className="text-xs text-muted-foreground mb-1 block">Từ</label>
             <Input
               type="number"
               value={priceRange[0]}
-              onChange={(e) => {
-                const val = Math.max(
-                  0,
-                  Math.min(Number(e.target.value), priceRange[1]),
-                );
-                setPriceRange([val, priceRange[1]]);
-              }}
+              onChange={(e) => setPriceRange([Math.max(0, Number(e.target.value)), priceRange[1]])}
               className="h-8 text-xs"
-              min={0}
-              max={priceRange[1]}
-              step={10000}
             />
           </div>
           <span className="text-muted-foreground mt-5">—</span>
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Đến
-            </label>
+            <label className="text-xs text-muted-foreground mb-1 block">Đến</label>
             <Input
               type="number"
               value={priceRange[1]}
-              onChange={(e) => {
-                const val = Math.min(
-                  2000000,
-                  Math.max(Number(e.target.value), priceRange[0]),
-                );
-                setPriceRange([priceRange[0], val]);
-              }}
+              onChange={(e) => setPriceRange([priceRange[0], Math.max(priceRange[0], Number(e.target.value))])}
               className="h-8 text-xs"
-              min={priceRange[0]}
-              max={2000000}
-              step={10000}
             />
           </div>
         </div>
@@ -205,29 +237,21 @@ const Category = () => {
           onValueChange={setPriceRange}
           max={2000000}
           step={10000}
-          minStepsBetweenThumbs={1}
           className="mb-2"
         />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>0₫</span>
-          <span>2.000.000₫</span>
-        </div>
       </div>
 
       {/* Brands */}
       <div>
         <h3 className="font-semibold mb-3">Thương hiệu</h3>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {brands.map((brand) => (
-            <label
-              key={brand.id}
-              className="flex items-center gap-2 cursor-pointer"
-            >
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+          {brandsList.map((brand) => (
+            <label key={brand.id} className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
                 checked={selectedBrands.includes(brand.name)}
                 onCheckedChange={() => toggleBrand(brand.name)}
               />
-              <span className="text-sm">{brand.name}</span>
+              <span className="text-sm group-hover:text-primary transition-colors">{brand.name}</span>
             </label>
           ))}
         </div>
@@ -238,10 +262,7 @@ const Category = () => {
         <h3 className="font-semibold mb-3">Loại da</h3>
         <div className="space-y-2">
           {skinTypes.map((type) => (
-            <label
-              key={type}
-              className="flex items-center gap-2 cursor-pointer"
-            >
+            <label key={type} className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={selectedSkinTypes.includes(type)}
                 onCheckedChange={() => toggleSkinType(type)}
@@ -254,8 +275,7 @@ const Category = () => {
 
       {hasActiveFilters && (
         <Button variant="outline" className="w-full" onClick={clearFilters}>
-          <X className="w-4 h-4 mr-2" />
-          Xóa bộ lọc
+          <X className="w-4 h-4 mr-2" /> Xóa bộ lọc
         </Button>
       )}
     </div>
@@ -268,19 +288,21 @@ const Category = () => {
       <main className="flex-1 container mx-auto px-4 py-6 pb-24 md:pb-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/" className="hover:text-primary">
-            Trang chủ
-          </Link>
+          <Link to="/" className="hover:text-primary">Trang chủ</Link>
           <ChevronRight className="w-4 h-4" />
           {category ? (
             <>
-              <Link to={`/category/${slug}`} className="hover:text-primary">
-                {category.name}
-              </Link>
-              {subcategory && (
+              <Link to={`/category/${category.slug}`} className="hover:text-primary">{category.name}</Link>
+              {subcategoryName && (
                 <>
                   <ChevronRight className="w-4 h-4" />
-                  <span className="text-foreground">{subcategory}</span>
+                  <span className="text-foreground">{subcategoryName}</span>
+                  {subSubcategoryName && (
+                    <>
+                      <ChevronRight className="w-4 h-4" />
+                      <span className="text-foreground">{subSubcategoryName}</span>
+                    </>
+                  )}
                 </>
               )}
             </>
@@ -293,48 +315,37 @@ const Category = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold">
-              {category ? category.name : "Tất cả sản phẩm"}
-              {subcategory && ` - ${subcategory}`}
+              {activeCategoryNode ? activeCategoryNode.name : (category ? category.name : "Tất cả sản phẩm")}
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {filteredProducts.length} sản phẩm
+            <p className="text-muted-foreground mt-1 text-sm">
+              {meta.total} sản phẩm tìm thấy
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Mobile Filter Button */}
             <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="md:hidden">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Bộ lọc
-                  {hasActiveFilters && (
-                    <span className="ml-2 w-5 h-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">
-                      !
-                    </span>
-                  )}
+                  <Filter className="w-4 h-4 mr-2" /> Bộ lọc
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Bộ lọc sản phẩm</SheetTitle>
-                </SheetHeader>
+                <SheetHeader><SheetTitle>Bộ lọc sản phẩm</SheetTitle></SheetHeader>
                 <div className="mt-6">{filterContent}</div>
               </SheetContent>
             </Sheet>
 
-            {/* Sort */}
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-[180px]">
                 <SlidersHorizontal className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Sắp xếp" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Mới nhất</SelectItem>
-                <SelectItem value="price-asc">Giá thấp đến cao</SelectItem>
-                <SelectItem value="price-desc">Giá cao đến thấp</SelectItem>
-                <SelectItem value="name">Tên A-Z</SelectItem>
-                <SelectItem value="discount">Giảm giá nhiều</SelectItem>
+                <SelectItem value="createdAt,desc">Mới nhất</SelectItem>
+                <SelectItem value="originalPrice,asc">Giá thấp đến cao</SelectItem>
+                <SelectItem value="originalPrice,desc">Giá cao đến thấp</SelectItem>
+                <SelectItem value="name,asc">Tên A-Z</SelectItem>
+                <SelectItem value="soldCount,desc">Bán chạy nhất</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -346,34 +357,27 @@ const Category = () => {
             <Card>
               <CardContent className="p-4">
                 <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Filter className="w-5 h-5" />
-                  Bộ lọc
+                  <Filter className="w-5 h-5" /> Bộ lọc
                 </h2>
                 {filterContent}
               </CardContent>
             </Card>
 
-            {/* Subcategories */}
-            {category && category.subcategories.length > 0 && (
+            {/* Subcategories (Dynamic based on logic) */}
+            {activeCategoryNode && activeCategoryNode.children && activeCategoryNode.children.length > 0 && (
               <Card className="mt-4">
                 <CardContent className="p-4">
                   <h2 className="font-semibold text-lg mb-3">Danh mục con</h2>
                   <div className="space-y-2">
-                    {category.subcategories.map((sub, index) => {
-                      const subName = typeof sub === 'string' ? sub : sub.name;
-                      return (
-                        <Link
-                          key={index}
-                          to={`/category/${slug}?sub=${encodeURIComponent(subName)}`}
-                          className={`block text-sm py-1.5 px-2 rounded hover:bg-secondary transition-colors ${subcategory === subName
-                              ? "bg-primary/10 text-primary font-medium"
-                              : ""
-                            }`}
-                        >
-                          {subName}
-                        </Link>
-                      );
-                    })}
+                    {activeCategoryNode.children.map((sub) => (
+                      <Link
+                        key={sub.id}
+                        to={`/category/${category?.slug || slug}?sub=${encodeURIComponent(activeCategoryNode.parentId ? subcategoryName || "" : sub.name)}${activeCategoryNode.parentId ? `&sub2=${encodeURIComponent(sub.name)}` : ""}`}
+                        className="block text-sm py-1.5 px-2 rounded hover:bg-secondary transition-colors"
+                      >
+                        {sub.name}
+                      </Link>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
@@ -382,23 +386,33 @@ const Category = () => {
 
           {/* Products Grid */}
           <div className="flex-1">
-            {filteredProducts.length === 0 ? (
-              <Card>
-                <CardContent className="py-16 text-center">
-                  <p className="text-muted-foreground mb-4">
-                    Không tìm thấy sản phẩm phù hợp
-                  </p>
-                  <Button variant="outline" onClick={clearFilters}>
-                    Xóa bộ lọc
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Đang tải sản phẩm...</p>
               </div>
+            ) : productsList.length === 0 ? (
+              <Card><CardContent className="py-16 text-center">
+                <p className="text-muted-foreground mb-4">Không tìm thấy sản phẩm phù hợp</p>
+                <Button variant="outline" onClick={clearFilters}>Xóa bộ lọc</Button>
+              </CardContent></Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {productsList.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                {meta.pages > 1 && (
+                  <div className="mt-8">
+                    <PaginationControl
+                      currentPage={meta.page}
+                      totalPages={meta.pages}
+                      onPageChange={(page) => setCurrentPage(page - 1)}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
