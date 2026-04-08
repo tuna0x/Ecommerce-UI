@@ -142,7 +142,7 @@ const ProductsManagement: React.FC = () => {
           weight: v.weight,
           attributeValues: v.variantAttributes.map(va => {
             // Find the ID in product's attributeValue or current value state
-              const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
+            const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
               const avName = (av as { attributeName?: string }).attributeName || (av as { attribute?: { name: string } }).attribute?.name;
               const avVal = (av as unknown as { attributeValue?: string }).attributeValue;
               return avVal === va.attributeValue && avName === va.name;
@@ -649,110 +649,110 @@ const ProductsManagement: React.FC = () => {
                 if (realVariants.length === 0) return null;
 
                 return (
-                <div className="p-4 bg-muted/20 border-y border-border/50">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-                      {row.original.variants?.length} Biến thể
-                    </Badge>
-                    <span className="text-xs text-muted-foreground italic">
-                      Chi tiết các phiên bản của {row.original.name}
-                    </span>
-                  </div>
-                  <div className="overflow-hidden rounded-xl border border-border/50 shadow-md bg-background">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-muted/40 border-b border-border/50">
-                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <Tag className="h-3.5 w-3.5" />
-                              SKU / Phiên bản
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5">
-                              <LayoutGrid className="h-3.5 w-3.5" />
-                              Thuộc tính
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5 justify-end">
-                              <Scale className="h-3.5 w-3.5" />
-                              Weight
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5 justify-end">
-                              <Boxes className="h-3.5 w-3.5" />
-                              Kho
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
-                            <div className="flex items-center gap-1.5 justify-end">
-                              <Package className="h-3.5 w-3.5" />
-                              Giá bán
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {realVariants.map((variant, idx: number) => (
-                          <tr key={idx} className="hover:bg-primary/[0.02] transition-colors group">
-                            <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground font-medium group-hover:text-primary transition-colors">
-                              {variant.sku}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-1.5">
-                                {variant.variantAttributes?.map((val, vIdx: number) => (
-                                  <Badge
-                                    key={vIdx}
-                                    variant="outline"
-                                    className="bg-muted/50 border-border/50 text-[10px] px-1.5 py-0 font-normal h-4.5"
-                                  >
-                                    <span className="text-muted-foreground mr-1 opacity-70">{val.name}:</span>
-                                    {val.attributeValue}
-                                  </Badge>
-                                ))}
+                  <div className="p-4 bg-muted/20 border-y border-border/50">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                        {row.original.variants?.length} Biến thể
+                      </Badge>
+                      <span className="text-xs text-muted-foreground italic">
+                        Chi tiết các phiên bản của {row.original.name}
+                      </span>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-border/50 shadow-md bg-background">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-muted/40 border-b border-border/50">
+                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
+                              <div className="flex items-center gap-1.5">
+                                <Tag className="h-3.5 w-3.5" />
+                                SKU / Phiên bản
                               </div>
-                            </td>
-                            <td className="px-4 py-3 text-right text-muted-foreground">
-                              {variant.weight}g
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex flex-col items-end gap-1.5">
-                                <Badge
-                                  variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")}
-                                  className={`text-[10px] h-5 px-1.5 font-bold border-none shadow-sm ${variant.stock > 10 ? 'bg-emerald-100 text-emerald-700' : ''}`}
-                                >
-                                  {variant.stock} sẵn có
-                                </Badge>
-                                {variant.reservedStock > 0 && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[9px] h-4 px-1.5 font-medium border-amber-200 bg-amber-50 text-amber-700 mt-1"
-                                  >
-                                    {variant.reservedStock} đang giữ
-                                  </Badge>
-                                )}
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground uppercase tracking-wider">
+                              <div className="flex items-center gap-1.5">
+                                <LayoutGrid className="h-3.5 w-3.5" />
+                                Thuộc tính
                               </div>
-                            </td>
-                            <td className="px-4 py-3 text-right font-semibold text-foreground group-hover:text-primary transition-colors">
-                              <div className="flex flex-col items-end">
-                                <span className={(variant.finalPrice && variant.price && variant.finalPrice < variant.price) ? "text-primary" : ""}>
-                                  {formatCurrency(variant.finalPrice || variant.price || row.original.originalPrice)}
-                                </span>
-                                {variant.finalPrice && variant.price && variant.finalPrice < variant.price && (
-                                  <span className="text-[10px] text-muted-foreground line-through font-normal">
-                                    {formatCurrency(variant.price)}
-                                  </span>
-                                )}
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <Scale className="h-3.5 w-3.5" />
+                                Weight
                               </div>
-                            </td>
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <Boxes className="h-3.5 w-3.5" />
+                                Kho
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-muted-foreground uppercase tracking-wider">
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <Package className="h-3.5 w-3.5" />
+                                Giá bán
+                              </div>
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                          {realVariants.map((variant, idx: number) => (
+                            <tr key={idx} className="hover:bg-primary/[0.02] transition-colors group">
+                              <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground font-medium group-hover:text-primary transition-colors">
+                                {variant.sku}
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-1.5">
+                                  {variant.variantAttributes?.map((val, vIdx: number) => (
+                                    <Badge
+                                      key={vIdx}
+                                      variant="outline"
+                                      className="bg-muted/50 border-border/50 text-[10px] px-1.5 py-0 font-normal h-4.5"
+                                    >
+                                      <span className="text-muted-foreground mr-1 opacity-70">{val.name}:</span>
+                                      {val.attributeValue}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right text-muted-foreground">
+                                {variant.weight}g
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <Badge
+                                    variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")}
+                                    className={`text-[10px] h-5 px-1.5 font-bold border-none shadow-sm ${variant.stock > 10 ? 'bg-emerald-100 text-emerald-700' : ''}`}
+                                  >
+                                    {variant.stock} sẵn có
+                                  </Badge>
+                                  {variant.reservedStock > 0 && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[9px] h-4 px-1.5 font-medium border-amber-200 bg-amber-50 text-amber-700 mt-1"
+                                    >
+                                      {variant.reservedStock} đang giữ
+                                    </Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right font-semibold text-foreground group-hover:text-primary transition-colors">
+                                <div className="flex flex-col items-end">
+                                  <span className={(variant.finalPrice && variant.price && variant.finalPrice < variant.price) ? "text-primary" : ""}>
+                                    {formatCurrency(variant.finalPrice || variant.price || row.original.originalPrice)}
+                                  </span>
+                                  {variant.finalPrice && variant.price && variant.finalPrice < variant.price && (
+                                    <span className="text-[10px] text-muted-foreground line-through font-normal">
+                                      {formatCurrency(variant.price)}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
                 );
               }}
             />

@@ -82,7 +82,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
   const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + '₫';
   };
 
   const handleAddToCart = () => {
@@ -140,7 +140,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                 {/* Image */}
                 <div className="relative aspect-square bg-secondary/30">
                   <img
-                    src={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''))}
+                    src={product.thumbnail || (Array.isArray(product.image) && product.image.length > 0 ? product.image[0] : (typeof product.image === 'string' ? product.image : ''))}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -155,7 +155,7 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                 <div className="p-6 md:p-8 flex flex-col justify-center space-y-4">
                   <div>
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                      {typeof product.brand === 'string' ? product.brand : product.brand.name}
+                      {typeof product.brand === 'string' ? product.brand : (product.brand?.name || 'No Brand')}
                     </span>
                     <h3 className="text-lg md:text-xl font-bold text-foreground mt-1 leading-tight">
                       {product.name}
@@ -213,11 +213,11 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                   {/* Price */}
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-bold text-primary">
-                      {formatPrice(displayPrice)}₫
+                      {formatPrice(displayPrice)}
                     </span>
                     {displayOriginalPrice > displayPrice && (
                       <span className="text-sm text-muted-foreground line-through">
-                        {formatPrice(displayOriginalPrice)}₫
+                        {formatPrice(displayOriginalPrice)}
                       </span>
                     )}
                   </div>

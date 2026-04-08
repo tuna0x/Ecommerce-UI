@@ -25,6 +25,8 @@ const PaymentResult: React.FC = () => {
     const isSuccess = status === 'success';
     const isCod = method === 'cod';
 
+    const displayTransactionId = (transactionId && transactionId !== 'undefined' && transactionId !== 'null') ? transactionId : '...';
+
     React.useEffect(() => {
         if (isSuccess && !hasClearedRef.current) {
             // Debug logs to see what's actually coming in
@@ -36,14 +38,12 @@ const PaymentResult: React.FC = () => {
             }, 500);
             hasClearedRef.current = true;
 
-            const displayId = transactionId && transactionId !== 'undefined' && transactionId !== 'null' ? transactionId : orderId;
-
             toast({
                 title: isCod ? "Đặt hàng thành công" : "Thanh toán thành công",
-                description: `Mã đơn hàng: #${displayId}. Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC!`,
+                description: `Mã giao dịch: ${displayTransactionId}. Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC!`,
             });
         }
-    }, [isSuccess, isCod, clearSelectedItems, toast, orderId, transactionId, status, method]);
+    }, [isSuccess, isCod, clearSelectedItems, toast, orderId, transactionId, status, method, displayTransactionId]);
 
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-muted/30 px-4">
@@ -80,9 +80,11 @@ const PaymentResult: React.FC = () => {
                                 : 'Thanh toán thất bại'}
                         </CardTitle>
                         {isSuccess && (
-                            <p className="text-sm font-medium text-primary mt-2">
-                                Mã đơn hàng: #{(!transactionId || transactionId === 'undefined' || transactionId === 'null') ? 'Đang xử lý...' : transactionId}
-                            </p>
+                            <div className="mt-2">
+                                <p className="text-sm font-medium text-primary uppercase tracking-wider">
+                                    Mã giao dịch: {displayTransactionId}
+                                </p>
+                            </div>
                         )}
                         <p className="text-muted-foreground mt-2">
                             {isSuccess
@@ -98,12 +100,12 @@ const PaymentResult: React.FC = () => {
                         {isSuccess && (
                             <div className="bg-muted p-4 rounded-lg space-y-3">
                                 <div className="flex justify-between items-center text-sm">
-                                    <span className="text-muted-foreground">Mã đơn hàng:</span>
-                                    <span className="font-semibold text-foreground uppercase">
-                                        {(!transactionId || transactionId === 'undefined' || transactionId === 'null') ? 'Đang xử lý...' : transactionId}
+                                    <span className="text-muted-foreground">Mã giao dịch:</span>
+                                    <span className="font-semibold text-foreground uppercase truncate ml-4">
+                                        {displayTransactionId}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
+                                <div className="flex justify-between items-center text-sm pt-2 border-t border-border/50">
                                     <span className="text-muted-foreground">Phương thức:</span>
                                     <span className="font-semibold text-foreground">
                                         {isCod ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua VNPay'}

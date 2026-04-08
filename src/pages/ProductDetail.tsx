@@ -114,10 +114,7 @@ const ProductDetail: React.FC = () => {
   }, [product]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + '₫';
   };
 
   // Group all attributes by name from variants for the selector
@@ -229,7 +226,7 @@ const ProductDetail: React.FC = () => {
 
   const ratingValue = product.averageRating || product.rating || 5.0;
   const reviewsCount = product.reviewCount || 0;
-  const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
+  const discount = product.discount || (displayOriginalPrice > displayPrice && displayOriginalPrice > 0 ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
   const handleAddToCart = async () => {
     if (!isAuthenticated) {

@@ -22,7 +22,7 @@ const CartSidebar: React.FC = () => {
   const navigate = useNavigate();
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + '₫';
   };
 
   const amountToFreeShip = FREE_SHIPPING_THRESHOLD - selectedTotal;
@@ -110,7 +110,7 @@ const CartSidebar: React.FC = () => {
                       </span>
                     ) : selectedTotal > 0 ? (
                       <span className="text-xs text-muted-foreground">
-                        Mua thêm <span className="font-semibold text-primary">{formatPrice(amountToFreeShip)}₫</span> để <span className="font-medium text-accent">freeship</span>
+                        Mua thêm <span className="font-semibold text-primary">{formatPrice(amountToFreeShip)}</span> để <span className="font-medium text-accent">freeship</span>
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">
@@ -215,7 +215,7 @@ const CartSidebar: React.FC = () => {
                               <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
                                 {item.variantAttributes.map((attr, i) => (
                                   <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                    {attr.name}: {(attr as unknown as { attributeValue?: string }).attributeValue || (attr as unknown as { value?: string }).value}
+                                    {attr.name}: {attr.attributeValue}
                                   </span>
                                 ))}
                               </div>
@@ -224,11 +224,11 @@ const CartSidebar: React.FC = () => {
                             {/* Price */}
                             <div className="flex items-center gap-1.5">
                               <span className="text-primary font-bold text-sm">
-                                {formatPrice(price)}₫
+                                {formatPrice(price)}
                               </span>
                               {originalPrice > price && (
                                 <span className="text-[10px] text-muted-foreground line-through">
-                                  {formatPrice(originalPrice)}₫
+                                  {formatPrice(originalPrice)}
                                 </span>
                               )}
                             </div>
@@ -304,7 +304,7 @@ const CartSidebar: React.FC = () => {
                 {/* Total */}
                 <div className="flex items-center justify-between py-3 border-t border-border/40 mb-4">
                   <span className="text-base font-bold tracking-tight">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary tracking-tight">{formatPrice(selectedTotal)}₫</span>
+                  <span className="text-2xl font-bold text-primary tracking-tight">{formatPrice(selectedTotal)}</span>
                 </div>
 
                 {/* Checkout Button */}
