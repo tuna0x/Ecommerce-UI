@@ -25,7 +25,7 @@ axiosInstance.interceptors.response.use(
       // or if we are not on the Home/Product Detail page
       const publicPaths = ["/", "/product"];
       const currentPath = window.location.pathname;
-      const isPublicPath = publicPaths.some(path => 
+      const isPublicPath = publicPaths.some(path =>
         currentPath === path || (path !== "/" && currentPath.startsWith(path))
       );
 

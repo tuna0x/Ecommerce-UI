@@ -39,7 +39,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const FREE_SHIPPING_THRESHOLD = 500000;
 
 const getInitialCart = (): CartItem[] => {
-    const savedCart = localStorage.getItem("beautylux_cart");
+    const savedCart = localStorage.getItem("BÔNGCOSMETIC_cart");
     if (savedCart) {
         try {
             return JSON.parse(savedCart);
@@ -94,7 +94,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 let currentDbItems = res.data?.data?.item || [];
 
                 // 2. Sync local items if any
-                const localItems = getInitialCart().filter(li => !currentDbItems.some((di: ICartItemResponse) => 
+                const localItems = getInitialCart().filter(li => !currentDbItems.some((di: ICartItemResponse) =>
                     (li.variantId ? li.variantId === di.variantId : li.id === di.product.id)
                 ));
 
@@ -112,7 +112,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 }
 
                 // BUGFIX: Clear local cart to prevent deleted legacy items from resurrecting on refresh
-                localStorage.removeItem("beautylux_cart");
+                localStorage.removeItem("BÔNGCOSMETIC_cart");
 
                 const mappedItems = currentDbItems.map(mapDbItemToCartItem);
                 setCartItems(mappedItems);
@@ -130,7 +130,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     // Persist to localStorage (as backup/guest cart)
     useEffect(() => {
         if (!isAuthenticated) {
-            localStorage.setItem("beautylux_cart", JSON.stringify(cartItems));
+            localStorage.setItem("BÔNGCOSMETIC_cart", JSON.stringify(cartItems));
         }
     }, [cartItems, isAuthenticated]);
 

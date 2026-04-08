@@ -69,7 +69,7 @@ export const mockUsers: AdminUser[] = [
   {
     id: "USR-006",
     name: "Admin",
-    email: "admin@beautylux.com",
+    email: "admin@BÔNGCOSMETIC.com",
     phone: "0900000000",
     role: "admin",
     status: "active",

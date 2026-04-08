@@ -104,7 +104,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-border shrink-0">
         {!collapsed && (
-          <span className="text-lg font-bold text-primary">BeautyLux Admin</span>
+          <span className="text-lg font-bold text-primary">BÔNGCOSMETIC Admin</span>
         )}
         <Button
           variant="ghost"

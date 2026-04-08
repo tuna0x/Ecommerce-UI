@@ -41,7 +41,7 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex-shrink-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-              BEAUTY<span className="text-primary">LUX</span>
+              BÔNG<span className="text-primary">COSMETIC</span>
             </h1>
           </Link>
 
@@ -258,26 +258,26 @@ const Header: React.FC = () => {
               })}
             </div>
 
-              {/* Separator + Additional Links */}
-              <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Khám phá</p>
-                {[
-                  { to: "/flash-sale", label: "🔥 Flash Sale" },
-                  { to: "/blog", label: "Blog làm đẹp" },
-                  { to: "/about", label: "Về chúng tôi" },
-                  { to: "/contact", label: "Liên hệ" },
-                  { to: "/faq", label: "FAQ - Hỏi đáp" },
-                ].map(({ to, label }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    className="block px-1 py-2 text-sm font-semibold hover:text-primary transition-colors"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
+            {/* Separator + Additional Links */}
+            <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Khám phá</p>
+              {[
+                { to: "/flash-sale", label: "🔥 Flash Sale" },
+                { to: "/blog", label: "Blog làm đẹp" },
+                { to: "/about", label: "Về chúng tôi" },
+                { to: "/contact", label: "Liên hệ" },
+                { to: "/faq", label: "FAQ - Hỏi đáp" },
+              ].map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="block px-1 py-2 text-sm font-semibold hover:text-primary transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

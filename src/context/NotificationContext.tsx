@@ -43,7 +43,7 @@ const defaultNotifications: Notification[] = [
     },
     {
         id: '4',
-        title: 'Chào mừng bạn đến BeautyLux!',
+        title: 'Chào mừng bạn đến BÔNGCOSMETIC!',
         message: 'Nhập mã WELCOME10 để giảm 10% cho đơn hàng đầu tiên.',
         type: 'system',
         read: true,

@@ -12,7 +12,7 @@ const PaymentResult: React.FC = () => {
     const navigate = useNavigate();
     const { clearSelectedItems } = useCart();
     const { toast } = useToast();
-    
+
     // Ensure we only clear the items once when the component mounts
     const hasClearedRef = React.useRef(false);
 
@@ -29,18 +29,18 @@ const PaymentResult: React.FC = () => {
         if (isSuccess && !hasClearedRef.current) {
             // Debug logs to see what's actually coming in
             console.log("Payment Result Mounted:", { status, orderId, transactionId, method });
-            
+
             // Delay a bit to ensure the user sees the page first
             setTimeout(() => {
                 clearSelectedItems();
             }, 500);
             hasClearedRef.current = true;
-            
+
             const displayId = transactionId && transactionId !== 'undefined' && transactionId !== 'null' ? transactionId : orderId;
-            
+
             toast({
                 title: isCod ? "Đặt hàng thành công" : "Thanh toán thành công",
-                description: `Mã đơn hàng: #${displayId}. Cảm ơn bạn đã mua sắm tại BeautyLux!`,
+                description: `Mã đơn hàng: #${displayId}. Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC!`,
             });
         }
     }, [isSuccess, isCod, clearSelectedItems, toast, orderId, transactionId, status, method]);
@@ -56,7 +56,7 @@ const PaymentResult: React.FC = () => {
                 <Card className="border-none shadow-xl overflow-hidden relative">
                     {/* Decorative Header Background */}
                     <div className={`absolute top-0 left-0 w-full h-32 ${isSuccess ? 'bg-primary/10' : 'bg-destructive/10'}`}></div>
-                    
+
                     <CardHeader className="pt-12 pb-6 relative z-10 text-center">
                         <motion.div
                             initial={{ scale: 0 }}
@@ -75,20 +75,20 @@ const PaymentResult: React.FC = () => {
                             )}
                         </motion.div>
                         <CardTitle className="text-2xl font-bold">
-                            {isSuccess 
-                                ? (isCod ? 'Đặt hàng thành công!' : 'Thanh toán thành công!') 
+                            {isSuccess
+                                ? (isCod ? 'Đặt hàng thành công!' : 'Thanh toán thành công!')
                                 : 'Thanh toán thất bại'}
                         </CardTitle>
                         {isSuccess && (
-                           <p className="text-sm font-medium text-primary mt-2">
-                              Mã đơn hàng: #{(!transactionId || transactionId === 'undefined' || transactionId === 'null') ? 'Đang xử lý...' : transactionId}
-                           </p>
+                            <p className="text-sm font-medium text-primary mt-2">
+                                Mã đơn hàng: #{(!transactionId || transactionId === 'undefined' || transactionId === 'null') ? 'Đang xử lý...' : transactionId}
+                            </p>
                         )}
                         <p className="text-muted-foreground mt-2">
-                            {isSuccess 
-                                ? (isCod 
-                                    ? 'Đơn hàng của bạn đã được ghi nhận. Vui lòng chuẩn bị tiền mặt khi nhận hàng.' 
-                                    : 'Cảm ơn bạn đã mua sắm tại BeautyLux. Giao dịch của bạn đã hoàn tất.')
+                            {isSuccess
+                                ? (isCod
+                                    ? 'Đơn hàng của bạn đã được ghi nhận. Vui lòng chuẩn bị tiền mặt khi nhận hàng.'
+                                    : 'Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC. Giao dịch của bạn đã hoàn tất.')
                                 : message || 'Rất tiếc quá trình thanh toán của bạn không thành công. Vui lòng thử lại hoặc chọn phương thức khác.'
                             }
                         </p>
@@ -111,18 +111,18 @@ const PaymentResult: React.FC = () => {
                                 </div>
                             </div>
                         )}
-                        
+
                         {!isSuccess && (
-                             <div className="bg-destructive/5 p-4 rounded-lg border border-destructive/10">
+                            <div className="bg-destructive/5 p-4 rounded-lg border border-destructive/10">
                                 <p className="text-sm text-destructive text-center">
                                     Vui lòng kiểm tra lại thông tin thanh toán hoặc thử phương thức khác.
                                 </p>
-                             </div>
+                            </div>
                         )}
                     </CardContent>
 
                     <CardFooter className="flex flex-col sm:flex-row gap-3 pt-6 pb-8">
-                        <Button 
+                        <Button
                             className="w-full flex items-center justify-center gap-2"
                             onClick={() => navigate('/orders')}
                             variant={isSuccess ? "default" : "outline"}
@@ -130,7 +130,7 @@ const PaymentResult: React.FC = () => {
                             <Receipt className="w-4 h-4" />
                             Xem đơn hàng
                         </Button>
-                        <Button 
+                        <Button
                             className="w-full relative group overflow-hidden"
                             onClick={() => navigate('/')}
                             variant={isSuccess ? "outline" : "default"}

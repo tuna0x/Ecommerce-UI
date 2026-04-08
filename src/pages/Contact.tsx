@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 const contactInfo = [
     { icon: MapPin, title: 'Địa chỉ', lines: ['123 Nguyễn Huệ, Quận 1', 'TP. Hồ Chí Minh, Việt Nam'] },
     { icon: Phone, title: 'Điện thoại', lines: ['Hotline: 1900 1234', 'CSKH: 028 1234 5678'] },
-    { icon: Mail, title: 'Email', lines: ['support@beautylux.vn', 'business@beautylux.vn'] },
+    { icon: Mail, title: 'Email', lines: ['support@BÔNGCOSMETIC.vn', 'business@BÔNGCOSMETIC.vn'] },
     { icon: Clock, title: 'Giờ làm việc', lines: ['Thứ 2 - Thứ 7: 8:00 - 21:00', 'Chủ nhật: 9:00 - 18:00'] },
 ];
 
@@ -113,7 +113,7 @@ const Contact = () => {
                     <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                         className="rounded-xl overflow-hidden shadow-sm min-h-[400px]">
                         <iframe
-                            title="BeautyLux Store Location"
+                            title="BÔNGCOSMETIC Store Location"
                             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4461768733954!2d106.70142231533417!3d10.776889092321206!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f38f9ed887b%3A0x14aded5703768989!2zMTIzIE5ndXnhu4VuIEh14buHLCBC4bq_biBOZ2jDqSwgUXXhuq1uIDEsIFRow6BuaCBwaOG7kSBI4buTIENow60gTWluaCwgVmnhu4d0IE5hbQ!5e0!3m2!1svi!2s!4v1700000000000"
                             width="100%" height="100%" style={{ border: 0, minHeight: 400 }}
                             allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"

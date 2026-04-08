@@ -17,6 +17,7 @@ export interface OrderRes {
     phone: string;
     transactionID: string;
     paymentMethod: string;
+    paymentUrl?: string;
     createdAt?: string;
     items?: {
         productId: number;
