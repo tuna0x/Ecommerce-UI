@@ -39,6 +39,12 @@ export const CouponService = {
     });
     return res.data;
   },
+  togglePublic: async (id: number, isPublic: boolean): Promise<IApiResponse<void>> => {
+    const res = await axiosInstance.patch(`${BASE_URL}/${id}/public`, null, {
+      params: { isPublic },
+    });
+    return res.data;
+  },
 
   getById: async (id: number): Promise<IApiResponse<ICoupon>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}`);

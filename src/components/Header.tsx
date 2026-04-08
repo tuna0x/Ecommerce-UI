@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -88,6 +88,12 @@ const Header: React.FC = () => {
                     <Link to="/account" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
                       Tài khoản của tôi
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/voucher-wallet" className="flex items-center cursor-pointer">
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Ví của tôi
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
