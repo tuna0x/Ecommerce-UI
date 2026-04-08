@@ -58,6 +58,7 @@ export interface IVariant {
   discountPrice?: number;
   finalPrice?: number;
   stock: number;
+  reservedStock: number;
   weight: number;
   variantAttributes: IVariantAttribute[];
 }
