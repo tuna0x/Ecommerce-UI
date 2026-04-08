@@ -452,11 +452,15 @@ const Orders = () => {
                   <div className="space-y-4 relative z-10">
                       <div className="flex justify-between items-center text-[10px] font-black tracking-widest text-gray-400 uppercase">
                           <span>Tổng giá trị hàng:</span>
-                          <span className="text-white text-xs">{formatPrice(selectedOrder.totalPrice || 0)}</span>
+                          <span className="text-white text-xs">{formatPrice(selectedOrder.subTotal || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center text-[10px] font-black tracking-widest text-gray-400 uppercase">
-                          <span>Phí giao hàng (Toàn quốc):</span>
-                          <span className="text-green-400 text-xs underline underline-offset-4">Miễn phí 0 ₫</span>
+                          <span>Phí giao hàng (GHTK):</span>
+                          <span className="text-white text-xs whitespace-nowrap">
+                            {selectedOrder.shippingFee && selectedOrder.shippingFee > 0 
+                              ? formatPrice(selectedOrder.shippingFee) 
+                              : "Miễn phí 0 ₫"}
+                          </span>
                       </div>
                       <div className="pt-6 mt-2 border-t border-white/10 flex justify-between items-center transition-transform duration-300 group-hover:translate-x-1">
                           <div>

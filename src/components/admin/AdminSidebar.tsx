@@ -1,5 +1,5 @@
-import React from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -7,114 +7,194 @@ import {
   Users,
   BarChart3,
   ChevronLeft,
+  ChevronDown,
   LogOut,
   FolderTree,
   Palette,
   Percent,
   Ticket,
-  Image,
-  Store,
   FileText,
-  MessageCircle,
-} from "lucide-react";
-import { cn } from "../../lib/utils";
-import { Button } from "../../components/ui/button";
+  Tag,
+  Image,
+  LucideIcon
+} from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { Button } from '../../components/ui/button';
+import { ScrollArea } from '../../components/ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible';
 
 interface AdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
-const menuItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-  { title: "Chi tiết sản phẩm", url: "/admin/product-detail", icon: FileText },
-  { title: "Sản phẩm", url: "/admin/products", icon: Package },
-  { title: "Thể loại", url: "/admin/categories", icon: FolderTree },
-  { title: "Thuộc tính", url: "/admin/attributes", icon: Palette },
-  { title: "Đơn hàng", url: "/admin/orders", icon: ShoppingCart },
-  { title: "Người dùng", url: "/admin/users", icon: Users },
-  { title: "Khuyến mãi", url: "/admin/promotions", icon: Percent },
-  { title: "Mã giảm giá", url: "/admin/coupons", icon: Ticket },
-  { title: "Banner Quảng cáo", url: "/admin/banners", icon: Image },
-  { title: "Thương hiệu", url: "/admin/brands", icon: Store },
-  { title: "Thống kê", url: "/admin/statistics", icon: BarChart3 },
-  { title: 'Chat', url: '/admin/chat', icon: MessageCircle },
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: LucideIcon;
+}
+
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
+  {
+    label: 'Tổng quan',
+    items: [
+      { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Quản lý sản phẩm',
+    items: [
+      { title: 'Sản phẩm', url: '/admin/products', icon: Package },
+      { title: 'Chi tiết SP', url: '/admin/product-detail', icon: FileText },
+      { title: 'Thể loại', url: '/admin/categories', icon: FolderTree },
+      { title: 'Thuộc tính', url: '/admin/attributes', icon: Palette },
+      { title: 'Thương hiệu', url: '/admin/brands', icon: Tag },
+    ],
+  },
+  {
+    label: 'Bán hàng',
+    items: [
+      { title: 'Đơn hàng', url: '/admin/orders', icon: ShoppingCart },
+      { title: 'Khuyến mãi', url: '/admin/promotions', icon: Percent },
+      { title: 'Mã giảm giá', url: '/admin/coupons', icon: Ticket },
+    ],
+  },
+  {
+    label: 'Nội dung',
+    items: [
+      { title: 'Banner', url: '/admin/banners', icon: Image },
+    ],
+  },
+  {
+    label: 'Hệ thống',
+    items: [
+      { title: 'Người dùng', url: '/admin/users', icon: Users },
+      { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
+    ],
+  },
 ];
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    menuGroups.forEach(g => { initial[g.label] = true; });
+    return initial;
+  });
 
   const isActive = (path: string) => {
-    if (path === "/admin") {
-      return location.pathname === "/admin";
-    }
+    if (path === '/admin') return location.pathname === '/admin';
     return location.pathname.startsWith(path);
+  };
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-card border-r border-border",
-        collapsed ? "w-16" : "w-64",
+        'fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300 flex flex-col',
+        collapsed ? 'w-16' : 'w-64'
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-border">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-border shrink-0">
         {!collapsed && (
-          <span className="text-lg font-bold text-primary">
-            Bông Admin
-          </span>
+          <span className="text-lg font-bold text-primary">BeautyLux Admin</span>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className={cn("shrink-0", collapsed && "mx-auto")}
+          className={cn('shrink-0', collapsed && 'mx-auto')}
         >
           <ChevronLeft
-            className={cn(
-              "h-5 w-5 transition-transform",
-              collapsed && "rotate-180",
-            )}
+            className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')}
           />
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="p-2 space-y-1">
-        {menuItems.map((item) => (
-          <NavLink
-            key={item.url}
-            to={item.url}
-            end={item.url === "/admin"}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-              isActive(item.url)
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
-            )}
-          >
-            <item.icon className="h-5 w-5 shrink-0" />
-            {!collapsed && (
-              <span className="text-sm font-medium">{item.title}</span>
-            )}
-          </NavLink>
-        ))}
-      </nav>
+      <ScrollArea className="flex-1">
+        <nav className="p-2 space-y-1">
+          {menuGroups.map((group) => {
+            if (collapsed) {
+              // Collapsed: just show icons, no groups
+              return group.items.map((item) => (
+                <NavLink
+                  key={item.url}
+                  to={item.url}
+                  end={item.url === '/admin'}
+                  title={item.title}
+                  className={cn(
+                    'flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors',
+                    isActive(item.url)
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                </NavLink>
+              ));
+            }
+
+            return (
+              <Collapsible
+                key={group.label}
+                open={openGroups[group.label]}
+                onOpenChange={() => toggleGroup(group.label)}
+              >
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                  <span>{group.label}</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform',
+                      openGroups[group.label] && 'rotate-180'
+                    )}
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-0.5 mt-0.5">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.url}
+                      to={item.url}
+                      end={item.url === '/admin'}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm',
+                        isActive(item.url)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      )}
+                    >
+                      <item.icon className="h-4.5 w-4.5 shrink-0" />
+                      <span className="font-medium">{item.title}</span>
+                    </NavLink>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </nav>
+      </ScrollArea>
 
       {/* Footer */}
-      <div className="absolute bottom-4 left-0 right-0 px-2">
+      <div className="shrink-0 border-t border-border p-2">
         <NavLink
           to="/"
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
-            "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+            'text-muted-foreground hover:bg-destructive/10 hover:text-destructive',
+            collapsed && 'justify-center'
           )}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && (
-            <span className="text-sm font-medium">Thoát Admin</span>
-          )}
+          {!collapsed && <span className="text-sm font-medium">Thoát Admin</span>}
         </NavLink>
       </div>
     </aside>

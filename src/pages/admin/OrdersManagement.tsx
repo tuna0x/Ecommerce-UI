@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,7 +29,8 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
-import { getAllOrdersAdminApi, updateOrderStatusApi, type OrderRes } from "../../service/orderService";
+import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, type OrderRes } from "../../service/orderService";
+import { motion, AnimatePresence } from "framer-motion";
 
 // --------- Constants ---------
 const STATUS_OPTIONS = [
@@ -73,7 +74,6 @@ const formatDate = (str?: string) => {
 const OrdersManagement: React.FC = () => {
   const [orders, setOrders] = useState<OrderRes[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<number | null>(null);
 
   // Filters & pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,11 +85,23 @@ const OrdersManagement: React.FC = () => {
   // Detail dialog
   const [selectedOrder, setSelectedOrder] = useState<OrderRes | null>(null);
 
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  // Date filters
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   // ---- Fetch ----
-  const fetchOrders = useCallback(async (page: number, status: string) => {
+  const fetchOrders = useCallback(async (page: number, status: string, start?: string, end?: string) => {
     try {
       setLoading(true);
-      const res = await getAllOrdersAdminApi(page, PAGE_SIZE, status);
+      // Backend expects ISO Strings for Instants
+      const startISO = start ? new Date(start).toISOString() : undefined;
+      const endISO = end ? new Date(end).toISOString() : undefined;
+      
+      const res = await getAllOrdersAdminApi(page, PAGE_SIZE, status, startISO, endISO);
       const data = res?.data?.data;
       
       if (data) {
@@ -97,6 +109,8 @@ const OrdersManagement: React.FC = () => {
         setOrders(result);
         setTotalPages(data.meta?.pages ?? 1);
         setTotalItems(data.meta?.total ?? result.length);
+        // Clear selection when page/filter changes
+        setSelectedIds(new Set());
       } else {
         setOrders([]);
       }
@@ -111,11 +125,11 @@ const OrdersManagement: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, startDate, endDate]);
 
   useEffect(() => {
-    fetchOrders(currentPage, statusFilter);
-  }, [fetchOrders, currentPage, statusFilter]);
+    fetchOrders(currentPage, statusFilter, startDate, endDate);
+  }, [fetchOrders, currentPage, statusFilter, startDate, endDate]);
 
   // ---- Client-side search (on top of server-side status filter) ----
   const displayedOrders = useMemo(() => {
@@ -132,24 +146,48 @@ const OrdersManagement: React.FC = () => {
     );
   }, [orders, searchTerm]);
 
-  // ---- Update status ----
-  const handleUpdateStatus = useCallback(async (orderId: number, newStatus: string) => {
-    try {
-      setUpdating(orderId);
-      await updateOrderStatusApi(orderId, newStatus);
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
-      );
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
-      }
-      toast.success(`Đã cập nhật trạng thái đơn #${orderId}`);
-    } catch {
-      toast.error("Cập nhật trạng thái thất bại");
-    } finally {
-      setUpdating(null);
+  // ---- Bulk Operations ----
+  const toggleSelectAll = () => {
+    if (selectedIds.size === displayedOrders.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayedOrders.map(o => o.id)));
     }
-  }, [selectedOrder]);
+  };
+
+  const toggleSelectOne = (id: number) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleBulkUpdateStatus = async (newStatus: string, targetIds?: number[]) => {
+    const idsToUpdate = targetIds || Array.from(selectedIds);
+    if (idsToUpdate.length === 0) return;
+    
+    try {
+      setIsBulkUpdating(true);
+      await bulkUpdateOrderStatusApi(idsToUpdate, newStatus);
+      
+      const idSet = new Set(idsToUpdate);
+      setOrders(prev => prev.map(o => 
+        idSet.has(o.id) ? { ...o, status: newStatus } : o
+      ));
+      
+      toast.success(`Đã cập nhật ${idsToUpdate.length} đơn hàng sang ${getStatusConfig(newStatus).label}`);
+      if (!targetIds) setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Update failed:", err);
+      toast.error("Cập nhật thất bại");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const getTotalQuantity = (order: OrderRes) => {
+    return (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
+  };
 
   // ---- Render ----
   return (
@@ -177,28 +215,48 @@ const OrdersManagement: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm theo mã đơn, tên, email, SĐT..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Mã đơn, tên, SĐT..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  {STATUS_OPTIONS.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Từ ngày"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Đến ngày"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 
@@ -219,10 +277,18 @@ const OrdersManagement: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  {["Mã đơn", "Khách hàng", "Người nhận", "Ngày đặt", "Tổng tiền", "Trạng thái", ""].map((h, i) => (
+                  <th className="py-3 px-4 text-left w-10">
+                    <button onClick={toggleSelectAll} className="hover:text-primary transition-colors">
+                      {selectedIds.size === displayedOrders.length && displayedOrders.length > 0
+                        ? <CheckSquare className="h-4 w-4" />
+                        : <Square className="h-4 w-4" />
+                      }
+                    </button>
+                  </th>
+                  {["Mã đơn", "Khách hàng", "Người nhận", "Ngày đặt", "SL", "Tổng tiền", "Trạng thái", ""].map((h, i) => (
                     <th
                       key={i}
-                      className={`py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider ${i === 6 ? "text-right" : "text-left"}`}
+                      className={`py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider ${i === 7 ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>
@@ -248,6 +314,14 @@ const OrdersManagement: React.FC = () => {
                     const cfg = getStatusConfig(order.status);
                     return (
                       <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                        <td className="py-4 px-4">
+                          <button onClick={() => toggleSelectOne(order.id)} className="hover:text-primary transition-colors">
+                            {selectedIds.has(order.id)
+                              ? <CheckSquare className="h-4 w-4 text-primary" />
+                              : <Square className="h-4 w-4 text-muted-foreground" />
+                            }
+                          </button>
+                        </td>
                         <td className="py-4 px-4 text-sm font-mono font-bold text-primary">
                           #{order.transactionID || order.id}
                         </td>
@@ -266,6 +340,9 @@ const OrdersManagement: React.FC = () => {
                         <td className="py-4 px-4 text-sm text-muted-foreground whitespace-nowrap">
                           {formatDate(order.createdAt)}
                         </td>
+                        <td className="py-4 px-4 text-sm font-medium">
+                          {getTotalQuantity(order)}
+                        </td>
                         <td className="py-4 px-4 text-sm font-bold whitespace-nowrap">
                           {formatCurrency(order.totalPrice)}
                         </td>
@@ -274,12 +351,12 @@ const OrdersManagement: React.FC = () => {
                             <DropdownMenuTrigger asChild>
                               <button
                                 className="flex items-center gap-1 hover:opacity-80 transition-opacity outline-none disabled:opacity-50"
-                                disabled={updating === order.id}
+                                disabled={isBulkUpdating}
                               >
                                 <span className={`px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider ${cfg.color}`}>
                                   {cfg.label}
                                 </span>
-                                {updating === order.id
+                                {isBulkUpdating && selectedIds.has(order.id)
                                   ? <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                                   : <ChevronDown className="h-3 w-3 text-muted-foreground" />
                                 }
@@ -291,7 +368,7 @@ const OrdersManagement: React.FC = () => {
                                   key={s.value}
                                   className="text-xs"
                                   disabled={s.value === order.status.toUpperCase()}
-                                  onClick={() => handleUpdateStatus(order.id, s.value)}
+                                  onClick={() => handleBulkUpdateStatus(s.value, [order.id])}
                                 >
                                   <span className={`w-2 h-2 rounded-full mr-2 inline-block ${s.color.split(" ")[0]}`} />
                                   {s.label}
@@ -363,7 +440,7 @@ const OrdersManagement: React.FC = () => {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               Chi tiết đơn hàng
@@ -384,8 +461,8 @@ const OrdersManagement: React.FC = () => {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="ml-auto gap-1 text-xs" disabled={!!updating}>
-                      {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
+                    <Button variant="outline" size="sm" className="ml-auto gap-1 text-xs" disabled={isBulkUpdating}>
+                      {isBulkUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <ChevronDown className="h-3 w-3" />}
                       Đổi trạng thái
                     </Button>
                   </DropdownMenuTrigger>
@@ -395,7 +472,7 @@ const OrdersManagement: React.FC = () => {
                         key={s.value}
                         className="text-xs"
                         disabled={s.value === selectedOrder.status.toUpperCase()}
-                        onClick={() => handleUpdateStatus(selectedOrder.id, s.value)}
+                        onClick={() => handleBulkUpdateStatus(s.value, [selectedOrder.id])}
                       >
                         <span className={`w-2 h-2 rounded-full mr-2 inline-block ${s.color.split(" ")[0]}`} />
                         {s.label}
@@ -409,14 +486,14 @@ const OrdersManagement: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-muted/50 p-4 rounded-xl space-y-2">
                   <p className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-3">Tài khoản</p>
-                  <p><span className="text-muted-foreground">Tên:</span> <span className="font-semibold">{selectedOrder.user?.name ?? "—"}</span></p>
-                  <p><span className="text-muted-foreground">Email:</span> {selectedOrder.user?.email ?? "—"}</p>
+                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Tên:</span> <span className="font-semibold break-words">{selectedOrder.user?.name ?? "—"}</span></p>
+                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Email:</span> <span className="break-all">{selectedOrder.user?.email ?? "—"}</span></p>
                 </div>
                 <div className="bg-muted/50 p-4 rounded-xl space-y-2">
                   <p className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-3">Người nhận</p>
-                  <p><span className="text-muted-foreground">Tên:</span> <span className="font-semibold">{selectedOrder.receiverName ?? "—"}</span></p>
-                  <p><span className="text-muted-foreground">SĐT:</span> {selectedOrder.phone ?? "—"}</p>
-                  <p><span className="text-muted-foreground">Địa chỉ:</span> {selectedOrder.shippingAddress ?? "—"}</p>
+                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Tên:</span> <span className="font-semibold break-words">{selectedOrder.receiverName ?? "—"}</span></p>
+                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">SĐT:</span> <span className="break-words">{selectedOrder.phone ?? "—"}</span></p>
+                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Địa chỉ:</span> <span className="break-words">{selectedOrder.shippingAddress ?? "—"}</span></p>
                 </div>
               </div>
 
@@ -444,8 +521,8 @@ const OrdersManagement: React.FC = () => {
                         className="w-12 h-12 rounded-lg object-cover bg-muted flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">{item.productName}</p>
-                        <p className="text-xs text-muted-foreground">x{item.quantity}</p>
+                        <p className="font-semibold line-clamp-2 leading-snug">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground mt-1">x{item.quantity}</p>
                       </div>
                       <p className="font-bold text-sm whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</p>
                     </div>
@@ -462,6 +539,47 @@ const OrdersManagement: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-2xl shadow-2xl p-4 flex items-center gap-6 border border-white/10 backdrop-blur-xl"
+          >
+            <div className="flex items-center gap-3 px-2 border-r border-white/10 mr-2">
+              <span className="bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-gray-300">đã chọn</span>
+            </div>
+
+            <Select onValueChange={handleBulkUpdateStatus} disabled={isBulkUpdating}>
+              <SelectTrigger className="w-[180px] bg-white/5 border-white/10 h-9 text-xs">
+                <SelectValue placeholder="Đổi trạng thái..." />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-gray-400 hover:text-white hover:bg-white/5"
+            >
+              Hủy
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
