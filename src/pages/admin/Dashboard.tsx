@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Package, ShoppingCart, Users, DollarSign,
+  ShoppingCart, Users, DollarSign,
   TrendingUp, TrendingDown, ArrowUpRight, AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -42,7 +42,6 @@ const Dashboard: React.FC = () => {
   const totalOrders = mockOrders.length;
   const pendingOrders = mockOrders.filter(o => o.status === 'pending').length;
   const totalUsers = mockUsers.filter(u => u.role === 'user').length;
-  const totalProducts = products.length;
   const lowStockProducts = products.filter(p => (p.stock ?? 100) < 10);
   const recentOrders = mockOrders.slice(0, 5);
 
@@ -160,7 +159,7 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="month" className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <YAxis tickFormatter={formatShortCurrency} className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <Tooltip
-                    formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
+                    formatter={(value: any) => [formatCurrency(value), 'Doanh thu'] as [string, string]}
                     contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fill="url(#colorRevenue)" strokeWidth={2} />
@@ -184,7 +183,7 @@ const Dashboard: React.FC = () => {
                       <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`${value}%`, 'Tỷ lệ']} />
+                  <Tooltip formatter={(value: any) => [`${value}%`, 'Tỷ lệ'] as [string, string]} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -211,7 +210,7 @@ const Dashboard: React.FC = () => {
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + '…' : v}
                   />
-                  <Tooltip formatter={(value: number) => [`${value} đã bán`, 'Số lượng']} />
+                  <Tooltip formatter={(value: any) => [`${value} đã bán`, 'Số lượng'] as [string, string]} />
                   <Bar dataKey="soldCount" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>

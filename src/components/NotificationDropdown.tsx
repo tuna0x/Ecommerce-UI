@@ -2,7 +2,7 @@ import React from 'react';
 import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationContext';
-import type { Notification } from '../types/notification.type';
+import type { Notification as NotificationType } from '../types/notification.type';
 import { Link } from 'react-router-dom';
 import {
     DropdownMenu,
@@ -10,7 +10,7 @@ import {
     DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 
-const typeIcon: Record<Notification['type'], React.ReactNode> = {
+const typeIcon: Record<NotificationType['type'], React.ReactNode> = {
     order: <Package className="w-4 h-4 text-accent" />,
     promo: <Tag className="w-4 h-4 text-primary" />,
     wishlist: <Heart className="w-4 h-4 text-primary" />,
@@ -128,7 +128,7 @@ const NotificationDropdown: React.FC = () => {
     );
 };
 
-const NotifContent: React.FC<{ notif: Notification; onDelete: (id: string) => void }> = ({ notif, onDelete }) => (
+const NotifContent: React.FC<{ notif: NotificationType; onDelete: (id: string) => void }> = ({ notif, onDelete }) => (
     <>
         <div className={`flex-shrink-0 mt-0.5 p-2 rounded-full h-fit ${!notif.read ? 'bg-primary/10' : 'bg-secondary'}`}>
             {typeIcon[notif.type]}
