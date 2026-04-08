@@ -10,7 +10,7 @@ const faqCategories = [
     {
         icon: Package, title: 'Đặt hàng',
         questions: [
-            { q: 'Làm thế nào để đặt hàng trên BeautyLux?', a: 'Bạn chỉ cần chọn sản phẩm, thêm vào giỏ hàng, điền thông tin giao hàng và chọn phương thức thanh toán. Đơn hàng sẽ được xác nhận qua email và SMS.' },
+            { q: 'Làm thế nào để đặt hàng trên BÔNGCOSMETIC?', a: 'Bạn chỉ cần chọn sản phẩm, thêm vào giỏ hàng, điền thông tin giao hàng và chọn phương thức thanh toán. Đơn hàng sẽ được xác nhận qua email và SMS.' },
             { q: 'Tôi có thể thay đổi hoặc hủy đơn hàng không?', a: 'Bạn có thể thay đổi hoặc hủy đơn hàng trong vòng 30 phút sau khi đặt. Sau thời gian này, vui lòng liên hệ hotline 1900 1234 để được hỗ trợ.' },
             { q: 'Đơn hàng tối thiểu là bao nhiêu?', a: 'Không có giá trị đơn hàng tối thiểu. Tuy nhiên, đơn hàng từ 500.000₫ sẽ được miễn phí vận chuyển.' },
         ]
@@ -26,7 +26,7 @@ const faqCategories = [
     {
         icon: CreditCard, title: 'Thanh toán',
         questions: [
-            { q: 'Có những phương thức thanh toán nào?', a: 'BeautyLux hỗ trợ: Thanh toán khi nhận hàng (COD), chuyển khoản ngân hàng, ví MoMo, ZaloPay, VNPay và thẻ tín dụng/ghi nợ quốc tế.' },
+            { q: 'Có những phương thức thanh toán nào?', a: 'BÔNGCOSMETIC hỗ trợ: Thanh toán khi nhận hàng (COD), chuyển khoản ngân hàng, ví MoMo, ZaloPay, VNPay và thẻ tín dụng/ghi nợ quốc tế.' },
             { q: 'Thanh toán online có an toàn không?', a: 'Tất cả giao dịch đều được mã hóa SSL 256-bit. Chúng tôi không lưu trữ thông tin thẻ của bạn. Các cổng thanh toán đều đạt chuẩn PCI DSS.' },
         ]
     },
@@ -41,7 +41,7 @@ const faqCategories = [
     {
         icon: ShieldCheck, title: 'Bảo mật & Tài khoản',
         questions: [
-            { q: 'Thông tin cá nhân của tôi có được bảo mật không?', a: 'BeautyLux cam kết bảo mật tuyệt đối thông tin cá nhân của khách hàng theo chính sách bảo mật và quy định pháp luật Việt Nam.' },
+            { q: 'Thông tin cá nhân của tôi có được bảo mật không?', a: 'BÔNGCOSMETIC cam kết bảo mật tuyệt đối thông tin cá nhân của khách hàng theo chính sách bảo mật và quy định pháp luật Việt Nam.' },
             { q: 'Làm sao để đặt lại mật khẩu?', a: 'Vào trang đăng nhập, chọn "Quên mật khẩu", nhập email đã đăng ký. Link đặt lại mật khẩu sẽ được gửi đến email của bạn trong vài phút.' },
         ]
     },
@@ -72,7 +72,7 @@ const FAQ = () => {
                         className="text-4xl md:text-5xl font-bold text-foreground mb-4">Câu hỏi thường gặp</motion.h1>
                     <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                         className="text-muted-foreground max-w-lg mx-auto mb-8">
-                        Tìm câu trả lời nhanh cho các thắc mắc phổ biến về mua sắm tại BeautyLux
+                        Tìm câu trả lời nhanh cho các thắc mắc phổ biến về mua sắm tại BÔNGCOSMETIC
                     </motion.p>
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                         className="max-w-md mx-auto relative">

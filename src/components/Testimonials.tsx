@@ -18,7 +18,7 @@ const testimonials = [
         name: 'Trần Thanh Hương',
         avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80',
         rating: 5,
-        text: 'Mình đã thử rất nhiều kem chống nắng nhưng sản phẩm của BeautyLux là tốt nhất. Không bết dính, không gây mụn. Sẽ mua lại nhiều lần nữa!',
+        text: 'Mình đã thử rất nhiều kem chống nắng nhưng sản phẩm của BÔNGCOSMETIC là tốt nhất. Không bết dính, không gây mụn. Sẽ mua lại nhiều lần nữa!',
         product: 'Kem Chống Nắng SPF50+',
         verified: true,
     },
@@ -36,7 +36,7 @@ const testimonials = [
         name: 'Phạm Ngọc Hà',
         avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&q=80',
         rating: 4,
-        text: 'Bộ skincare routine mình đặt rất ưng ý. Packaging đẹp, có hướng dẫn sử dụng chi tiết. BeautyLux là địa chỉ tin cậy cho mỹ phẩm chính hãng.',
+        text: 'Bộ skincare routine mình đặt rất ưng ý. Packaging đẹp, có hướng dẫn sử dụng chi tiết. BÔNGCOSMETIC là địa chỉ tin cậy cho mỹ phẩm chính hãng.',
         product: 'Combo Skincare Routine',
         verified: true,
     },
@@ -95,8 +95,8 @@ const Testimonials: React.FC = () => {
                                         <Star
                                             key={i}
                                             className={`w-4 h-4 ${i < testimonials[current].rating
-                                                    ? 'fill-yellow-400 text-yellow-400'
-                                                    : 'text-muted-foreground/30'
+                                                ? 'fill-yellow-400 text-yellow-400'
+                                                : 'text-muted-foreground/30'
                                                 }`}
                                         />
                                     ))}
@@ -140,8 +140,8 @@ const Testimonials: React.FC = () => {
                                         key={index}
                                         onClick={() => setCurrent(index)}
                                         className={`h-1.5 rounded-full transition-all duration-300 ${current === index
-                                                ? 'w-6 bg-primary'
-                                                : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                                            ? 'w-6 bg-primary'
+                                            : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
                                             }`}
                                     />
                                 ))}

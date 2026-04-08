@@ -27,7 +27,7 @@ const team = [
 ];
 
 const milestones = [
-    { year: '2018', event: 'Thành lập BeautyLux với sứ mệnh mang làn da khỏe đẹp cho phụ nữ Việt.' },
+    { year: '2018', event: 'Thành lập BÔNGCOSMETIC với sứ mệnh mang làn da khỏe đẹp cho phụ nữ Việt.' },
     { year: '2019', event: 'Ra mắt dòng serum Vitamin C đầu tiên, bán hết 10.000 chai trong 2 tuần.' },
     { year: '2021', event: 'Mở rộng 15 cửa hàng trên toàn quốc, phục vụ 500.000+ khách hàng.' },
     { year: '2023', event: 'Đạt giải "Thương hiệu mỹ phẩm được yêu thích nhất" năm thứ 2 liên tiếp.' },
@@ -54,7 +54,7 @@ const About = () => {
                     </motion.h1>
                     <motion.p variants={fadeUp} custom={2} initial="hidden" animate="visible"
                         className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                        BeautyLux ra đời với khát vọng mang đến những sản phẩm làm đẹp an toàn, hiệu quả,
+                        BÔNGCOSMETIC ra đời với khát vọng mang đến những sản phẩm làm đẹp an toàn, hiệu quả,
                         giúp mỗi phụ nữ Việt tự tin tỏa sáng với vẻ đẹp tự nhiên nhất.
                     </motion.p>
                 </div>
@@ -65,13 +65,13 @@ const About = () => {
                 <div className="container mx-auto px-4">
                     <div className="grid md:grid-cols-2 gap-12 items-center">
                         <motion.div initial={{ opacity: 0, x: -40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
-                            <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&h=500&fit=crop" alt="BeautyLux story" className="rounded-2xl shadow-lg w-full object-cover aspect-[6/5]" />
+                            <img src="https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600&h=500&fit=crop" alt="BÔNGCOSMETIC story" className="rounded-2xl shadow-lg w-full object-cover aspect-[6/5]" />
                         </motion.div>
                         <motion.div initial={{ opacity: 0, x: 40 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}>
                             <h2 className="text-3xl font-bold text-foreground mb-6">Hành trình từ đam mê đến thương hiệu</h2>
                             <div className="space-y-4 text-muted-foreground leading-relaxed">
                                 <p>
-                                    Bắt đầu từ một phòng thí nghiệm nhỏ tại Sài Gòn năm 2018, BeautyLux được sinh ra từ niềm đam mê
+                                    Bắt đầu từ một phòng thí nghiệm nhỏ tại Sài Gòn năm 2018, BÔNGCOSMETIC được sinh ra từ niềm đam mê
                                     nghiên cứu và phát triển các công thức chăm sóc da hiệu quả, an toàn với thiên nhiên.
                                 </p>
                                 <p>
@@ -80,7 +80,7 @@ const About = () => {
                                     nghiêm ngặt trước khi đến tay khách hàng.
                                 </p>
                                 <p>
-                                    Sau 6 năm phát triển, BeautyLux tự hào là thương hiệu mỹ phẩm Việt Nam được hơn 1 triệu khách hàng
+                                    Sau 6 năm phát triển, BÔNGCOSMETIC tự hào là thương hiệu mỹ phẩm Việt Nam được hơn 1 triệu khách hàng
                                     tin yêu, với hơn 200+ sản phẩm đa dạng phục vụ mọi nhu cầu làm đẹp.
                                 </p>
                             </div>
@@ -138,7 +138,7 @@ const About = () => {
             <section className="py-16 bg-secondary/50">
                 <div className="container mx-auto px-4">
                     <h2 className="text-3xl font-bold text-foreground text-center mb-3">Đội ngũ của chúng tôi</h2>
-                    <p className="text-muted-foreground text-center mb-12">Những con người tài năng đằng sau BeautyLux</p>
+                    <p className="text-muted-foreground text-center mb-12">Những con người tài năng đằng sau BÔNGCOSMETIC</p>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-4xl mx-auto">
                         {team.map((member, i) => (
                             <motion.div key={i} variants={fadeUp} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }}

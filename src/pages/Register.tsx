@@ -82,7 +82,7 @@ const Register: React.FC = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold mb-2">
-              BEAUTY<span className="text-primary">LUX</span>
+              BÔNG<span className="text-primary">COSMETIC</span>
             </h1>
             <p className="text-muted-foreground">Tạo tài khoản mới</p>
           </div>

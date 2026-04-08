@@ -9,7 +9,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'light',
-  toggleTheme: () => {},
+  toggleTheme: () => { },
 });
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -17,7 +17,7 @@ export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem('beautylux-theme');
+    const saved = localStorage.getItem('BÔNGCOSMETIC-theme');
     return (saved as Theme) || 'light';
   });
 
@@ -25,7 +25,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const root = document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    localStorage.setItem('beautylux-theme', theme);
+    localStorage.setItem('BÔNGCOSMETIC-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

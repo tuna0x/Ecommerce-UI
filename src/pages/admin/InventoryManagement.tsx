@@ -20,14 +20,17 @@ const InventoryManagement: React.FC = () => {
     const [filter, setFilter] = useState<StockFilter>('all');
     const [inventoryData, setInventoryData] = useState<Inventory[]>([]);
     const [loading, setLoading] = useState(true);
-    
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [appliedRange, setAppliedRange] = useState({ start: '', end: '' });
+
     // Modal states
     const [historyOpen, setHistoryOpen] = useState(false);
     const [adjustOpen, setAdjustOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Inventory | null>(null);
     const [logs, setLogs] = useState<InventoryLog[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    
+
     // Adjust form state
     const [adjustType, setAdjustType] = useState('ADJUSTMENT');
     const [adjustQty, setAdjustQty] = useState<number | string>(0);
@@ -133,7 +136,7 @@ const InventoryManagement: React.FC = () => {
                 type: 'PURCHASE', // Default for bulk import
                 note: adjustNote || 'Nhập kho hàng loạt'
             }));
-            
+
             await inventoryService.bulkAdjustInventory(payloads);
             toast.success(`Đã nhập kho thành công ${bulkItems.length} mặt hàng`);
             setBulkOpen(false);
@@ -161,7 +164,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const updateBulkQty = (inventoryId: number, qty: number) => {
-        setBulkItems(bulkItems.map(item => 
+        setBulkItems(bulkItems.map(item =>
             item.inventoryId === inventoryId ? { ...item, quantity: qty } : item
         ));
     };
@@ -170,7 +173,7 @@ const InventoryManagement: React.FC = () => {
         setBulkItems(bulkItems.filter(item => item.inventoryId !== inventoryId));
     };
 
-    const filteredBulkSearch = (inventoryData || []).filter(item => 
+    const filteredBulkSearch = (inventoryData || []).filter(item =>
         item.productVariant.product.name.toLowerCase().includes(bulkSearch.toLowerCase()) ||
         item.productVariant.sku.toLowerCase().includes(bulkSearch.toLowerCase())
     ).slice(0, 5);
@@ -180,16 +183,33 @@ const InventoryManagement: React.FC = () => {
         let data = [...inventoryData];
         if (search) {
             const s = search.toLowerCase();
-            data = data.filter(p => 
-                p.productVariant?.product?.name?.toLowerCase()?.includes(s) || 
+            data = data.filter(p =>
+                p.productVariant?.product?.name?.toLowerCase()?.includes(s) ||
                 (p.productVariant?.sku && p.productVariant.sku.toLowerCase().includes(s))
             );
         }
+
+        if (appliedRange.start || appliedRange.end) {
+            data = data.filter(item => {
+                const updatedTime = new Date(item.updatedAt).getTime();
+                if (appliedRange.start) {
+                    const start = new Date(appliedRange.start).getTime();
+                    if (updatedTime < start) return false;
+                }
+                if (appliedRange.end) {
+                    const end = new Date(appliedRange.end);
+                    end.setHours(23, 59, 59, 999);
+                    if (updatedTime > end.getTime()) return false;
+                }
+                return true;
+            });
+        }
+
         if (filter === 'low') data = data.filter(p => (p.stock || 0) > 0 && (p.stock || 0) < (p.minStockThreshold || 0));
         if (filter === 'out') data = data.filter(p => (p.stock || 0) === 0);
         if (filter === 'ok') data = data.filter(p => (p.stock || 0) >= (p.minStockThreshold || 0));
         return data;
-    }, [inventoryData, search, filter]);
+    }, [inventoryData, search, filter, appliedRange]);
 
     const getStockStatus = (item: Inventory) => {
         const total = item.stock + item.reservedStock;
@@ -223,7 +243,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
@@ -235,7 +255,7 @@ const InventoryManagement: React.FC = () => {
                     </h1>
                     <p className="text-muted-foreground">Theo dõi tồn kho và cảnh báo hết hàng tự động</p>
                 </div>
-                <Button 
+                <Button
                     className="w-full md:w-auto gap-2 border-none bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-md shadow-pink-200"
                     onClick={() => {
                         setBulkItems([]);
@@ -263,9 +283,9 @@ const InventoryManagement: React.FC = () => {
                         transition={{ delay: i * 0.1 }}
                     >
                         <Card className="hover:shadow-md transition-shadow cursor-default group overflow-hidden relative">
-                           <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform`}>
+                            <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform`}>
                                 <stat.icon className="h-12 w-12" />
-                           </div>
+                            </div>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
                                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
@@ -294,9 +314,50 @@ const InventoryManagement: React.FC = () => {
                                 className="pl-10 h-10 bg-background/50 border-border/50 focus:border-primary"
                             />
                         </div>
+                        <div className="flex flex-col md:flex-row gap-2 flex-1">
+                            <div className="flex items-center gap-2 bg-background/50 border border-border/50 rounded-md px-2 h-10 flex-1">
+                                <History className="h-4 w-4 text-muted-foreground" />
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
+                                    placeholder="Từ ngày"
+                                />
+                                <span className="text-muted-foreground text-xs">→</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
+                                    placeholder="Đến ngày"
+                                />
+                                {(startDate || endDate) && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
+                                        onClick={() => {
+                                            setStartDate('');
+                                            setEndDate('');
+                                            setAppliedRange({ start: '', end: '' });
+                                        }}
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                )}
+                            </div>
+                            <Button
+                                variant="secondary"
+                                className="h-10 gap-2 border-primary/10 transition-all font-semibold"
+                                onClick={() => setAppliedRange({ start: startDate, end: endDate })}
+                            >
+                                <Search className="h-4 w-4" /> Lọc
+                            </Button>
+                        </div>
                         <div className="flex gap-2">
                             <Select value={filter} onValueChange={(v) => setFilter(v as StockFilter)}>
-                                <SelectTrigger className="w-full sm:w-[180px] h-10">
+                                <SelectTrigger className="w-full sm:w-[150px] h-10">
                                     <SelectValue placeholder="Lọc trạng thái" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -306,8 +367,8 @@ const InventoryManagement: React.FC = () => {
                                     <SelectItem value="out">Đã hết hàng</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button variant="outline" size="icon" className="h-10 w-10 shrink-0">
-                                <ArrowUpDown className="h-4 w-4" />
+                            <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={fetchInventory}>
+                                <RefreshCcw className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
@@ -344,21 +405,21 @@ const InventoryManagement: React.FC = () => {
                                         const reservedPercent = Math.min(100 - stockPercent, (item.reservedStock / item.maxStock) * 100);
 
                                         return (
-                                            <motion.tr 
+                                            <motion.tr
                                                 layout
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                key={item.id} 
+                                                key={item.id}
                                                 className="border-b last:border-0 hover:bg-muted/50 transition-colors group"
                                             >
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center gap-4">
                                                         <div className="relative h-14 w-14 shrink-0 transition-transform hover:scale-110 duration-200">
-                                                            <img 
-                                                                src={item.productVariant?.product?.thumbnail || "https://placehold.co/100x100?text=P"} 
-                                                                alt={item.productVariant?.product?.name} 
-                                                                className="h-full w-full rounded-lg object-cover border border-border/50 shadow-md" 
+                                                            <img
+                                                                src={item.productVariant?.product?.thumbnail || "https://placehold.co/100x100?text=P"}
+                                                                alt={item.productVariant?.product?.name}
+                                                                className="h-full w-full rounded-lg object-cover border border-border/50 shadow-md"
                                                             />
                                                             {item.stock === 0 && (
                                                                 <div className="absolute inset-0 bg-destructive/10 rounded-lg flex items-center justify-center">
@@ -371,8 +432,8 @@ const InventoryManagement: React.FC = () => {
                                                                 {item.productVariant?.product?.name}
                                                             </span>
                                                             <span className="text-xs text-muted-foreground font-medium">
-                                                                {item.productVariant?.sku && !item.productVariant.sku.startsWith('DEFAULT-') 
-                                                                    ? `Biến thể: ${item.productVariant.sku}` 
+                                                                {item.productVariant?.sku && !item.productVariant.sku.startsWith('DEFAULT-')
+                                                                    ? `Biến thể: ${item.productVariant.sku}`
                                                                     : 'Sản phẩm cơ bản'}
                                                             </span>
                                                         </div>
@@ -393,12 +454,12 @@ const InventoryManagement: React.FC = () => {
                                                             <span className="text-muted-foreground font-bold opacity-60">MAX: {item.maxStock}</span>
                                                         </div>
                                                         <div className="relative h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
-                                                            <div 
-                                                                style={{ width: `${stockPercent}%` }} 
+                                                            <div
+                                                                style={{ width: `${stockPercent}%` }}
                                                                 className={`${status.color} h-full transition-all duration-700 ease-out`}
                                                             />
-                                                            <div 
-                                                                style={{ width: `${reservedPercent}%` }} 
+                                                            <div
+                                                                style={{ width: `${reservedPercent}%` }}
                                                                 className="bg-blue-400 h-full transition-all duration-700 ease-out opacity-60 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)]"
                                                             />
                                                         </div>
@@ -427,7 +488,7 @@ const InventoryManagement: React.FC = () => {
                             </tbody>
                         </table>
                         {filtered.length === 0 && (
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 className="text-center py-20 px-6"
@@ -457,7 +518,7 @@ const InventoryManagement: React.FC = () => {
                             Tất cả các giao dịch nhập/xuất và thay đổi thông số kho hàng
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4 py-4">
                         {loadingLogs ? (
                             <div className="flex flex-col items-center justify-center py-10 opacity-50">
@@ -532,14 +593,14 @@ const InventoryManagement: React.FC = () => {
                             <Label className="text-sm font-bold mb-2 block">Tìm sản phẩm để thêm vào danh sách</Label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
+                                <Input
                                     placeholder="Tìm theo tên hoặc SKU..."
                                     value={bulkSearch}
                                     onChange={(e) => setBulkSearch(e.target.value)}
                                     className="pl-10 h-11 bg-muted/20"
                                 />
                             </div>
-                            
+
                             {bulkSearch && filteredBulkSearch.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-lg shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                                     {filteredBulkSearch.map(item => (
@@ -613,23 +674,23 @@ const InventoryManagement: React.FC = () => {
                                                     </td>
                                                     <td className="p-3">
                                                         <div className="flex items-center justify-center gap-2">
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
                                                                 className="h-8 w-8 rounded-full"
                                                                 onClick={() => updateBulkQty(item.inventoryId, Math.max(1, item.quantity - 1))}
                                                             >
                                                                 <Minus className="h-3 w-3" />
                                                             </Button>
-                                                            <Input 
-                                                                type="number" 
+                                                            <Input
+                                                                type="number"
                                                                 value={item.quantity}
                                                                 onChange={(e) => updateBulkQty(item.inventoryId, parseInt(e.target.value) || 0)}
                                                                 className="w-16 h-8 text-center p-0 font-bold border-none bg-transparent"
                                                             />
-                                                            <Button 
-                                                                variant="outline" 
-                                                                size="icon" 
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
                                                                 className="h-8 w-8 rounded-full"
                                                                 onClick={() => updateBulkQty(item.inventoryId, item.quantity + 1)}
                                                             >
@@ -638,9 +699,9 @@ const InventoryManagement: React.FC = () => {
                                                         </div>
                                                     </td>
                                                     <td className="p-3 text-right">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
                                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                             onClick={() => removeBulkItem(item.inventoryId)}
                                                         >
@@ -658,7 +719,7 @@ const InventoryManagement: React.FC = () => {
                         {/* Overall Note */}
                         <div className="space-y-2">
                             <Label className="text-sm font-bold">Ghi chú chung cho lô hàng</Label>
-                            <Input 
+                            <Input
                                 placeholder="Ví dụ: Nhập kho đầu tháng 4, Hàng về từ nhà cung cấp X..."
                                 value={adjustNote}
                                 onChange={(e) => setAdjustNote(e.target.value)}
@@ -671,7 +732,7 @@ const InventoryManagement: React.FC = () => {
                         <Button variant="ghost" onClick={() => setBulkOpen(false)} disabled={isSubmitting}>
                             Hủy bỏ
                         </Button>
-                        <Button 
+                        <Button
                             className="bg-pink-600 hover:bg-pink-700 min-w-[150px]"
                             onClick={handleBulkSubmit}
                             disabled={isSubmitting || bulkItems.length === 0}
@@ -691,9 +752,9 @@ const InventoryManagement: React.FC = () => {
                             <Settings className="h-6 w-6 text-primary" /> Điều chỉnh kho hàng
                         </DialogTitle>
                         <DialogDescription className="font-medium text-muted-foreground/80 flex items-center gap-3">
-                            <img 
-                                src={selectedItem?.productVariant?.product?.thumbnail || "https://placehold.co/50x50?text=P"} 
-                                alt={selectedItem?.productVariant?.product?.name} 
+                            <img
+                                src={selectedItem?.productVariant?.product?.thumbnail || "https://placehold.co/50x50?text=P"}
+                                alt={selectedItem?.productVariant?.product?.name}
                                 className="h-10 w-10 rounded-md object-cover border border-border/50 shadow-sm"
                             />
                             <span>
@@ -723,9 +784,9 @@ const InventoryManagement: React.FC = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold">Số lượng thay đổi</Label>
-                                <Input 
-                                    type="text" 
-                                    value={adjustQty} 
+                                <Input
+                                    type="text"
+                                    value={adjustQty}
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         if (val === "" || val === "-") {
@@ -747,9 +808,9 @@ const InventoryManagement: React.FC = () => {
                                 <Label className="text-xs font-bold text-orange-600 flex items-center gap-1">
                                     <AlertTriangle className="h-3 w-3" /> Ngưỡng báo thấp
                                 </Label>
-                                <Input 
-                                    type="number" 
-                                    value={minStock} 
+                                <Input
+                                    type="number"
+                                    value={minStock}
                                     onChange={(e) => setMinStock(parseInt(e.target.value) || 0)}
                                     onFocus={(e) => e.target.select()}
                                     className="h-9 font-medium"
@@ -759,9 +820,9 @@ const InventoryManagement: React.FC = () => {
                                 <Label className="text-xs font-bold text-blue-600 flex items-center gap-1">
                                     <RefreshCcw className="h-3 w-3" /> Ngưỡng tồn tối đa
                                 </Label>
-                                <Input 
-                                    type="number" 
-                                    value={maxStock} 
+                                <Input
+                                    type="number"
+                                    value={maxStock}
                                     onChange={(e) => setMaxStock(parseInt(e.target.value) || 0)}
                                     onFocus={(e) => e.target.select()}
                                     className="h-9 font-medium"
@@ -771,7 +832,7 @@ const InventoryManagement: React.FC = () => {
 
                         <div className="space-y-2">
                             <Label className="text-sm font-bold">Ghi chú điều chỉnh</Label>
-                            <Textarea 
+                            <Textarea
                                 placeholder="Lý do điều chỉnh kho..."
                                 value={adjustNote}
                                 onChange={(e) => setAdjustNote(e.target.value)}
@@ -784,8 +845,8 @@ const InventoryManagement: React.FC = () => {
                         <Button variant="ghost" onClick={() => setAdjustOpen(false)} disabled={isSubmitting}>
                             Hủy bỏ
                         </Button>
-                        <Button 
-                            onClick={handleAdjustSubmit} 
+                        <Button
+                            onClick={handleAdjustSubmit}
                             disabled={isSubmitting || (adjustQty === 0 && minStock === selectedItem?.minStockThreshold && maxStock === selectedItem?.maxStock)}
                             className="bg-primary hover:bg-primary/90 min-w-[120px]"
                         >

@@ -22,7 +22,7 @@ const Footer: React.FC = () => {
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <a href="/" className="text-xl font-bold tracking-tight inline-block mb-3">
-              BEAUTY<span className="text-primary">LUX</span>
+              BÔNG<span className="text-primary">COSMETIC</span>
             </a>
             <p className="text-background/60 max-w-xs mb-5 text-sm leading-relaxed">
               Nơi hội tụ những sản phẩm làm đẹp cao cấp, chính hãng. Chất lượng và sự tinh tế trong từng sản phẩm.
@@ -85,7 +85,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-2.5">
               <li className="flex items-center gap-2.5 text-background/55">
                 <Mail className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
-                <span className="text-[13px]">hello@beautylux.vn</span>
+                <span className="text-[13px]">hello@BÔNGCOSMETIC.vn</span>
               </li>
               <li className="flex items-center gap-2.5 text-background/55">
                 <Phone className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
@@ -102,7 +102,7 @@ const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="border-t border-background/8 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-background/40 text-xs">
-            © 2026 BeautyLux. All rights reserved.
+            © 2026 BÔNGCOSMETIC. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-xs text-background/40">
             <a href="#" className="hover:text-primary transition-colors">

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Gift, Truck, Shield } from "lucide-react";
 function TopBar() {
   const promos = [
-    { icon: Gift, text: "SALE UP TO 50% - Mã BEAUTY50" },
+    { icon: Gift, text: "SALE UP TO 50% - Mã BÔNG50" },
     { icon: Truck, text: "FREESHIP đơn từ 500K" },
     { icon: Shield, text: "100% HÀNG CHÍNH HÃNG" },
   ];

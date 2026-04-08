@@ -23,7 +23,7 @@ const AdminLayout: React.FC = () => {
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
           <Menu className="h-5 w-5" />
         </Button>
-        <span className="text-lg font-bold text-primary">BeautyLux Admin</span>
+        <span className="text-lg font-bold text-primary">BÔNGCOSMETIC Admin</span>
       </div>
 
       <main
