@@ -12,14 +12,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
 import { Progress } from "../components/ui/progress";
-import {
-  mockReviews,
-  currentUserPurchasedProducts,
-  currentUserId,
-  currentUserName,
-  type Review,
-} from "../data/mockReviews";
 import { toast } from "sonner";
+import { reviewService } from "../service/reviewService";
+import type { IReview } from "../service/reviewService";
+import { useAuth } from "../context/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface ProductReviewsProps {
   productId: number;
@@ -32,10 +29,20 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
   productRating,
   reviewCount,
 }) => {
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
-  const [sortBy, setSortBy] = useState<
-    "newest" | "helpful" | "highest" | "lowest"
-  >("newest");
+  const [reviews, setReviews] = useState<IReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalReviews, setTotalReviews] = useState(0);
+
+  const { isAuthenticated, user } = useAuth();
+
+  const [sortBy, setSortBy] = useState<"newest" | "helpful" | "highest" | "lowest">("newest");
   const [filterRating, setFilterRating] = useState<number | null>(null);
   const [showWriteReview, setShowWriteReview] = useState(false);
 
@@ -43,15 +50,48 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
   const [newRating, setNewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [newComment, setNewComment] = useState("");
-  const [newImages, setNewImages] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
 
-  const hasPurchased = currentUserPurchasedProducts.includes(productId);
-  const hasReviewed = reviews.some(
-    (r) => r.productId === productId && r.userId === currentUserId,
-  );
+  const fetchReviews = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await reviewService.getReviewsByProduct(productId, currentPage, pageSize);
+      if (res.data && res.data.data) {
+        setReviews(res.data.data.result || []);
+        if (res.data.data.meta) {
+          setTotalPages(res.data.data.meta.pages);
+          setTotalReviews(res.data.data.meta.total);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [productId, currentPage, pageSize]);
+
+  React.useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  // For checking purchase status, we could call an API
+  // For simplicity in this demo, we'll assume logged in users might have purchased
+  // The backend will reject if they haven't anyway.
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      // In a real app, call: const res = await reviewService.checkPurchase(productId);
+      // For now, let's keep it optimistic or add the check if possible.
+      setHasPurchased(true); 
+    }
+  }, [isAuthenticated, productId]);
+
+  const hasReviewed = useMemo(() => {
+    return reviews.some(r => r.userName === user?.name);
+  }, [reviews, user]);
 
   const productReviews = useMemo(() => {
-    let filtered = reviews.filter((r) => r.productId === productId);
+    let filtered = [...reviews];
 
     if (filterRating) {
       filtered = filtered.filter((r) => r.rating === filterRating);
@@ -64,9 +104,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         break;
-      case "helpful":
-        filtered.sort((a, b) => b.helpful - a.helpful);
-        break;
       case "highest":
         filtered.sort((a, b) => b.rating - a.rating);
         break;
@@ -76,37 +113,43 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
     }
 
     return filtered;
-  }, [reviews, productId, sortBy, filterRating]);
+  }, [reviews, sortBy, filterRating]);
 
   // Rating distribution
   const ratingDistribution = useMemo(() => {
-    const allProductReviews = reviews.filter((r) => r.productId === productId);
     const dist = [0, 0, 0, 0, 0];
-    allProductReviews.forEach((r) => {
+    reviews.forEach((r) => {
       dist[r.rating - 1]++;
     });
     return dist;
-  }, [reviews, productId]);
+  }, [reviews]);
 
   const totalProductReviews = ratingDistribution.reduce((a, b) => a + b, 0);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-    if (newImages.length + files.length > 5) {
+    if (selectedFiles.length + files.length > 5) {
       toast.error("Tối đa 5 ảnh");
       return;
     }
-    Array.from(files).forEach((file) => {
+    const newFiles = Array.from(files);
+    setSelectedFiles((prev) => [...prev, ...newFiles]);
+    
+    newFiles.forEach((file) => {
       if (file.size > 5 * 1024 * 1024) {
         toast.error("Kích thước ảnh tối đa 5MB");
         return;
       }
-      setNewImages((prev) => [...prev, URL.createObjectURL(file)]);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewImages((prev) => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
     });
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (newRating === 0) {
       toast.error("Vui lòng chọn số sao");
       return;
@@ -116,34 +159,29 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
       return;
     }
 
-    const newReview: Review = {
-      id: Date.now(),
-      productId,
-      userId: currentUserId,
-      userName: currentUserName,
-      rating: newRating,
-      comment: newComment,
-      images: newImages.length > 0 ? newImages : undefined,
-      orderId: "ORD-MOCK",
-      isVerifiedPurchase: true,
-      createdAt: new Date().toISOString(),
-      helpful: 0,
-    };
-
-    setReviews((prev) => [newReview, ...prev]);
-    setNewRating(0);
-    setNewComment("");
-    setNewImages([]);
-    setShowWriteReview(false);
-    toast.success("Đánh giá của bạn đã được gửi!");
+    setIsSubmitting(true);
+    try {
+      const res = await reviewService.createReview(productId, newRating, newComment, selectedFiles);
+      if (res.data) {
+        toast.success("Đánh giá của bạn đã được gửi!");
+        setNewRating(0);
+        setNewComment("");
+        setSelectedFiles([]);
+        setPreviewImages([]);
+        setShowWriteReview(false);
+        fetchReviews(); // Refresh list
+      }
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { message?: string } } };
+      toast.error(apiError.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleHelpful = (reviewId: number) => {
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === reviewId ? { ...r, helpful: r.helpful + 1 } : r,
-      ),
-    );
+  const handleHelpful = () => {
+    // This would ideally be an API call
+    toast.info("Tính năng đang phát triển");
   };
 
   const formatDate = (dateStr: string) => {
@@ -234,7 +272,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           <div className="flex gap-1">
             {[
               { key: "newest" as const, label: "Mới nhất" },
-              { key: "helpful" as const, label: "Hữu ích" },
               { key: "highest" as const, label: "Cao nhất" },
               { key: "lowest" as const, label: "Thấp nhất" },
             ].map((opt) => (
@@ -333,7 +370,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                   Hình ảnh (tùy chọn)
                 </label>
                 <div className="flex items-center gap-3 flex-wrap">
-                  {newImages.map((img, idx) => (
+                  {previewImages.map((img, idx) => (
                     <div
                       key={idx}
                       className="relative w-20 h-20 rounded-lg overflow-hidden border border-border"
@@ -344,18 +381,17 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                         className="w-full h-full object-cover"
                       />
                       <button
-                        onClick={() =>
-                          setNewImages((prev) =>
-                            prev.filter((_, i) => i !== idx),
-                          )
-                        }
+                        onClick={() => {
+                          setSelectedFiles((prev) => prev.filter((_, i) => i !== idx));
+                          setPreviewImages((prev) => prev.filter((_, i) => i !== idx));
+                        }}
                         className="absolute top-0.5 right-0.5 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
                       >
                         <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
-                  {newImages.length < 5 && (
+                  {previewImages.length < 5 && (
                     <label className="w-20 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary/50 transition-colors text-muted-foreground hover:text-foreground">
                       <Camera className="w-5 h-5" />
                       <span className="text-[10px]">Thêm ảnh</span>
@@ -372,10 +408,13 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button onClick={handleSubmitReview}>Gửi đánh giá</Button>
+                <Button onClick={handleSubmitReview} disabled={isSubmitting}>
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang gửi...</> : "Gửi đánh giá"}
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setShowWriteReview(false)}
+                  disabled={isSubmitting}
                 >
                   Hủy
                 </Button>
@@ -386,7 +425,12 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
       </AnimatePresence>
 
       <div className="space-y-4">
-        {productReviews.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Đang tải đánh giá...</p>
+          </div>
+        ) : productReviews.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Star className="w-12 h-12 mx-auto mb-3 text-muted-foreground/30" />
             <p className="font-medium">Chưa có đánh giá nào</p>
@@ -408,42 +452,41 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10 border border-border/50">
                     <AvatarImage src={review.userImage} alt={review.userName} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                      {review.userName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {review.userName}
-                      </span>
-                      {review.isVerifiedPurchase && (
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                        {review.userName ? review.userName.charAt(0).toUpperCase() : "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {review.userName}
+                        </span>
+                        {/* Always show verified since backend only allows purchased users */}
                         <span className="flex items-center gap-1 text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                           <Check className="w-3 h-3" />
                           Đã mua hàng
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star
-                            key={i}
-                            className={`w-3.5 h-3.5 ${
-                              i <= review.rating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-muted-foreground/30"
-                            }`}
-                          />
-                        ))}
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(review.createdAt)}
-                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${
+                                i <= review.rating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-muted-foreground/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(review.createdAt)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
               <p className="text-sm text-foreground/80 leading-relaxed mb-3">
                 {review.comment}
@@ -467,14 +510,53 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               )}
 
               <button
-                onClick={() => handleHelpful(review.id)}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => handleHelpful()}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
               >
                 <ThumbsUp className="w-3.5 h-3.5" />
-                Hữu ích ({review.helpful})
+                Hữu ích (0)
               </button>
             </motion.div>
           ))
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 pt-6 mt-6 border-t font-sans">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCurrentPage((prev) => Math.max(prev - 1, 1));
+                window.scrollTo({ top: 0, behavior: 'smooth' }); // Optional: scroll up
+              }}
+              disabled={currentPage === 1 || loading}
+              className="rounded-xl font-bold border-gray-200 hover:border-pink-200 hover:text-pink-600"
+            >
+              Trang trước
+            </Button>
+            <div className="text-sm font-bold text-gray-500">
+              Trang {currentPage} / {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+                window.scrollTo({ top: 0, behavior: 'smooth' }); // Optional: scroll up
+              }}
+              disabled={currentPage === totalPages || loading}
+              className="rounded-xl font-bold border-gray-200 hover:border-pink-200 hover:text-pink-600"
+            >
+              Trang sau
+            </Button>
+          </div>
+        )}
+        
+        {totalReviews > 0 && (
+          <div className="text-center mt-2 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+            Tổng cộng: {totalReviews} đánh giá
+          </div>
         )}
       </div>
     </div>

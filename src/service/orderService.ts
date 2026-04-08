@@ -8,6 +8,8 @@ export interface OrderRes {
         email: string;
     };
     totalPrice: number;
+    subTotal: number;
+    shippingFee: number;
     status: string;
     paymentStatus: string;
     shippingAddress: string;
@@ -47,11 +49,17 @@ export const getOrderByIdApi = async (id: number) => {
     return axiosInstance.get(`/order/${id}`);
 };
 
-export const getAllOrdersAdminApi = async (page: number, size: number, status?: string) => {
+export const getAllOrdersAdminApi = async (page: number, size: number, status?: string, startDate?: string, endDate?: string) => {
     const statusParam = status && status !== "all" ? `&status=${status}` : "";
-    return axiosInstance.get(`/order/admin/all?page=${page - 1}&size=${size}${statusParam}`);
+    const startParam = startDate ? `&startDate=${startDate}` : "";
+    const endParam = endDate ? `&endDate=${endDate}` : "";
+    return axiosInstance.get(`/order/admin/all?page=${page - 1}&size=${size}${statusParam}${startParam}${endParam}`);
 };
 
 export const updateOrderStatusApi = async (id: number, status: string) => {
     return axiosInstance.put(`/order/${id}/status?status=${status}`);
+};
+
+export const bulkUpdateOrderStatusApi = async (ids: number[], status: string) => {
+    return axiosInstance.post("/order/bulk-status", { ids, status });
 };
