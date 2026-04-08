@@ -639,8 +639,16 @@ const ProductsManagement: React.FC = () => {
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}
-              getRowCanExpand={(row) => (row.original.variants?.length || 0) > 0}
-              renderSubComponent={({ row }) => (
+              getRowCanExpand={(row) => {
+                const variants = row.original.variants || [];
+                // Only allow expansion if there are variants AND at least one of them is NOT a default variant
+                return variants.length > 0 && variants.some(v => !v.sku.startsWith('DEFAULT-'));
+              }}
+              renderSubComponent={({ row }) => {
+                const realVariants = (row.original.variants || []).filter(v => !v.sku.startsWith('DEFAULT-'));
+                if (realVariants.length === 0) return null;
+
+                return (
                 <div className="p-4 bg-muted/20 border-y border-border/50">
                   <div className="flex items-center gap-2 mb-3">
                     <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
@@ -687,7 +695,7 @@ const ProductsManagement: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/30">
-                        {row.original.variants?.map((variant, idx: number) => (
+                        {realVariants.map((variant, idx: number) => (
                           <tr key={idx} className="hover:bg-primary/[0.02] transition-colors group">
                             <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground font-medium group-hover:text-primary transition-colors">
                               {variant.sku}
@@ -710,13 +718,21 @@ const ProductsManagement: React.FC = () => {
                               {variant.weight}g
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex flex-col items-end gap-1">
+                              <div className="flex flex-col items-end gap-1.5">
                                 <Badge
                                   variant={variant.stock > 10 ? "secondary" : (variant.stock > 0 ? "outline" : "destructive")}
-                                  className={`text-[10px] h-5 px-1.5 font-medium border-none ${variant.stock > 10 ? 'bg-emerald-50 text-emerald-700' : ''}`}
+                                  className={`text-[10px] h-5 px-1.5 font-bold border-none shadow-sm ${variant.stock > 10 ? 'bg-emerald-100 text-emerald-700' : ''}`}
                                 >
-                                  {variant.stock} {variant.stock > 0 ? 'sẵn có' : 'hết hàng'}
+                                  {variant.stock} sẵn có
                                 </Badge>
+                                {variant.reservedStock > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] h-4 px-1.5 font-medium border-amber-200 bg-amber-50 text-amber-700 mt-1"
+                                  >
+                                    {variant.reservedStock} đang giữ
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-right font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -737,7 +753,8 @@ const ProductsManagement: React.FC = () => {
                     </table>
                   </div>
                 </div>
-              )}
+                );
+              }}
             />
           </div>
         </CardContent>
