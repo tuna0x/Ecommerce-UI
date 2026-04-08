@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2, Globe, Lock } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 import { toast } from "sonner";
 import { CouponService } from "../../service/couponService";
@@ -69,12 +68,10 @@ const CouponsManagement: React.FC = () => {
   const fetchCoupons = useCallback(async (page = 1) => {
     try {
       setIsLoading(true);
-      // Backend expects 0‑based page index, frontend uses 1‑based.
       const backendPage = Math.max(page - 1, 0);
       const res = await CouponService.getAll(backendPage, meta.pageSize);
       if (res?.data) {
         setCoupons(res.data.result);
-        // Preserve the frontend page number while updating other meta fields.
         setMeta(() => ({ ...res.data!.meta, page }));
       }
     } catch {
@@ -97,8 +94,6 @@ const CouponsManagement: React.FC = () => {
   }, [coupons, searchTerm]);
 
   const isExpired = (endDate: string) => new Date(endDate) < new Date();
-  const isExhausted = (coupon: ICoupon) =>
-    coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit;
 
   const getUsagePercent = (coupon: ICoupon) => {
     if (coupon.usageLimit === 0) return 0;
@@ -111,6 +106,26 @@ const CouponsManagement: React.FC = () => {
     toast.success("Đã copy mã coupon");
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
+
+  const handleToggleActive = async (id: number, currentActive: boolean) => {
+    try {
+      await CouponService.toggleActive(id, !currentActive);
+      toast.success("Đã cập nhật trạng thái");
+      setCoupons(prev => prev.map(c => c.id === id ? { ...c, status: !currentActive ? 'ACTIVE' : 'DISABLED' } : c));
+    } catch {
+      toast.error("Không thể cập nhật trạng thái");
+    }
+  };
+
+  const handleTogglePublic = async (id: number, currentPublic: boolean) => {
+    try {
+      await CouponService.togglePublic(id, !currentPublic);
+      toast.success("Đã cập nhật trạng thái công khai");
+      setCoupons(prev => prev.map(c => c.id === id ? { ...c, isPublic: !currentPublic } : c));
+    } catch {
+      toast.error("Không thể cập nhật trạng thái công khai");
+    }
+  };
 
   const handleOpenDialog = useCallback((coupon?: ICoupon) => {
     if (coupon) {
@@ -127,7 +142,7 @@ const CouponsManagement: React.FC = () => {
         startDate: coupon.startDate ? coupon.startDate.split("T")[0] : "",
         endDate: coupon.endDate ? coupon.endDate.split("T")[0] : "",
         status: coupon.status,
-        isPublic: coupon.isPublic,
+        isPublic: coupon.isPublic ?? true,
       });
     } else {
       setEditingCoupon(null);
@@ -236,30 +251,30 @@ const CouponsManagement: React.FC = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         )}
-        <div className="border rounded-lg bg-card">
+        <div className="border rounded-lg bg-card overflow-hidden">
           <Table>
-            <TableHeader>
+          <TableHeader>
               <TableRow>
                 <TableHead>Mã coupon</TableHead>
                 <TableHead>Tên</TableHead>
                 <TableHead>Giá trị</TableHead>
                 <TableHead>Thời gian</TableHead>
                 <TableHead>Sử dụng</TableHead>
-                <TableHead>Trạng thái</TableHead>
+                <TableHead className="text-center">Công khai</TableHead>
+                <TableHead className="text-center">Trạng thái</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCoupons.length === 0 && !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground italic">
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground italic">
                     Không tìm thấy mã giảm giá nào
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredCoupons.map((coupon) => {
                   const expired = isExpired(coupon.endDate);
-                  const exhausted = isExhausted(coupon);
                   const TypeIcon = getTypeIcon(coupon.type);
                   return (
                     <TableRow key={coupon.id} className="group hover:bg-muted/50 transition-colors">
@@ -326,18 +341,25 @@ const CouponsManagement: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {expired ? (
-                          <Badge variant="destructive" className="bg-destructive hover:bg-destructive">Hết hạn</Badge>
-                        ) : exhausted ? (
-                          <Badge variant="secondary">Đã hết</Badge>
-                        ) : (
-                          <Badge
-                            variant={coupon.status === "ACTIVE" ? "default" : "secondary"}
-                            className={cn(coupon.status === "ACTIVE" ? "bg-green-500 hover:bg-green-600" : "")}
-                          >
-                            {coupon.status === "ACTIVE" ? "Hoạt động" : "Tạm dừng"}
-                          </Badge>
-                        )}
+                        <div className="flex justify-center">
+                           <div className="flex items-center gap-2">
+                            {coupon.isPublic ? <Globe className="w-3.5 h-3.5 text-blue-500" /> : <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+                            <Switch
+                              checked={coupon.isPublic}
+                              onCheckedChange={() => handleTogglePublic(coupon.id, coupon.isPublic)}
+                              className="data-[state=checked]:bg-blue-500 scale-90"
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                         <div className="flex justify-center">
+                          <Switch
+                            checked={coupon.status === "ACTIVE"}
+                            onCheckedChange={() => handleToggleActive(coupon.id, coupon.status === "ACTIVE")}
+                            className="data-[state=checked]:bg-green-500 scale-90"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -380,7 +402,7 @@ const CouponsManagement: React.FC = () => {
               {editingCoupon ? "Sửa mã giảm giá" : "Thêm mã giảm giá mới"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4 pr-6">
             <div className="space-y-2">
               <Label>Mã coupon *</Label>
               <div className="flex gap-2">
@@ -507,6 +529,7 @@ const CouponsManagement: React.FC = () => {
                     onCheckedChange={(checked) =>
                       setFormData({ ...formData, isPublic: checked })
                     }
+                    className="data-[state=checked]:bg-blue-500"
                   />
                 </div>
               </div>
@@ -540,6 +563,7 @@ const CouponsManagement: React.FC = () => {
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, status: checked ? "ACTIVE" : "DISABLED" })
                 }
+                className="data-[state=checked]:bg-green-500"
               />
             </div>
           </div>

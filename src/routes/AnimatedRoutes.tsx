@@ -13,6 +13,8 @@ import Category from "../pages/Category";
 import Chat from "../pages/Chat";
 import NotFound from "../pages/NotFound";
 import FlashSalePage from "../pages/FlashSale";
+import VoucherWallet from "../pages/VoucherWallet";
+import Notification from "../pages/Notifications";
 
 import AdminLayout from "../components/admin/AdminLayout";
 import Dashboard from "../pages/admin/Dashboard";
@@ -28,6 +30,7 @@ import ProductDetailManagement from "../pages/admin/ProductDetailManagement";
 import BrandsManagement from "../pages/admin/BrandsManagement";
 import BannersManagement from "../pages/admin/BannersManagement";
 import ChatManagement from "../pages/admin/ChatManagement";
+import InventoryManagement from "../pages/admin/InventoryManagement";
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
@@ -57,6 +60,8 @@ const AnimatedRoutes = () => {
       <Route path="/contact" element={<Contact />} />
       <Route path="/faq" element={<FAQ />} />
       <Route path="/about" element={<About />} />
+      <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminRoute />}>
@@ -72,6 +77,7 @@ const AnimatedRoutes = () => {
           <Route path="promotions" element={<PromotionsManagement />} />
           <Route path="coupons" element={<CouponsManagement />} />
           <Route path="statistics" element={<Statistics />} />
+          <Route path="inventory" element={<InventoryManagement />} />
           <Route path="product-detail" element={<ProductDetailManagement />} />
           <Route path="chat" element={<ChatManagement />} />
         </Route>

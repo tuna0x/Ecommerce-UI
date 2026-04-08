@@ -13,19 +13,22 @@ import {
   Palette,
   Percent,
   Ticket,
-  FileText,
   Tag,
   Image,
-  LucideIcon
+  Warehouse,
+  X,
+  type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Button } from '../../components/ui/button';
-import { ScrollArea } from '../../components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible';
+import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 interface AdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
 interface MenuItem {
@@ -50,10 +53,10 @@ const menuGroups: MenuGroup[] = [
     label: 'Quản lý sản phẩm',
     items: [
       { title: 'Sản phẩm', url: '/admin/products', icon: Package },
-      { title: 'Chi tiết SP', url: '/admin/product-detail', icon: FileText },
       { title: 'Thể loại', url: '/admin/categories', icon: FolderTree },
       { title: 'Thuộc tính', url: '/admin/attributes', icon: Palette },
       { title: 'Thương hiệu', url: '/admin/brands', icon: Tag },
+      { title: 'Kho hàng', url: '/admin/inventory', icon: Warehouse },
     ],
   },
   {
@@ -79,7 +82,7 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
-const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
+const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -96,13 +99,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
     setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
-  return (
-    <aside
-      className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-card border-r border-border transition-all duration-300 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
-      )}
-    >
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-border shrink-0">
         {!collapsed && (
@@ -112,11 +110,17 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className={cn('shrink-0', collapsed && 'mx-auto')}
+          className={cn('shrink-0 hidden lg:flex', collapsed && 'mx-auto')}
         >
-          <ChevronLeft
-            className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')}
-          />
+          <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMobileClose}
+          className="shrink-0 lg:hidden"
+        >
+          <X className="h-5 w-5" />
         </Button>
       </div>
 
@@ -125,7 +129,6 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
         <nav className="p-2 space-y-1">
           {menuGroups.map((group) => {
             if (collapsed) {
-              // Collapsed: just show icons, no groups
               return group.items.map((item) => (
                 <NavLink
                   key={item.url}
@@ -153,10 +156,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
                 <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                   <span>{group.label}</span>
                   <ChevronDown
-                    className={cn(
-                      'h-3.5 w-3.5 transition-transform',
-                      openGroups[group.label] && 'rotate-180'
-                    )}
+                    className={cn('h-3.5 w-3.5 transition-transform', openGroups[group.label] && 'rotate-180')}
                   />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-0.5 mt-0.5">
@@ -165,14 +165,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
                       key={item.url}
                       to={item.url}
                       end={item.url === '/admin'}
+                      onClick={onMobileClose}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm',
+                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm group',
                         isActive(item.url)
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-sm'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       )}
                     >
-                      <item.icon className="h-4.5 w-4.5 shrink-0" />
+                      <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
                       <span className="font-medium">{item.title}</span>
                     </NavLink>
                   ))}
@@ -197,7 +198,40 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
           {!collapsed && <span className="text-sm font-medium">Thoát Admin</span>}
         </NavLink>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-50 h-screen bg-card border-r border-border transition-all duration-300 flex flex-col',
+          'hidden lg:flex',
+          collapsed ? 'w-16' : 'w-64'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar */}
+      <aside
+        className={cn(
+          'fixed left-0 top-0 z-50 h-screen w-72 bg-card border-r border-border transition-transform duration-300 flex flex-col lg:hidden',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 };
 

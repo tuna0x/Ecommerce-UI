@@ -12,8 +12,23 @@ import {
   Wallet,
   Building2,
   Smartphone,
-  Plus
+  Plus,
+  Ticket,
+  ChevronRight,
+  Loader2,
+  X
 } from 'lucide-react';
+import { voucherService, type Coupon, type UserCoupon } from '../service/voucherService';
+import type { IPagination } from '../types/api.type';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Button } from "../components/ui/button";
 import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/ui/input';
@@ -78,13 +93,87 @@ const Checkout: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
+  const [isVoucherLoading, setIsVoucherLoading] = useState(false);
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
+  useEffect(() => {
+    const fetchUserCoupons = async () => {
+      if (user) {
+        setIsVoucherLoading(true);
+        try {
+          const res = await voucherService.getMyVouchers();
+          if (res && res.data) {
+            const data = Array.isArray(res.data) 
+                ? res.data 
+                : (res.data as unknown as IPagination<UserCoupon>).result || [];
+            setUserCoupons(data.filter((v: UserCoupon) => !v.isUsed));
+          }
+        } catch (err) {
+          console.error("Failed to fetch user coupons", err);
+        } finally {
+          setIsVoucherLoading(false);
+        }
+      }
+    };
+    fetchUserCoupons();
+  }, [user]);
+
+  const calculateDiscount = (coupon: Coupon, subTotal: number) => {
+    let discount = 0;
+    if (coupon.type === 'PERCENT') {
+        discount = (subTotal * coupon.discountValue) / 100;
+        if (coupon.maxDiscountValue && discount > coupon.maxDiscountValue) {
+            discount = coupon.maxDiscountValue;
+        }
+    } else {
+        discount = coupon.discountValue;
+    }
+    return Math.floor(discount);
+  };
+
+  const handleApplyCoupon = (coupon: Coupon) => {
+    if (selectedTotal < coupon.minOrderValue) {
+        toast.error(`Đơn hàng tối thiểu ${formatPrice(coupon.minOrderValue)}₫ để áp dụng mã này`);
+        return;
+    }
+    setAppliedCoupon(coupon);
+    setCouponCode(coupon.code);
+    setDiscountAmount(calculateDiscount(coupon, selectedTotal));
+    setIsWalletOpen(false);
+    toast.success('Đã áp dụng mã giảm giá');
+  };
+
+  const handleManualApply = async () => {
+    if (!couponCode) return;
+    
+    // Check if code exists in wallet
+    const inWallet = userCoupons.find(vc => vc.coupon.code.toUpperCase() === couponCode.toUpperCase());
+    if (inWallet) {
+        handleApplyCoupon(inWallet.coupon);
+        return;
+    }
+
+    // Otherwise, we'd ideally call a validation API, but for now we'll search the wallet or show error
+    toast.error('Mã giảm giá không hợp lệ hoặc không có trong ví của bạn');
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setDiscountAmount(0);
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price);
   };
 
   const hasFreeShipping = selectedTotal >= FREE_SHIPPING_THRESHOLD;
   const shippingFee = hasFreeShipping ? 0 : 30000;
-  const totalAmount = selectedTotal + shippingFee;
+  const totalAmount = (selectedTotal + shippingFee - discountAmount) > 0 ? (selectedTotal + shippingFee - discountAmount) : 0;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -128,7 +217,7 @@ const Checkout: React.FC = () => {
       const payload: OrderPayload = {
         addressId: parseInt(selectedAddressId as string),
         cartItemId: cartItemIds,
-        couponCode: null,
+        couponCode: appliedCoupon ? appliedCoupon.code : (couponCode || null),
         paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD'
       };
 
@@ -424,17 +513,129 @@ const Checkout: React.FC = () => {
                 </div>
 
                 {/* Coupon */}
-                <div className="flex gap-2 mb-4">
-                  <div className="relative flex-1">
-                    <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Mã giảm giá"
-                      className="pl-10"
-                    />
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-primary" />
+                        Mã giảm giá
+                    </h3>
+                    <Dialog open={isWalletOpen} onOpenChange={setIsWalletOpen}>
+                        <DialogTrigger asChild>
+                            <button type="button" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+                                <Wallet className="w-3 h-3" />
+                                Chọn từ ví
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden rounded-2xl">
+                            <DialogHeader className="p-6 pb-2 border-b">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Ticket className="w-5 h-5 text-primary" />
+                                    Ví Voucher của bạn
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="max-h-[60vh] p-4">
+                                {isVoucherLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                        <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+                                        <p className="text-sm text-muted-foreground">Đang tải voucher...</p>
+                                    </div>
+                                ) : userCoupons.length === 0 ? (
+                                    <div className="text-center py-10">
+                                        <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                        <p className="text-sm font-medium">Bạn chưa có mã giảm giá nào</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Hãy thu thập thêm tại trang chủ!</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 pr-2">
+                                        {userCoupons.map((vc) => {
+                                            const isApplicable = selectedTotal >= vc.coupon.minOrderValue;
+                                            return (
+                                                <button
+                                                    key={vc.id}
+                                                    type="button"
+                                                    disabled={!isApplicable}
+                                                    onClick={() => handleApplyCoupon(vc.coupon)}
+                                                    className={`w-full text-left p-4 border rounded-xl flex items-center gap-4 transition-all ${
+                                                        appliedCoupon?.id === vc.coupon.id 
+                                                        ? 'border-primary bg-primary/5 ring-1 ring-primary' 
+                                                        : isApplicable 
+                                                            ? 'border-border hover:border-primary/50' 
+                                                            : 'border-border/30 opacity-60 grayscale cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center shrink-0 ${isApplicable ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                                        <Ticket className="w-6 h-6" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-bold text-sm">
+                                                            {vc.coupon.type === 'PERCENT' ? `${vc.coupon.discountValue}%` : `${formatPrice(vc.coupon.discountValue)}₫`} GIẢM
+                                                        </p>
+                                                        <p className="text-[11px] text-muted-foreground line-clamp-1">{vc.coupon.name}</p>
+                                                        <p className="text-xs font-semibold text-primary mt-1">Mã: {vc.coupon.code}</p>
+                                                        {!isApplicable && (
+                                                            <p className="text-[10px] text-destructive mt-1 font-medium">
+                                                                Cần đơn từ {formatPrice(vc.coupon.minOrderValue)}₫
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {appliedCoupon?.id === vc.coupon.id && (
+                                                        <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shrink-0">
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        </div>
+                                                    )}
+                                                    {isApplicable && appliedCoupon?.id !== vc.coupon.id && (
+                                                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </ScrollArea>
+                            <div className="p-4 border-t bg-muted/30">
+                                <Button className="w-full" variant="outline" onClick={() => setIsWalletOpen(false)}>Đóng</Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                   </div>
-                  <button type="button" className="px-4 bg-secondary hover:bg-secondary/80 rounded-lg font-medium text-sm transition-colors">
-                    Áp dụng
-                  </button>
+
+                  {appliedCoupon ? (
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                            <Ticket className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-primary">-{formatPrice(discountAmount)}₫</p>
+                            <p className="text-[11px] text-muted-foreground line-clamp-1">Mã: {appliedCoupon.code}</p>
+                        </div>
+                        <button 
+                            type="button" 
+                            onClick={removeCoupon}
+                            className="p-1.5 hover:bg-primary/10 rounded-full transition-colors"
+                        >
+                            <X className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Nhập mã ưu đãi"
+                          className="pl-10 h-11 rounded-xl"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleManualApply}
+                        className="px-4 bg-primary text-white hover:bg-primary/90 rounded-xl font-bold text-sm transition-all"
+                      >
+                        Áp dụng
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Summary */}
@@ -449,6 +650,15 @@ const Checkout: React.FC = () => {
                       {hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}₫`}
                     </span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm text-primary font-medium">
+                        <span className="flex items-center gap-1.5">
+                            <Tag className="w-3 h-3" />
+                            Giảm giá voucher
+                        </span>
+                        <span>-{formatPrice(discountAmount)}₫</span>
+                    </div>
+                  )}
                   {hasFreeShipping && (
                     <div className="flex items-center gap-2 text-xs text-accent bg-accent/10 px-3 py-2 rounded-lg">
                       <Truck className="w-4 h-4" />
