@@ -22,7 +22,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { } = useAuth(); // No longer need isAuthenticated here
 
   // Filter products based on query from API
   useEffect(() => {
@@ -93,10 +93,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + '₫';
   };
 
   const clearSearch = () => {
@@ -123,9 +120,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => {
-              if (!isAuthenticated) {
-                navigate('/login');
-              } else if (query.trim()) {
+              if (query.trim()) {
                 setIsOpen(true);
               }
             }}
@@ -181,7 +176,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
                         >
                           <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
                             <img
-                              src={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''))}
+                              src={product.thumbnail || (Array.isArray(product.image) && product.image.length > 0 ? product.image[0] : (typeof product.image === 'string' ? product.image : ''))}
                               alt={product.name}
                               className="w-full h-full object-cover"
                             />
@@ -191,7 +186,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
                               {product.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {typeof product.brand === 'string' ? product.brand : product.brand.name}
+                              {typeof product.brand === 'string' ? product.brand : (product.brand?.name || 'No Brand')}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">

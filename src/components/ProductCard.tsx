@@ -21,7 +21,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const displayPrice = product.finalPrice || product.price || 0;
   const displayOriginalPrice = product.originalPrice || 0;
-  const discount = product.discount || (displayOriginalPrice > displayPrice ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
+  const discount = product.discount || (displayOriginalPrice > displayPrice && displayOriginalPrice > 0 ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
   const sold = product.stock ? Math.max(0, 50 - product.stock) : 0;
   const total = 50;
@@ -37,7 +37,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     }
   };
 
-  const mainImage = product.thumbnail || (Array.isArray(product.image) ? product.image[0] : (product.image ?? ''));
+  const mainImage = product.thumbnail || (Array.isArray(product.image) && product.image.length > 0 ? product.image[0] : (typeof product.image === 'string' ? product.image : ''));
   const hoverImage = product.hoverImage || (Array.isArray(product.image) && product.image.length > 1 ? product.image[1] : null);
 
   return (
@@ -83,7 +83,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           {/* Brand + Rating inline */}
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <span className="uppercase tracking-wide font-medium truncate">
-              {typeof product.brand === 'string' ? product.brand : product.brand.name}
+              {typeof product.brand === 'string' ? product.brand : (product.brand?.name || 'No Brand')}
             </span>
             <span className="shrink-0">•</span>
             <span className="flex items-center gap-0.5 shrink-0">
@@ -95,7 +95,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
           {/* Category */}
           <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
-            {typeof product.category === 'string' ? product.category : product.category.name}
+            {typeof product.category === 'string' ? product.category : (product.category?.name || 'No Category')}
           </p>
 
           {/* Product Name */}

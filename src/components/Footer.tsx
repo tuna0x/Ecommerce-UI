@@ -1,11 +1,27 @@
 import React from 'react';
 import { Instagram, Twitter, Facebook, Youtube, Mail, MapPin, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   const footerLinks = {
-    shop: ['Chăm sóc da', 'Trang điểm', 'Chăm sóc tóc', 'Nước hoa'],
-    support: ['Liên hệ', 'Câu hỏi thường gặp', 'Vận chuyển', 'Đổi trả'],
-    company: ['Về chúng tôi', 'Tuyển dụng', 'Tin tức', 'Blog'],
+    shop: [
+      { label: 'Chăm sóc da', to: '/category/cham-soc-da' },
+      { label: 'Trang điểm', to: '/category/trang-diem' },
+      { label: 'Chăm sóc tóc', to: '/category/cham-soc-toc' },
+      { label: 'Nước hoa', to: '/category/nuoc-hoa' },
+    ],
+    support: [
+      { label: 'Liên hệ', to: '/contact' },
+      { label: 'Câu hỏi thường gặp', to: '/faq' },
+      { label: 'Vận chuyển', to: '/faq' },
+      { label: 'Đổi trả', to: '/faq' },
+    ],
+    company: [
+      { label: 'Về chúng tôi', to: '/about' },
+      { label: 'Blog', to: '/blog' },
+      { label: 'Flash Sale', to: '/flash-sale' },
+      { label: 'Thương hiệu', to: '/brands' },
+    ],
   };
 
   const socialLinks = [
@@ -18,11 +34,11 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-foreground text-background border-t border-background/10">
       <div className="container mx-auto py-14 md:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 lg:gap-8 items-start">
           {/* Brand Column */}
           <div className="lg:col-span-2">
             <a href="/" className="text-xl font-bold tracking-tight inline-block mb-3">
-              BÔNG<span className="text-primary">COSMETIC</span>
+              BEAUTY<span className="text-primary">LUX</span>
             </a>
             <p className="text-background/60 max-w-xs mb-5 text-sm leading-relaxed">
               Nơi hội tụ những sản phẩm làm đẹp cao cấp, chính hãng. Chất lượng và sự tinh tế trong từng sản phẩm.
@@ -50,13 +66,13 @@ const Footer: React.FC = () => {
             <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Sản phẩm</h4>
             <ul className="space-y-2.5">
               {footerLinks.shop.map((link) => (
-                <li key={link}>
-                  <a
-                    href="#"
+                <li key={link.label}>
+                  <Link
+                    to={link.to}
                     className="text-[13px] text-background/55 hover:text-primary transition-colors duration-200"
                   >
-                    {link}
-                  </a>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -67,13 +83,30 @@ const Footer: React.FC = () => {
             <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Hỗ trợ</h4>
             <ul className="space-y-2.5">
               {footerLinks.support.map((link) => (
-                <li key={link}>
-                  <a
-                    href="#"
+                <li key={link.label}>
+                  <Link
+                    to={link.to}
                     className="text-[13px] text-background/55 hover:text-primary transition-colors duration-200"
                   >
-                    {link}
-                  </a>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company Links */}
+          <div>
+            <h4 className="text-sm font-semibold tracking-wide mb-4 text-background/90">Công ty</h4>
+            <ul className="space-y-2.5">
+              {footerLinks.company.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    to={link.to}
+                    className="text-[13px] text-background/55 hover:text-primary transition-colors duration-200"
+                  >
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -85,7 +118,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-2.5">
               <li className="flex items-center gap-2.5 text-background/55">
                 <Mail className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
-                <span className="text-[13px]">hello@BÔNGCOSMETIC.vn</span>
+                <span className="text-[13px]">hello@beautylux.vn</span>
               </li>
               <li className="flex items-center gap-2.5 text-background/55">
                 <Phone className="w-3.5 h-3.5 flex-shrink-0 text-primary/70" />
@@ -102,7 +135,7 @@ const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="border-t border-background/8 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-background/40 text-xs">
-            © 2026 BÔNGCOSMETIC. All rights reserved.
+            © 2026 BeautyLux. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-xs text-background/40">
             <a href="#" className="hover:text-primary transition-colors">

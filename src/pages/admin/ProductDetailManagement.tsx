@@ -93,7 +93,7 @@ const ProductDetailManagement: React.FC = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await ProductService.getAll(0, 100); 
+            const res = await ProductService.getAll(0, 100);
             if (res.data) {
                 setProducts(res.data.result);
             }
@@ -205,7 +205,7 @@ const ProductDetailManagement: React.FC = () => {
 
     const handleBulkDelete = useCallback(async (selectedRows: IProductDetail[]) => {
         if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedRows.length} chi tiết sản phẩm đã chọn?`)) return;
-        
+
         try {
             setLoading(true);
             await Promise.all(selectedRows.map(row => productDetailService.remove(row.id)));
@@ -284,17 +284,17 @@ const ProductDetailManagement: React.FC = () => {
             },
             cell: ({ row }) => {
                 const detail = row.original;
-                const brandName = typeof detail.product?.brand === 'string' 
-                    ? detail.product.brand 
+                const brandName = typeof detail.product?.brand === 'string'
+                    ? detail.product.brand
                     : (detail.product?.brand as { name: string } | undefined)?.name || 'No Brand';
                 return (
                     <div className="flex flex-col gap-0.5">
                         <span className="font-semibold text-foreground line-clamp-1">{detail.product?.name}</span>
                         <div className="flex items-center gap-2">
-                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
                                 {brandName}
-                             </Badge>
-                             <span className="text-[10px] text-muted-foreground">ID: {detail.product?.id}</span>
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">ID: {detail.product?.id}</span>
                         </div>
                     </div>
                 );
@@ -338,7 +338,7 @@ const ProductDetailManagement: React.FC = () => {
                                     <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                     onClick={() => handleDelete(detail.id)}
                                     className="text-destructive focus:text-destructive"
                                 >
@@ -390,14 +390,14 @@ const ProductDetailManagement: React.FC = () => {
                     </div>
                 )}
                 <DataTable
-                columns={columns}
-                data={details}
-                onDeleteSelected={handleBulkDelete}
-                currentPage={meta.current}
-                totalPages={meta.pages}
-                onPageChange={(page) => fetchDetails(page, searchTerm)}
-            />
-          </div>
+                    columns={columns}
+                    data={details}
+                    onDeleteSelected={handleBulkDelete}
+                    currentPage={meta.current}
+                    totalPages={meta.pages}
+                    onPageChange={(page) => fetchDetails(page, searchTerm)}
+                />
+            </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -499,25 +499,25 @@ const ProductDetailManagement: React.FC = () => {
                                     <TabsTrigger value="specification">Thông số</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="description" className="mt-6">
-                                    <div 
+                                    <div
                                         className="prose prose-sm max-w-none dark:prose-invert prose-p:text-muted-foreground prose-p:leading-relaxed"
                                         dangerouslySetInnerHTML={{ __html: previewDetail.description || '<p class="italic text-muted-foreground">Chưa có thông tin</p>' }}
                                     />
                                 </TabsContent>
                                 <TabsContent value="ingredient" className="mt-6">
-                                    <div 
+                                    <div
                                         className="bg-muted/30 p-6 rounded-2xl border border-border prose prose-sm max-w-none"
                                         dangerouslySetInnerHTML={{ __html: previewDetail.ingredient || 'Chưa có thông tin' }}
                                     />
                                 </TabsContent>
                                 <TabsContent value="usageGuide" className="mt-6">
-                                    <div 
+                                    <div
                                         className="prose prose-sm max-w-none"
                                         dangerouslySetInnerHTML={{ __html: previewDetail.usageGuide || 'Chưa có thông tin' }}
                                     />
                                 </TabsContent>
                                 <TabsContent value="specification" className="mt-6">
-                                    <div 
+                                    <div
                                         className="bg-muted p-6 rounded-2xl prose prose-sm max-w-none"
                                         dangerouslySetInnerHTML={{ __html: previewDetail.specification || 'Chưa có thông tin' }}
                                     />
