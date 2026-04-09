@@ -285,7 +285,7 @@ const OrdersManagement: React.FC = () => {
                       }
                     </button>
                   </th>
-                  {["Mã đơn", "Khách hàng", "Người nhận", "Ngày đặt", "SL", "Tổng tiền", "Trạng thái", ""].map((h, i) => (
+                  {["Mã đơn", "Mã giao dịch", "Khách hàng", "Người nhận", "Ngày đặt", "SL", "Tổng tiền", "Trạng thái", ""].map((h, i) => (
                     <th
                       key={i}
                       className={`py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider ${i === 7 ? "text-right" : "text-left"}`}
@@ -323,7 +323,10 @@ const OrdersManagement: React.FC = () => {
                           </button>
                         </td>
                         <td className="py-4 px-4 text-sm font-mono font-bold text-primary">
-                          #{order.transactionID || order.id}
+                          #{order.id}
+                        </td>
+                        <td className="py-4 px-4 text-sm font-mono text-muted-foreground whitespace-nowrap">
+                          {order.transactionID || "—"}
                         </td>
                         <td className="py-4 px-4">
                           <div>
@@ -442,11 +445,16 @@ const OrdersManagement: React.FC = () => {
       <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              Chi tiết đơn hàng
-              <span className="font-mono text-primary text-base">
-                #{selectedOrder?.transactionID || selectedOrder?.id}
-              </span>
+            <DialogTitle className="space-y-1">
+              <div className="flex items-center gap-2">
+                Chi tiết đơn hàng
+                <span className="font-mono text-primary animate-pulse-subtle">
+                  #{selectedOrder?.id}
+                </span>
+              </div>
+              <p className="text-xs font-mono text-muted-foreground font-normal">
+                Mã giao dịch: {selectedOrder?.transactionID || "—"}
+              </p>
             </DialogTitle>
           </DialogHeader>
 

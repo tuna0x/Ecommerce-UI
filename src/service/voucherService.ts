@@ -37,5 +37,9 @@ export const voucherService = {
 
     collectVoucher: (id: number): Promise<IApiResponse<UserCoupon>> => {
         return axiosInstance.post(`/user-coupons/collect/${id}`).then(res => res.data);
+    },
+
+    validateCoupon: (code: string): Promise<IApiResponse<Coupon>> => {
+        return axiosInstance.get(`/coupons/validate?code=${code}`).then(res => res.data);
     }
 };
