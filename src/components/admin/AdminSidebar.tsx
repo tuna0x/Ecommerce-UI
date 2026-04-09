@@ -17,6 +17,7 @@ import {
   Image,
   Warehouse,
   X,
+  MessageSquare,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -76,6 +77,7 @@ const menuGroups: MenuGroup[] = [
   {
     label: 'Hệ thống',
     items: [
+      { title: 'Chat', url: '/admin/chat', icon: MessageSquare },
       { title: 'Người dùng', url: '/admin/users', icon: Users },
       { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
     ],

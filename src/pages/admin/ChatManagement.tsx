@@ -1,57 +1,44 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Circle, Send, Image as ImageIcon, MoreVertical } from 'lucide-react';
+import { Search, Circle, Send, Image as ImageIcon, MoreVertical, MessageSquare } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/utils';
-import {
-  mockConversations,
-  mockChatMessages,
-  type Conversation,
-  type ChatMessage,
-} from '../../data/mockChats';
+import { useChat } from '../../context/ChatContext';
+import { useAuth } from '../../context/AuthContext';
 
 const ChatManagement: React.FC = () => {
+  const { user } = useAuth();
+  const { 
+    conversations, 
+    activeMessages, 
+    activePartner, 
+    setActivePartner, 
+    sendMessage 
+  } = useChat();
+  
   const [search, setSearch] = useState('');
-  const [selectedConv, setSelectedConv] = useState<Conversation | null>(mockConversations[0]);
-  const [conversations] = useState(mockConversations);
-  const [messageMap, setMessageMap] = useState(mockChatMessages);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = conversations.filter((c) =>
-    c.user.name.toLowerCase().includes(search.toLowerCase())
+    c.partnerEmail.toLowerCase().includes(search.toLowerCase())
   );
-
-  const currentMessages = React.useMemo(() => {
-    return selectedConv ? messageMap[selectedConv.id] || [] : [];
-  }, [messageMap, selectedConv]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [currentMessages, selectedConv]);
+  }, [activeMessages, activePartner]);
 
   const handleSend = () => {
     const trimmed = input.trim();
-    if (!trimmed || !selectedConv) return;
-    const newMsg: ChatMessage = {
-      id: `m-${Date.now()}`,
-      senderId: 'admin-001',
-      receiverId: selectedConv.user.id,
-      content: trimmed,
-      type: 'text',
-      timestamp: new Date().toISOString(),
-      isRead: false,
-    };
-    setMessageMap((prev) => ({
-      ...prev,
-      [selectedConv.id]: [...(prev[selectedConv.id] || []), newMsg],
-    }));
+    if (!trimmed || !activePartner) return;
+    sendMessage(trimmed);
     setInput('');
   };
 
   const formatTime = (ts: string) => {
+    if (!ts) return '';
     const d = new Date(ts);
     const now = new Date();
     const diff = now.getTime() - d.getTime();
@@ -60,6 +47,8 @@ const ChatManagement: React.FC = () => {
     if (diff < 86400000) return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
   };
+
+  const getActiveConv = conversations.find(c => c.partnerEmail === activePartner);
 
   return (
     <div className="h-[calc(100vh-theme(spacing.6)*2)] flex rounded-xl border border-border overflow-hidden bg-card shadow-sm">
@@ -82,27 +71,25 @@ const ChatManagement: React.FC = () => {
         <div className="flex-1 overflow-y-auto">
           {filtered.map((conv) => (
             <button
-              key={conv.id}
-              onClick={() => setSelectedConv(conv)}
+              key={conv.partnerEmail}
+              onClick={() => setActivePartner(conv.partnerEmail)}
               className={cn(
                 'w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-pink-50/60 transition-colors border-b border-border/50',
-                selectedConv?.id === conv.id && 'bg-pink-50 border-l-2 border-l-pink-500'
+                activePartner === conv.partnerEmail && 'bg-pink-50 border-l-2 border-l-pink-500'
               )}
             >
               <div className="relative shrink-0">
                 <div className="h-11 w-11 rounded-full bg-gradient-to-br from-pink-300 to-rose-400 flex items-center justify-center">
                   <span className="text-sm font-semibold text-white">
-                    {conv.user.name.charAt(0)}
+                    {conv.partnerEmail.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                {conv.user.isOnline && (
-                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white" />
-                )}
+                {/* Status indicator can be added here if needed */}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center">
                   <p className={cn('text-sm truncate', conv.unreadCount > 0 ? 'font-bold' : 'font-medium')}>
-                    {conv.user.name}
+                    {conv.partnerEmail}
                   </p>
                   <span className="text-[10px] text-muted-foreground shrink-0">
                     {formatTime(conv.lastMessageTime)}
@@ -121,24 +108,29 @@ const ChatManagement: React.FC = () => {
               </div>
             </button>
           ))}
+          {filtered.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground text-sm">
+                Chưa có hội thoại nào
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right panel – chat window */}
-      {selectedConv ? (
+      {activePartner ? (
         <div className="flex-1 flex flex-col bg-gradient-to-b from-pink-50/30 to-white">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-white/90">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-pink-300 to-rose-400 flex items-center justify-center">
-                <span className="text-sm font-bold text-white">{selectedConv.user.name.charAt(0)}</span>
+                <span className="text-sm font-bold text-white">{activePartner.charAt(0).toUpperCase()}</span>
               </div>
               <div>
-                <p className="text-sm font-semibold">{selectedConv.user.name}</p>
+                <p className="text-sm font-semibold">{activePartner}</p>
                 <div className="flex items-center gap-1.5">
-                  <Circle className={cn('h-2 w-2 fill-current', selectedConv.user.isOnline ? 'text-green-500' : 'text-muted-foreground')} />
+                  <Circle className={cn('h-2 w-2 fill-current', 'text-green-500')} />
                   <span className="text-xs text-muted-foreground">
-                    {selectedConv.user.isOnline ? 'Đang hoạt động' : `Hoạt động ${formatTime(selectedConv.user.lastSeen || '')}`}
+                    Trực tuyến
                   </span>
                 </div>
               </div>
@@ -149,34 +141,29 @@ const ChatManagement: React.FC = () => {
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-5">
-            <div className="text-center mb-4">
-              <span className="text-xs text-muted-foreground bg-white px-3 py-1 rounded-full border border-pink-100 shadow-sm">
-                Bắt đầu cuộc trò chuyện
-              </span>
-            </div>
-            {currentMessages.map((msg, i) => {
-              const isAdmin = msg.senderId === 'admin-001';
-              const showAvatar = i === 0 || currentMessages[i - 1]?.senderId !== msg.senderId;
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-3">
+            {activeMessages.map((msg, i) => {
+              const isMine = msg.senderEmail === user?.email;
+              const showAvatar = !isMine && (i === 0 || activeMessages[i - 1]?.senderEmail !== msg.senderEmail);
               return (
                 <div
-                  key={msg.id}
-                  className={cn('flex gap-2 mb-3', isAdmin ? 'justify-end' : 'justify-start')}
+                  key={i}
+                  className={cn('flex gap-2', isMine ? 'justify-end' : 'justify-start')}
                 >
-                  {!isAdmin && showAvatar && (
+                  {!isMine && showAvatar && (
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-pink-300 to-rose-400 flex items-center justify-center shrink-0 mt-auto">
-                      <span className="text-xs font-semibold text-white">{selectedConv.user.name.charAt(0)}</span>
+                      <span className="text-xs font-semibold text-white">{msg.senderEmail.charAt(0).toUpperCase()}</span>
                     </div>
                   )}
-                  {!isAdmin && !showAvatar && <div className="w-8 shrink-0" />}
+                  {!isMine && !showAvatar && <div className="w-8 shrink-0" />}
                   <div className={cn(
                     'max-w-[65%] px-4 py-2.5 text-sm shadow-sm',
-                    isAdmin
+                    isMine
                       ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl rounded-br-md'
                       : 'bg-white border border-pink-100 text-foreground rounded-2xl rounded-bl-md'
                   )}>
                     {msg.content}
-                    <div className={cn('text-[10px] mt-1', isAdmin ? 'text-white/70 text-right' : 'text-muted-foreground')}>
+                    <div className={cn('text-[10px] mt-1', isMine ? 'text-white/70 text-right' : 'text-muted-foreground')}>
                       {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -214,7 +201,7 @@ const ChatManagement: React.FC = () => {
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <div className="text-center">
             <div className="h-16 w-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-4">
-              <Search className="h-8 w-8 text-pink-300" />
+              <MessageSquare className="h-8 w-8 text-pink-300" />
             </div>
             <p className="text-sm">Chọn một cuộc trò chuyện để bắt đầu</p>
           </div>
