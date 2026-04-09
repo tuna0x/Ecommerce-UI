@@ -28,7 +28,10 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Switch } from "../../components/ui/switch";
@@ -443,294 +446,316 @@ const PromotionsManagement: React.FC = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="info">Thông tin chung</TabsTrigger>
-              <TabsTrigger value="products" disabled={formData.global || formData.categoryId !== undefined}>
-                Sản phẩm áp dụng
-              </TabsTrigger>
-            </TabsList>
+        <DialogContent className="max-w-2xl max-h-[95vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>
+              {editingPromotion ? "Cập nhật khuyến mãi" : "Thêm khuyến mãi mới"}
+            </DialogTitle>
+            <DialogDescription>
+              Điền đầy đủ các thông tin chi tiết cho chương trình khuyến mãi bên dưới.
+            </DialogDescription>
+          </DialogHeader>
 
-            <TabsContent value="info" className="space-y-4 py-4 pr-2">
-              <div className="space-y-2">
-                <Label>Tên khuyến mãi *</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="VD: Flash Sale Mùa Hè"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Mô tả</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Mô tả chi tiết khuyến mãi"
-                  rows={2}
-                />
-              </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="info">Thông tin chung</TabsTrigger>
+                <TabsTrigger
+                  value="products"
+                  disabled={formData.global || formData.categoryId !== undefined}
+                >
+                  Sản phẩm áp dụng
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-              <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50/50">
-                <div className="space-y-0.5">
-                  <Label className="text-blue-700 flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    Khuyến mãi Toàn hệ thống
-                  </Label>
-                  <p className="text-xs text-blue-600/70">
-                    Áp dụng cho tất cả sản phẩm hiện có
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.global}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, global: checked, categoryId: undefined })
-                  }
-                />
-              </div>
-
-              {!formData.global && (
-                <div className="space-y-2">
-                  <Label>Áp dụng cho Danh mục</Label>
-                  <Select
-                    value={formData.categoryId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setFormData({ 
-                        ...formData, 
-                        categoryId: value === "none" ? undefined : Number(value) 
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn danh mục (Không bắt buộc)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Không chọn (Áp dụng SP lẻ)</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id.toString()}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground italic">
-                    * Nếu chọn danh mục, khuyến mãi sẽ áp dụng cho tất cả sản phẩm trong danh mục này.
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Loại khuyến mãi</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: PromotionType) =>
-                      setFormData({ ...formData, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERCENT">Giảm theo %</SelectItem>
-                      <SelectItem value="FIXED">Giảm tiền cố định</SelectItem>
-                      <SelectItem value="BUY_X_GET_Y">Mua X tặng Y</SelectItem>
-                      <SelectItem value="FREE_SHIPPING">
-                        Miễn phí vận chuyển
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    {formData.type === "PERCENT"
-                      ? "Phần trăm giảm"
-                      : formData.type === "FIXED"
-                        ? "Số tiền giảm"
-                        : formData.type === "BUY_X_GET_Y"
-                          ? "Số lượng tặng"
-                          : "Giá trị"}
-                  </Label>
-                  <Input
-                    type="number"
-                    value={formData.discountValue}
-                    onChange={(e) =>
-                      setFormData({ ...formData, discountValue: Number(e.target.value) })
-                    }
-                    disabled={formData.type === "FREE_SHIPPING"}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Đơn tối thiểu</Label>
-                  <Input
-                    type="number"
-                    value={formData.minOrderValue}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        minOrderValue: Number(e.target.value),
-                      })
-                    }
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Giảm tối đa</Label>
-                  <Input
-                    type="number"
-                    value={formData.maxDiscountValue}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        maxDiscountValue: Number(e.target.value),
-                      })
-                    }
-                    placeholder="Không giới hạn"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Ngày bắt đầu *</Label>
-                  <Input
-                    type="date"
-                    value={formData.startAt}
-                    onChange={(e) =>
-                      setFormData({ ...formData, startAt: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Ngày kết thúc *</Label>
-                  <Input
-                    type="date"
-                    value={formData.endAt}
-                    onChange={(e) =>
-                      setFormData({ ...formData, endAt: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Trạng thái hoạt động</Label>
-                <Switch
-                  checked={formData.active}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, active: checked })
-                  }
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="products" className="space-y-4 py-4">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <TabsContent value="info" className="outline-none mt-0">
+              <ScrollArea className="h-[500px] md:h-[600px] max-h-[65vh] w-full">
+                <div className="space-y-4 py-4 px-6">
+                  <div className="space-y-2">
+                    <Label>Tên khuyến mãi *</Label>
                     <Input
-                      placeholder="Tìm sản phẩm..."
-                      value={productSearchTerm}
-                      onChange={(e) => setProductSearchTerm(e.target.value)}
-                      className="pl-10"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      placeholder="VD: Flash Sale Mùa Hè"
                     />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (selectedProductIds.length === allProducts.length) {
-                        setSelectedProductIds([]);
-                      } else {
-                        setSelectedProductIds(allProducts.map((p) => p.id));
+                  <div className="space-y-2">
+                    <Label>Mô tả</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({ ...formData, description: e.target.value })
                       }
-                    }}
-                  >
-                    {selectedProductIds.length === allProducts.length
-                      ? "Bỏ chọn hết"
-                      : "Chọn tất cả"}
-                  </Button>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Đã chọn {selectedProductIds.length} sản phẩm
-                </div>
-
-                <ScrollArea className="h-[400px] border rounded-md p-4">
-                  <div className="space-y-4">
-                    {allProducts
-                      .filter((p) =>
-                        p.name
-                          .toLowerCase()
-                          .includes(productSearchTerm.toLowerCase()),
-                      )
-                      .map((product) => (
-                        <div
-                          key={product.id}
-                          className="flex items-center space-x-3 space-y-0"
-                        >
-                          <Checkbox
-                            id={`p-${product.id}`}
-                            checked={selectedProductIds.includes(product.id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedProductIds([
-                                  ...selectedProductIds,
-                                  product.id,
-                                ]);
-                              } else {
-                                setSelectedProductIds(
-                                  selectedProductIds.filter(
-                                    (id) => id !== product.id,
-                                  ),
-                                );
-                              }
-                            }}
-                          />
-                          <Label
-                            htmlFor={`p-${product.id}`}
-                            className="flex items-center gap-2 font-normal cursor-pointer flex-1"
-                          >
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center overflow-hidden border">
-                              {product.image && product.image.length > 0 ? (
-                                <img
-                                  src={product.image[0]}
-                                  alt={product.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <Box className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">
-                                {product.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                ID: {product.id} |{" "}
-                                {product.originalPrice?.toLocaleString()}đ
-                              </span>
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
+                      placeholder="Mô tả chi tiết khuyến mãi"
+                      rows={2}
+                    />
                   </div>
-                </ScrollArea>
+
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-blue-50/50">
+                    <div className="space-y-0.5">
+                      <Label className="text-blue-700 flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Khuyến mãi Toàn hệ thống
+                      </Label>
+                      <p className="text-xs text-blue-600/70">
+                        Áp dụng cho tất cả sản phẩm hiện có
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.global}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, global: checked, categoryId: undefined })
+                      }
+                    />
+                  </div>
+
+                  {!formData.global && (
+                    <div className="space-y-2">
+                      <Label>Áp dụng cho Danh mục</Label>
+                      <Select
+                        value={formData.categoryId?.toString() || "none"}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            categoryId: value === "none" ? undefined : Number(value)
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chọn danh mục (Không bắt buộc)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Không chọn (Áp dụng SP lẻ)</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id.toString()}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground italic">
+                        * Nếu chọn danh mục, khuyến mãi sẽ áp dụng cho tất cả sản phẩm trong danh mục này.
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Loại khuyến mãi</Label>
+                      <Select
+                        value={formData.type}
+                        onValueChange={(value: PromotionType) =>
+                          setFormData({ ...formData, type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PERCENT">Giảm theo %</SelectItem>
+                          <SelectItem value="FIXED">Giảm tiền cố định</SelectItem>
+                          <SelectItem value="BUY_X_GET_Y">Mua X tặng Y</SelectItem>
+                          <SelectItem value="FREE_SHIPPING">
+                            Miễn phí vận chuyển
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>
+                        {formData.type === "PERCENT"
+                          ? "Phần trăm giảm"
+                          : formData.type === "FIXED"
+                            ? "Số tiền giảm"
+                            : formData.type === "BUY_X_GET_Y"
+                              ? "Số lượng tặng"
+                              : "Giá trị"}
+                      </Label>
+                      <Input
+                        type="number"
+                        value={formData.discountValue}
+                        onChange={(e) =>
+                          setFormData({ ...formData, discountValue: Number(e.target.value) })
+                        }
+                        disabled={formData.type === "FREE_SHIPPING"}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Đơn tối thiểu</Label>
+                      <Input
+                        type="number"
+                        value={formData.minOrderValue}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            minOrderValue: Number(e.target.value),
+                          })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Giảm tối đa</Label>
+                      <Input
+                        type="number"
+                        value={formData.maxDiscountValue}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maxDiscountValue: Number(e.target.value),
+                          })
+                        }
+                        placeholder="Không giới hạn"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Ngày bắt đầu *</Label>
+                      <Input
+                        type="date"
+                        value={formData.startAt}
+                        onChange={(e) =>
+                          setFormData({ ...formData, startAt: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ngày kết thúc *</Label>
+                      <Input
+                        type="date"
+                        value={formData.endAt}
+                        onChange={(e) =>
+                          setFormData({ ...formData, endAt: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label>Trạng thái hoạt động</Label>
+                    <Switch
+                      checked={formData.active}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, active: checked })
+                      }
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="products" className="outline-none mt-0">
+              <div className="space-y-4 py-4 px-6 flex flex-col h-[500px] md:h-[600px] max-h-[65vh]">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Tìm sản phẩm..."
+                        value={productSearchTerm}
+                        onChange={(e) => setProductSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (selectedProductIds.length === allProducts.length) {
+                          setSelectedProductIds([]);
+                        } else {
+                          setSelectedProductIds(allProducts.map((p) => p.id));
+                        }
+                      }}
+                    >
+                      {selectedProductIds.length === allProducts.length
+                        ? "Bỏ chọn hết"
+                        : "Chọn tất cả"}
+                    </Button>
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    Đã chọn {selectedProductIds.length} sản phẩm
+                  </div>
+
+                  <ScrollArea className="h-[400px] border rounded-md p-4">
+                    <div className="space-y-4">
+                      {allProducts
+                        .filter((p) =>
+                          p.name
+                            .toLowerCase()
+                            .includes(productSearchTerm.toLowerCase()),
+                        )
+                        .map((product) => (
+                          <div
+                            key={product.id}
+                            className="flex items-center space-x-3 space-y-0"
+                          >
+                            <Checkbox
+                              id={`p-${product.id}`}
+                              checked={selectedProductIds.includes(product.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedProductIds([
+                                    ...selectedProductIds,
+                                    product.id,
+                                  ]);
+                                } else {
+                                  setSelectedProductIds(
+                                    selectedProductIds.filter(
+                                      (id) => id !== product.id,
+                                    ),
+                                  );
+                                }
+                              }}
+                            />
+                            <Label
+                              htmlFor={`p-${product.id}`}
+                              className="flex items-center gap-2 font-normal cursor-pointer flex-1"
+                            >
+                              <div className="h-10 w-10 rounded bg-muted flex items-center justify-center overflow-hidden border">
+                                {product.image && product.image.length > 0 ? (
+                                  <img
+                                    src={product.image[0]}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <Box className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">
+                                  {product.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  ID: {product.id} |{" "}
+                                  {product.originalPrice?.toLocaleString()}đ
+                                </span>
+                              </div>
+                            </Label>
+                          </div>
+                        ))}
+                    </div>
+                  </ScrollArea>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleSave}>
-              {editingPromotion ? "Cập nhật" : "Thêm mới"}
-            </Button>
-          </DialogFooter>
+          <div className="px-6 pb-6">
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button onClick={handleSave}>
+                {editingPromotion ? "Cập nhật" : "Thêm mới"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
