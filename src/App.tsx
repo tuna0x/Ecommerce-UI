@@ -6,8 +6,10 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ChatProvider } from "./context/ChatContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { QuickViewProvider } from "./context/QuickViewContext";
+import { SocketProvider } from "./context/SocketContext";
 
 import AnimatedRoutes from "./routes/AnimatedRoutes";
 
@@ -23,17 +25,21 @@ function App() {
       <ThemeProvider>
         <Router>
           <AuthProvider>
-            <NotificationProvider>
-              <CartProvider>
-                <QuickViewProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Sonner />
-                    <AnimatedRoutes />
-                  </TooltipProvider>
-                </QuickViewProvider>
-              </CartProvider>
-            </NotificationProvider>
+            <SocketProvider>
+              <NotificationProvider>
+                <ChatProvider>
+                  <CartProvider>
+                    <QuickViewProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <Sonner />
+                        <AnimatedRoutes />
+                      </TooltipProvider>
+                    </QuickViewProvider>
+                  </CartProvider>
+                </ChatProvider>
+              </NotificationProvider>
+            </SocketProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>

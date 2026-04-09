@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import type { Notification } from '../types/notification.type';
 import { notificationService } from '../service/notificationService';
 import { useAuth } from './AuthContext';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import { useSocket } from './SocketContext';
 import { toast } from 'sonner';
 
 interface NotificationContextType {
@@ -20,9 +19,9 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
+    const { stompClient, isConnected } = useSocket();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
-    const stompClientRef = useRef<Client | null>(null);
 
     const mapBackendToFrontend = (notif: any): Notification => {
         // Map backend types to frontend types and icons
@@ -72,71 +71,53 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     useEffect(() => {
         if (user) {
             fetchNotifications();
-
-            // Setup WebSocket
-            const socketUrl = import.meta.env.VITE_WS_BASE_URL || "http://localhost:8080/websocket";
-            const token = localStorage.getItem("access_token");
-            
-            const client = new Client({
-                webSocketFactory: () => new SockJS(socketUrl),
-                connectHeaders: {
-                    Authorization: `Bearer ${token}`
-                },
-                onConnect: () => {
-                    console.log('Connected to Stomp');
-                    
-                    // Subscribe to personal queue
-                    client.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
-                        const newNotif = JSON.parse(message.body);
-                        const mapped = mapBackendToFrontend(newNotif);
-                        
-                        setNotifications(prev => [mapped, ...prev]);
-                        setUnreadCount(prev => prev + 1);
-                        
-                        toast(mapped.title, {
-                            description: mapped.message,
-                            duration: 5000,
-                            action: mapped.link ? {
-                                label: 'Xem ngay',
-                                onClick: () => window.location.href = mapped.link!
-                            } : undefined
-                        });
-                    });
-
-                    // Subscribe to common topic
-                    client.subscribe('/topic/notifications', (message) => {
-                        // Backend sends raw string or simple object for topics
-                        let title = 'Thông báo hệ thống';
-                        let body = message.body;
-                        try {
-                            const parsed = JSON.parse(message.body);
-                            title = parsed.title || title;
-                            body = parsed.message || body;
-                        } catch (e) { /* use raw body */ }
-
-                        toast.info(title, { description: body });
-                        fetchNotifications(); // Refresh list for global notifications
-                    });
-                },
-                onStompError: (frame) => {
-                    console.error('Broker reported error: ' + frame.headers['message']);
-                    console.error('Additional details: ' + frame.body);
-                },
-            });
-
-            client.activate();
-            stompClientRef.current = client;
-
-            return () => {
-                if (stompClientRef.current) {
-                    stompClientRef.current.deactivate();
-                }
-            };
         } else {
             setNotifications([]);
             setUnreadCount(0);
         }
     }, [user, fetchNotifications]);
+
+    useEffect(() => {
+        if (isConnected && stompClient && user) {
+            // Subscribe to personal queue
+            const subNotifications = stompClient.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
+                const newNotif = JSON.parse(message.body);
+                const mapped = mapBackendToFrontend(newNotif);
+                
+                setNotifications(prev => [mapped, ...prev]);
+                setUnreadCount(prev => prev + 1);
+                
+                toast(mapped.title, {
+                    description: mapped.message,
+                    duration: 5000,
+                    action: mapped.link ? {
+                        label: 'Xem ngay',
+                        onClick: () => window.location.href = mapped.link!
+                    } : undefined
+                });
+            });
+
+            // Subscribe to common topic
+            const subTopic = stompClient.subscribe('/topic/notifications', (message) => {
+                // Backend sends raw string or simple object for topics
+                let title = 'Thông báo hệ thống';
+                let body = message.body;
+                try {
+                    const parsed = JSON.parse(message.body);
+                    title = parsed.title || title;
+                    body = parsed.message || body;
+                } catch (e) { /* use raw body */ }
+
+                toast.info(title, { description: body });
+                fetchNotifications(); // Refresh list for global notifications
+            });
+
+            return () => {
+                subNotifications.unsubscribe();
+                subTopic.unsubscribe();
+            };
+        }
+    }, [isConnected, stompClient, user, fetchNotifications]);
 
     const markAsRead = useCallback(async (id: string) => {
         try {
