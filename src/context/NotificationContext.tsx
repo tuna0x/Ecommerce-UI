@@ -1,95 +1,201 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { Notification } from '../types/notification.type';
+import { notificationService } from '../service/notificationService';
+import { useAuth } from './AuthContext';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { toast } from 'sonner';
 
 interface NotificationContextType {
     notifications: Notification[];
     unreadCount: number;
-    addNotification: (notification: Omit<Notification, 'id' | 'read' | 'createdAt'>) => void;
     markAsRead: (id: string) => void;
     markAllAsRead: () => void;
     clearAll: () => void;
     deleteNotification: (id: string) => void;
+    fetchNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-const defaultNotifications: Notification[] = [
-    {
-        id: '1',
-        title: '🔥 Flash Sale đang diễn ra!',
-        message: 'Giảm đến 50% cho hàng trăm sản phẩm. Nhanh tay kẻo hết!',
-        type: 'promo',
-        read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 30),
-        link: '/flash-sale',
-    },
-    {
-        id: '2',
-        title: 'Đơn hàng #1234 đã được giao',
-        message: 'Đơn hàng của bạn đã được giao thành công. Hãy đánh giá sản phẩm nhé!',
-        type: 'order',
-        read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-        link: '/orders',
-    },
-    {
-        id: '3',
-        title: 'Sản phẩm yêu thích giảm giá',
-        message: 'Serum Vitamin C 15% bạn yêu thích đang giảm 29%!',
-        type: 'wishlist',
-        read: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5),
-        link: '/product/1',
-    },
-    {
-        id: '4',
-        title: 'Chào mừng bạn đến BÔNGCOSMETIC!',
-        message: 'Nhập mã WELCOME10 để giảm 10% cho đơn hàng đầu tiên.',
-        type: 'system',
-        read: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    },
-];
-
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [notifications, setNotifications] = useState<Notification[]>(defaultNotifications);
+    const { user } = useAuth();
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const stompClientRef = useRef<Client | null>(null);
 
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const addNotification = useCallback((notif: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
-        const newNotif: Notification = {
-            ...notif,
-            id: Date.now().toString(),
-            read: false,
-            createdAt: new Date(),
+    const mapBackendToFrontend = (notif: any): Notification => {
+        // Map backend types to frontend types and icons
+        const typeMap: Record<string, Notification['type']> = {
+            'ORDER': 'order',
+            'SYSTEM': 'system',
+            'PROMOTION': 'promo',
+            'WISHLIST': 'wishlist',
+            'order': 'order',
+            'system': 'system',
+            'promo': 'promo',
+            'wishlist': 'wishlist'
         };
-        setNotifications(prev => [newNotif, ...prev]);
-    }, []);
 
-    const markAsRead = useCallback((id: string) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    }, []);
+        // Determine link based on type
+        let link = notif.link;
+        if (!link) {
+            if (notif.type === 'ORDER') link = '/orders';
+            else if (notif.type === 'PROMOTION') link = '/flash-sale';
+        }
 
-    const markAllAsRead = useCallback(() => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        return {
+            id: String(notif.id),
+            title: notif.title,
+            message: notif.message,
+            type: typeMap[notif.type] || 'system',
+            read: notif.isRead || notif.read || false,
+            createdAt: new Date(notif.createdAt),
+            link: link
+        };
+    };
+
+    const fetchNotifications = useCallback(async () => {
+        if (!user) return;
+        try {
+            const data = await notificationService.getNotifications(1, 20);
+            if (data && data.result) {
+                setNotifications(data.result.map(mapBackendToFrontend));
+            }
+            const count = await notificationService.getUnreadCount();
+            setUnreadCount(count);
+        } catch (err) {
+            console.error("Failed to fetch notifications", err);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchNotifications();
+
+            // Setup WebSocket
+            const socketUrl = import.meta.env.VITE_WS_BASE_URL || "http://localhost:8080/websocket";
+            const token = localStorage.getItem("access_token");
+            
+            const client = new Client({
+                webSocketFactory: () => new SockJS(socketUrl),
+                connectHeaders: {
+                    Authorization: `Bearer ${token}`
+                },
+                onConnect: () => {
+                    console.log('Connected to Stomp');
+                    
+                    // Subscribe to personal queue
+                    client.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
+                        const newNotif = JSON.parse(message.body);
+                        const mapped = mapBackendToFrontend(newNotif);
+                        
+                        setNotifications(prev => [mapped, ...prev]);
+                        setUnreadCount(prev => prev + 1);
+                        
+                        toast(mapped.title, {
+                            description: mapped.message,
+                            duration: 5000,
+                            action: mapped.link ? {
+                                label: 'Xem ngay',
+                                onClick: () => window.location.href = mapped.link!
+                            } : undefined
+                        });
+                    });
+
+                    // Subscribe to common topic
+                    client.subscribe('/topic/notifications', (message) => {
+                        // Backend sends raw string or simple object for topics
+                        let title = 'Thông báo hệ thống';
+                        let body = message.body;
+                        try {
+                            const parsed = JSON.parse(message.body);
+                            title = parsed.title || title;
+                            body = parsed.message || body;
+                        } catch (e) { /* use raw body */ }
+
+                        toast.info(title, { description: body });
+                        fetchNotifications(); // Refresh list for global notifications
+                    });
+                },
+                onStompError: (frame) => {
+                    console.error('Broker reported error: ' + frame.headers['message']);
+                    console.error('Additional details: ' + frame.body);
+                },
+            });
+
+            client.activate();
+            stompClientRef.current = client;
+
+            return () => {
+                if (stompClientRef.current) {
+                    stompClientRef.current.deactivate();
+                }
+            };
+        } else {
+            setNotifications([]);
+            setUnreadCount(0);
+        }
+    }, [user, fetchNotifications]);
+
+    const markAsRead = useCallback(async (id: string) => {
+        try {
+            // Find current status before update
+            const notif = notifications.find(n => n.id === id);
+            
+            await notificationService.markAsRead(id);
+            
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            
+            // Only decrement count if it was unread
+            if (notif && !notif.read) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        } catch (err) {
+            console.error("Failed to mark notification as read", err);
+        }
+    }, [notifications]);
+
+    const markAllAsRead = useCallback(async () => {
+        try {
+            await notificationService.markAllAsRead();
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setUnreadCount(0);
+        } catch (err) {
+            console.error("Failed to mark all as read", err);
+        }
     }, []);
 
     const clearAll = useCallback(() => {
         setNotifications([]);
+        setUnreadCount(0);
     }, []);
 
     const deleteNotification = useCallback((id: string) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        setNotifications(prev => {
+            const notif = prev.find(n => n.id === id);
+            if (notif && !notif.read) {
+                setUnreadCount(c => Math.max(0, c - 1));
+            }
+            return prev.filter(n => n.id !== id);
+        });
     }, []);
 
     return (
-        <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead, clearAll, deleteNotification }}>
+        <NotificationContext.Provider value={{
+            notifications,
+            unreadCount,
+            markAsRead,
+            markAllAsRead,
+            clearAll,
+            deleteNotification,
+            fetchNotifications
+        }}>
             {children}
         </NotificationContext.Provider>
     );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
     if (!context) throw new Error('useNotifications must be used within NotificationProvider');
