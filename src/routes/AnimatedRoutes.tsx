@@ -1,47 +1,57 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
-import Index from "../pages/Index";
-import ProductDetail from "../pages/ProductDetail";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import SearchResults from "../pages/SearchResult";
-import Checkout from "../pages/Checkout";
-import PaymentResult from "../pages/PaymentResult";
-import Account from "../pages/Account";
-import Orders from "../pages/Orders";
-import Category from "../pages/Category";
-import Chat from "../pages/Chat";
-import NotFound from "../pages/NotFound";
-import FlashSalePage from "../pages/FlashSale";
-import VoucherWallet from "../pages/VoucherWallet";
-import Notification from "../pages/Notifications";
+// Lazy load all pages
+const Index = lazy(() => import("../pages/Index"));
+const ProductDetail = lazy(() => import("../pages/ProductDetail"));
+const Login = lazy(() => import("../pages/Login"));
+const Register = lazy(() => import("../pages/Register"));
+const SearchResults = lazy(() => import("../pages/SearchResult"));
+const Checkout = lazy(() => import("../pages/Checkout"));
+const PaymentResult = lazy(() => import("../pages/PaymentResult"));
+const Account = lazy(() => import("../pages/Account"));
+const Orders = lazy(() => import("../pages/Orders"));
+const Category = lazy(() => import("../pages/Category"));
+const Chat = lazy(() => import("../pages/Chat"));
+const NotFound = lazy(() => import("../pages/NotFound"));
+const FlashSalePage = lazy(() => import("../pages/FlashSale"));
+const VoucherWallet = lazy(() => import("../pages/VoucherWallet"));
+const Notification = lazy(() => import("../pages/Notifications"));
 
+// Admin Components (Static layout can stay, but pages should be lazy)
 import AdminLayout from "../components/admin/AdminLayout";
-import Dashboard from "../pages/admin/Dashboard";
-import ProductsManagement from "../pages/admin/ProductManagement";
-import CategoriesManagement from "../pages/admin/CategoriesManagement";
-import AttributesManagement from "../pages/admin/AttributesManagement";
-import OrdersManagement from "../pages/admin/OrdersManagement";
-import UsersManagement from "../pages/admin/UsersManagement";
-import PromotionsManagement from "../pages/admin/PromotionsManagement";
-import CouponsManagement from "../pages/admin/CouponsManagement";
-import Statistics from "../pages/admin/Statistics";
-import ProductDetailManagement from "../pages/admin/ProductDetailManagement";
-import BrandsManagement from "../pages/admin/BrandsManagement";
-import BannersManagement from "../pages/admin/BannersManagement";
-import ChatManagement from "../pages/admin/ChatManagement";
-import InventoryManagement from "../pages/admin/InventoryManagement";
+const Dashboard = lazy(() => import("../pages/admin/Dashboard"));
+const ProductsManagement = lazy(() => import("../pages/admin/ProductManagement"));
+const CategoriesManagement = lazy(() => import("../pages/admin/CategoriesManagement"));
+const AttributesManagement = lazy(() => import("../pages/admin/AttributesManagement"));
+const OrdersManagement = lazy(() => import("../pages/admin/OrdersManagement"));
+const UsersManagement = lazy(() => import("../pages/admin/UsersManagement"));
+const PromotionsManagement = lazy(() => import("../pages/admin/PromotionsManagement"));
+const CouponsManagement = lazy(() => import("../pages/admin/CouponsManagement"));
+const Statistics = lazy(() => import("../pages/admin/Statistics"));
+const ProductDetailManagement = lazy(() => import("../pages/admin/ProductDetailManagement"));
+const BrandsManagement = lazy(() => import("../pages/admin/BrandsManagement"));
+const BannersManagement = lazy(() => import("../pages/admin/BannersManagement"));
+const ChatManagement = lazy(() => import("../pages/admin/ChatManagement"));
+const InventoryManagement = lazy(() => import("../pages/admin/InventoryManagement"));
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
-import Blog from "../pages/Blog";
-import Contact from "../pages/Contact";
-import FAQ from "../pages/FAQ";
-import About from "../pages/About";
+const Blog = lazy(() => import("../pages/Blog"));
+const Contact = lazy(() => import("../pages/Contact"));
+const FAQ = lazy(() => import("../pages/FAQ"));
+const About = lazy(() => import("../pages/About"));
 
 const AnimatedRoutes = () => {
   return (
-    <Routes>
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50 mb-4" />
+        <p className="text-sm font-medium text-muted-foreground animate-pulse">Đang tải trang...</p>
+      </div>
+    }>
+      <Routes>
       {/* User Routes */}
       <Route path="/" element={<Index />} />
       <Route path="/product/:id" element={<ProductDetail />} />
@@ -85,6 +95,7 @@ const AnimatedRoutes = () => {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 

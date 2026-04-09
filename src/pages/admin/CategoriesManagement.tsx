@@ -131,8 +131,11 @@ const CategoriesManagement: React.FC = () => {
       resetForm();
       setIsDialogOpen(false);
       fetchCategories();
-    } catch {
-      toast.error("Đã xảy ra lỗi");
+    } catch (error) {
+        const axiosError = error as { response?: { data?: { message?: any } } };
+        const backendMsg = axiosError.response?.data?.message;
+        const finalMsg = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
+        toast.error(finalMsg || "Đã xảy ra lỗi khi lưu thể loại");
     }
   }, [editingId, formData, fetchCategories, resetForm]);
 

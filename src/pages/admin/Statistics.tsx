@@ -47,7 +47,10 @@ import {
   Search,
   RotateCcw
 } from "lucide-react";
+import { toast } from "sonner";
 import { dashboardService, type StatisticsData } from "../../service/dashboardService";
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#6366f1'];
 
 const Statistics: React.FC = () => {
   const [data, setData] = React.useState<StatisticsData | null>(null);
@@ -55,7 +58,7 @@ const Statistics: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [startDate, setStartDate] = React.useState<string>("");
   const [endDate, setEndDate] = React.useState<string>("");
-  const [quickFilter, setQuickFilter] = React.useState<string>("last_6_months");
+  const [quickFilter, setQuickFilter] = React.useState<string>("last_30_days");
 
   const fetchData = async () => {
     try {
@@ -97,9 +100,8 @@ const Statistics: React.FC = () => {
       case "this_year":
         start = new Date(now.getFullYear(), 0, 1);
         break;
-      case "last_6_months":
       default:
-        start.setMonth(now.getMonth() - 6);
+        start.setDate(now.getDate() - 30);
         break;
     }
     
@@ -117,20 +119,38 @@ const Statistics: React.FC = () => {
   const handleReset = () => {
     setStartDate("");
     setEndDate("");
-    setQuickFilter("last_6_months");
+    setQuickFilter("last_30_days");
     fetchData();
   };
 
+  const [isExporting, setIsExporting] = React.useState(false);
+
   const handleExportExcel = async () => {
-    const startISO = startDate ? new Date(startDate).toISOString() : "";
-    const endISO = endDate ? new Date(endDate).toISOString() : "";
-    
-    // Construct export URL
-    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1";
-    const url = `${baseUrl}/dashboard/export-excel?startDate=${startISO}&endDate=${endISO}`;
-    
-    // Use window.open or a hidden link to trigger download
-    window.open(url, '_blank');
+    try {
+      setIsExporting(true);
+      const startISO = startDate ? new Date(startDate).toISOString() : undefined;
+      const endISO = endDate ? new Date(endDate).toISOString() : undefined;
+      
+      const blob = await dashboardService.exportExcel(startISO, endISO);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `thong-ke-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success("Đã xuất file excel thành công");
+    } catch (error) {
+      console.error("Export failed:", error);
+      toast.error("Xuất file excel thất bại");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -204,6 +224,12 @@ const Statistics: React.FC = () => {
     { name: "Khách quay lại", value: data.returningUsersCount, color: "#ec4899" },
   ];
 
+  const categoryChartData = data.categoryDistribution.map((cat, i) => ({
+    name: cat.category,
+    value: cat.count,
+    color: COLORS[i % COLORS.length]
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -233,10 +259,10 @@ const Statistics: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="last_7_days">7 ngày qua</SelectItem>
-                    <SelectItem value="last_30_days">30 ngày qua</SelectItem>
+                    <SelectItem value="last_30_days">30 ngày qua (Mặc định)</SelectItem>
                     <SelectItem value="this_month">Tháng này</SelectItem>
                     <SelectItem value="this_year">Năm nay</SelectItem>
-                    <SelectItem value="last_6_months">6 tháng qua (Mặc định)</SelectItem>
+                    <SelectItem value="last_6_months">6 tháng qua</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -275,8 +301,14 @@ const Statistics: React.FC = () => {
               <Button variant="outline" onClick={handleReset} className="flex-1 lg:flex-none gap-2">
                 <RotateCcw className="h-4 w-4" /> Reset
               </Button>
-              <Button variant="secondary" onClick={handleExportExcel} className="flex-1 lg:flex-none gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                <FileSpreadsheet className="h-4 w-4" /> Xuất Excel
+              <Button 
+                variant="secondary" 
+                onClick={handleExportExcel} 
+                disabled={isExporting}
+                className="flex-1 lg:flex-none gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                Xuất Excel
               </Button>
             </div>
           </div>
@@ -388,7 +420,7 @@ const Statistics: React.FC = () => {
                         outerRadius={90}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, value }) => `${name}: ${value}`}
+                        label={({ name, percent }) => (percent || 0) > 0 ? `${name}: ${(Number(percent) * 100).toFixed(0)}%` : ""}
                         labelLine={false}
                         fontSize={12}
                       >
@@ -422,7 +454,7 @@ const Statistics: React.FC = () => {
                         outerRadius={90}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => (percent || 0) > 0 ? `${name} ${(Number(percent) * 100).toFixed(0)}%` : ""}
                         labelLine={false}
                         fontSize={12}
                       >
@@ -437,19 +469,49 @@ const Statistics: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Category Distribution Chart */}
+            <Card className="hover:shadow-md transition-all border-border/50 lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base font-bold">Phân bổ đơn hàng theo danh mục</CardTitle>
+                <CardDescription>Hiệu suất bán hàng theo từng nhóm sản phẩm</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={categoryChartData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => (percent || 0) > 0 ? `${name}: ${(Number(percent) * 100).toFixed(0)}%` : ""}
+                        labelLine={false}
+                        fontSize={12}
+                      >
+                        {categoryChartData.map((entry, index) => (
+                          <Cell key={index} fill={entry.color} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
+                        formatter={(value) => [`${value} đơn`, 'Số lượng']}
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="inventory" className="space-y-6">
           {/* Inventory Summary Cards */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <SummaryCard 
-                title="Vốn hàng tồn" 
-                value={data.inventorySummary.totalCapitalValue} 
-                isCurrency 
-                icon={Warehouse} 
-                iconColor="text-blue-500" 
-            />
+          <div className="grid gap-4 md:grid-cols-3">
             <SummaryCard 
                 title="Sắp hết hàng" 
                 value={data.inventorySummary.lowStockCount} 
@@ -473,7 +535,7 @@ const Statistics: React.FC = () => {
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6">
             {/* Inventory Distribution Chart */}
             <Card className="hover:shadow-md transition-all border-border/50">
               <CardHeader>
@@ -492,7 +554,7 @@ const Statistics: React.FC = () => {
                         outerRadius={90}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
+                        label={({ name, percent, value }) => (value || 0) > 0 ? `${name} ${(Number(percent) * 100).toFixed(0)}%` : ""}
                         labelLine={false}
                         fontSize={12}
                       >
@@ -503,38 +565,6 @@ const Statistics: React.FC = () => {
                       <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
                     </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Products by Value Chart */}
-            <Card className="hover:shadow-md transition-all border-border/50">
-              <CardHeader>
-                <CardTitle className="text-base font-bold">Vốn đọng theo sản phẩm</CardTitle>
-                <CardDescription>Top 8 sản phẩm có giá trị tồn kho cao nhất</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.inventorySummary.topProductsByValue} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--muted))" />
-                      <XAxis type="number" hide />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        width={120} 
-                        fontSize={10} 
-                        axisLine={false} 
-                        tickLine={false}
-                        tickFormatter={(v) => v.length > 20 ? v.substring(0, 20) + '...' : v}
-                      />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        formatter={(value) => formatCurrency(Number(value))} 
-                      />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
-                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>

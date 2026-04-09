@@ -39,6 +39,20 @@ export interface StatisticsData {
     monthlyRevenue: MonthlyRevenue[];
     categoryDistribution: CategoryStat[];
     inventorySummary: InventorySummary;
+    recentOrders: {
+        id: number;
+        transactionId: string;
+        customerName: string;
+        total: number;
+        status: string;
+        createdAt: string;
+    }[];
+    lowStockProducts: {
+        id: number;
+        name: string;
+        image: string;
+        stock: number;
+    }[];
     // New fields
     orderStatusDistribution: Record<string, number>;
     newUsersCount: number;
@@ -62,5 +76,15 @@ export const dashboardService = {
             `/dashboard/statistics?${params.toString()}`
         );
         return res.data.data;
+    },
+    exportExcel: async (startDate?: string, endDate?: string) => {
+        const params = new URLSearchParams();
+        if (startDate) params.append("startDate", startDate);
+        if (endDate) params.append("endDate", endDate);
+        
+        const res = await axiosInstance.get(`/dashboard/export-excel?${params.toString()}`, {
+            responseType: 'blob'
+        });
+        return res.data;
     }
 };

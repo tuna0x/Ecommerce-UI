@@ -40,6 +40,7 @@ import type { ShippingAddress } from '../components/AddressManagement';
 
 
 import { AddressService } from '../service/addressService';
+import { checkoutApi } from '../service/orderService';
 
 const Checkout: React.FC = () => {
   const { selectedItems, selectedTotal, selectedCount } = useCart();
@@ -150,15 +151,19 @@ const Checkout: React.FC = () => {
   const handleManualApply = async () => {
     if (!couponCode) return;
 
-    // Check if code exists in wallet
-    const inWallet = userCoupons.find(vc => vc.coupon.code.toUpperCase() === couponCode.toUpperCase());
-    if (inWallet) {
-      handleApplyCoupon(inWallet.coupon);
-      return;
+    setIsVoucherLoading(true);
+    try {
+      const res = await voucherService.validateCoupon(couponCode);
+      if (res && res.data) {
+        handleApplyCoupon(res.data);
+      }
+    } catch (err: any) {
+      console.error("Failed to validate manual coupon", err);
+      const msg = err.response?.data?.message || 'Mã giảm giá không hợp lệ hoặc đã qua sử dụng';
+      toast.error(msg);
+    } finally {
+      setIsVoucherLoading(false);
     }
-
-    // Otherwise, we'd ideally call a validation API, but for now we'll search the wallet or show error
-    toast.error('Mã giảm giá không hợp lệ hoặc không có trong ví của bạn');
   };
 
   const removeCoupon = () => {
@@ -204,7 +209,6 @@ const Checkout: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const { checkoutApi } = await import('../service/orderService');
       const cartItemIds = selectedItems.map(item => item.dbItemId).filter(id => id !== undefined) as number[];
 
       interface OrderPayload {
