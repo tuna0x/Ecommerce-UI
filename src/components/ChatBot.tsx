@@ -5,14 +5,11 @@ import { X, Bot, Sparkles, Send } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
+import { sendMessage as sendChatAPI } from '../service/chatService';
 import TypingIndicator from '../components/chat/TypingIndicator';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const hasChatConfig = Boolean(supabaseUrl && supabaseKey);
-const CHAT_URL = hasChatConfig ? `${supabaseUrl}/functions/v1/chat` : null;
 const CHAT_UNAVAILABLE = 'Chat hỗ trợ đang tạm thời bảo trì. Vui lòng thử lại sau 💕';
 
 const quickQuestions = [
@@ -28,9 +25,7 @@ const ChatBot: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            content: hasChatConfig
-                ? 'Xin chào! 👋 Chào mừng bạn đến **Bong Cosmetic**! Mình có thể giúp gì cho bạn hôm nay?'
-                : CHAT_UNAVAILABLE,
+            content: 'Xin chào! 👋 Chào mừng bạn đến **Tuna Ecommerce**! Tôi là trợ lý AI, tôi có thể giúp gì cho bạn hôm nay?'
         },
     ]);
     const [isLoading, setIsLoading] = useState(false);
@@ -48,64 +43,24 @@ const ChatBot: React.FC = () => {
         if (isOpen) inputRef.current?.focus();
     }, [isOpen]);
 
-    const streamReply = async (allMessages: Message[]) => {
-        if (!CHAT_URL || !supabaseKey) {
-            setMessages((prev) => [...prev, { role: 'assistant', content: CHAT_UNAVAILABLE }]);
-            return;
-        }
-        let text = '';
-        const resp = await fetch(CHAT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseKey}` },
-            body: JSON.stringify({ messages: allMessages }),
-        });
-        if (!resp.ok || !resp.body) throw new Error('Stream failed');
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            let idx: number;
-            while ((idx = buf.indexOf('\n')) !== -1) {
-                let line = buf.slice(0, idx);
-                buf = buf.slice(idx + 1);
-                if (line.endsWith('\r')) line = line.slice(0, -1);
-                if (!line.startsWith('data: ') || line.trim() === '' || line.startsWith(':')) continue;
-                const json = line.slice(6).trim();
-                if (json === '[DONE]') break;
-                try {
-                    const c = JSON.parse(json).choices?.[0]?.delta?.content;
-                    if (c) {
-                        text += c;
-                        const snap = text;
-                        setMessages((prev) => {
-                            const last = prev[prev.length - 1];
-                            if (last?.role === 'assistant' && prev.length > allMessages.length)
-                                return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: snap } : m));
-                            return [...prev, { role: 'assistant', content: snap }];
-                        });
-                    }
-                } catch {
-                    buf = line + '\n' + buf;
-                    break;
-                }
-            }
-        }
-    };
-
     const sendMessage = async (content: string) => {
         if (isLoading || !content.trim()) return;
+        
         const userMsg: Message = { role: 'user', content: content.trim() };
-        const updated = [...messages, userMsg];
-        setMessages(updated);
+        setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
+
         try {
-            await streamReply(updated);
-        } catch {
-            setMessages((prev) => [...prev, { role: 'assistant', content: 'Xin lỗi, đã có lỗi xảy ra 😔' }]);
+            const data = await sendChatAPI(content);
+            const assistantMsg: Message = { 
+                role: 'assistant', 
+                content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.' 
+            };
+            setMessages(prev => [...prev, assistantMsg]);
+        } catch (error) {
+            console.error('Chat error:', error);
+            setMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, đã có lỗi xảy ra khi kết nối tới máy chủ 😔' }]);
         } finally {
             setIsLoading(false);
         }
@@ -229,7 +184,7 @@ const ChatBot: React.FC = () => {
                             )}
 
                             {/* Quick questions */}
-                            {messages.length === 1 && hasChatConfig && (
+                            {messages.length === 1 && (
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -259,21 +214,20 @@ const ChatBot: React.FC = () => {
                                     ref={inputRef}
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder={hasChatConfig ? 'Hỏi mình bất cứ điều gì...' : 'Chat đang bảo trì'}
-                                    disabled={isLoading || !hasChatConfig}
+                                    placeholder="Hỏi mình bất cứ điều gì..."
                                     className="flex-1 bg-transparent text-sm py-2.5 focus:outline-none placeholder:text-muted-foreground disabled:opacity-50"
                                 />
                                 <Button
                                     type="submit"
                                     size="icon"
-                                    disabled={isLoading || !input.trim() || !hasChatConfig}
+                                    disabled={isLoading || !input.trim()}
                                     className="h-8 w-8 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-30 border-0 shrink-0"
                                 >
                                     <Send className="h-3.5 w-3.5 text-white" />
                                 </Button>
                             </div>
                             <p className="text-[10px] text-muted-foreground text-center mt-2">
-                                Powered by AI · Bong Cosmetic ✨
+                                Powered by Gemini AI · Tuna Ecommerce ✨
                             </p>
                         </form>
                     </motion.div>
