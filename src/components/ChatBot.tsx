@@ -10,8 +10,6 @@ import TypingIndicator from '../components/chat/TypingIndicator';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
-const CHAT_UNAVAILABLE = 'Chat hỗ trợ đang tạm thời bảo trì. Vui lòng thử lại sau 💕';
-
 const quickQuestions = [
     { label: '💄 Gợi ý sản phẩm', value: 'Gợi ý sản phẩm phù hợp cho mình' },
     { label: '🔥 Bán chạy nhất', value: 'Sản phẩm bán chạy nhất hiện tại' },
@@ -25,19 +23,46 @@ const ChatBot: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             role: 'assistant',
-            content: 'Xin chào! 👋 Chào mừng bạn đến **Tuna Ecommerce**! Tôi là trợ lý AI, tôi có thể giúp gì cho bạn hôm nay?'
+            content: 'Xin chào! 👋 Chào mừng bạn đến **Bông Cosmetic**! Tôi là trợ lý AI, tôi có thể giúp gì cho bạn hôm nay?'
         },
     ]);
     const [isLoading, setIsLoading] = useState(false);
+    const [displayContent, setDisplayContent] = useState<Record<number, string>>({});
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const typingIntervals = useRef<Record<number, any>>({});
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
 
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        scrollToBottom();
+    }, [messages, displayContent]);
+
+    useEffect(() => {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg?.role === 'assistant' && !displayContent[messages.length - 1]) {
+            let i = 0;
+            const fullContent = lastMsg.content;
+            const msgIdx = messages.length - 1;
+
+            if (typingIntervals.current[msgIdx]) clearInterval(typingIntervals.current[msgIdx]);
+
+            typingIntervals.current[msgIdx] = setInterval(() => {
+                setDisplayContent(prev => ({
+                    ...prev,
+                    [msgIdx]: fullContent.slice(0, i + 1)
+                }));
+                i++;
+                if (i >= fullContent.length) {
+                    clearInterval(typingIntervals.current[msgIdx]);
+                }
+            }, 15);
         }
-    }, [messages, isLoading]);
+    }, [messages]);
 
     useEffect(() => {
         if (isOpen) inputRef.current?.focus();
@@ -45,7 +70,7 @@ const ChatBot: React.FC = () => {
 
     const sendMessage = async (content: string) => {
         if (isLoading || !content.trim()) return;
-        
+
         const userMsg: Message = { role: 'user', content: content.trim() };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
@@ -53,9 +78,9 @@ const ChatBot: React.FC = () => {
 
         try {
             const data = await sendChatAPI(content);
-            const assistantMsg: Message = { 
-                role: 'assistant', 
-                content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.' 
+            const assistantMsg: Message = {
+                role: 'assistant',
+                content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.'
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (error) {
@@ -73,7 +98,6 @@ const ChatBot: React.FC = () => {
 
     return (
         <>
-            {/* Floating button */}
             <AnimatePresence>
                 {!isOpen && (
                     <motion.div
@@ -98,7 +122,6 @@ const ChatBot: React.FC = () => {
                             <Sparkles className="h-6 w-6 text-white relative z-10" />
                         </Button>
                         <span className="absolute inset-0 rounded-full animate-ping bg-pink-400/25 pointer-events-none" />
-                        {/* Label tooltip */}
                         <motion.div
                             initial={{ opacity: 0, x: 10 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -112,7 +135,6 @@ const ChatBot: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Chat window */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -122,7 +144,6 @@ const ChatBot: React.FC = () => {
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                         className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-8rem)] flex flex-col rounded-3xl border border-border/50 bg-background shadow-2xl overflow-hidden"
                     >
-                        {/* Header */}
                         <div className="relative px-5 py-4 bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-500">
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
                             <div className="relative flex items-center justify-between">
@@ -149,11 +170,10 @@ const ChatBot: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Messages */}
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-pink-50/30 to-background">
-                            {messages.map((msg, i) => (
+                            {messages.map((msg, idx) => (
                                 <motion.div
-                                    key={i}
+                                    key={idx}
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.2 }}
@@ -164,8 +184,10 @@ const ChatBot: React.FC = () => {
                                                 <Bot className="h-3.5 w-3.5 text-white" />
                                             </div>
                                             <div className="max-w-[78%] bg-card border border-border/50 rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm">
-                                                <div className="prose prose-sm max-w-none text-sm [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_strong]:text-primary">
-                                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                <div className="prose prose-sm dark:prose-invert max-w-none text-inherit leading-relaxed [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_strong]:text-primary">
+                                                    <ReactMarkdown>
+                                                        {msg.role === 'assistant' ? (displayContent[idx] || (idx === 0 ? msg.content : '')) : msg.content}
+                                                    </ReactMarkdown>
                                                 </div>
                                             </div>
                                         </div>
@@ -178,12 +200,34 @@ const ChatBot: React.FC = () => {
                                     )}
                                 </motion.div>
                             ))}
+                            <div ref={messagesEndRef} />
 
                             {isLoading && messages[messages.length - 1]?.role === 'user' && (
                                 <TypingIndicator />
                             )}
 
-                            {/* Quick questions */}
+                            {/* Quick Actions Buttons */}
+                            <div className="flex flex-wrap gap-2 mb-3 px-1">
+                                <button
+                                    onClick={() => sendMessage("Tôi muốn kiểm tra tình trạng đơn hàng của mình")}
+                                    className="text-[11px] bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full px-3 py-1 transition-colors flex items-center gap-1"
+                                >
+                                    🔍 Kiểm tra đơn hàng
+                                </button>
+                                <button
+                                    onClick={() => sendMessage("Hãy tư vấn cho tôi một số sản phẩm nổi bật")}
+                                    className="text-[11px] bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full px-3 py-1 transition-colors flex items-center gap-1"
+                                >
+                                    📦 Tư vấn sản phẩm
+                                </button>
+                                <button
+                                    onClick={() => window.open('https://m.me/yourpage', '_blank')}
+                                    className="text-[11px] bg-secondary/50 hover:bg-secondary border border-border/50 rounded-full px-3 py-1 transition-colors flex items-center gap-1"
+                                >
+                                    💬 Chat với Admin
+                                </button>
+                            </div>
+
                             {messages.length === 1 && (
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
@@ -227,7 +271,7 @@ const ChatBot: React.FC = () => {
                                 </Button>
                             </div>
                             <p className="text-[10px] text-muted-foreground text-center mt-2">
-                                Powered by Gemini AI · Tuna Ecommerce ✨
+                                Powered by Gemini AI · Bông Cosmetic ✨
                             </p>
                         </form>
                     </motion.div>
