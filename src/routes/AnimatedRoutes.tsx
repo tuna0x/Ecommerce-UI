@@ -18,6 +18,7 @@ const NotFound = lazy(() => import("../pages/NotFound"));
 const FlashSalePage = lazy(() => import("../pages/FlashSale"));
 const VoucherWallet = lazy(() => import("../pages/VoucherWallet"));
 const Notification = lazy(() => import("../pages/Notifications"));
+const Categories = lazy(() => import("../pages/Categories"));
 
 // Admin Components (Static layout can stay, but pages should be lazy)
 import AdminLayout from "../components/admin/AdminLayout";
@@ -52,49 +53,50 @@ const AnimatedRoutes = () => {
       </div>
     }>
       <Routes>
-      {/* User Routes */}
-      <Route path="/" element={<Index />} />
-      <Route path="/product/:id" element={<ProductDetail />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/flash-sale" element={<ProtectedRoute><FlashSalePage /></ProtectedRoute>} />
-      <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
-      <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-      <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-      <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
-      <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-      <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-      <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
-      <Route path="/brands" element={<ProtectedRoute><Category /></ProtectedRoute>} />
-      <Route path="/blog" element={<Blog />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/faq" element={<FAQ />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
+        {/* User Routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/flash-sale" element={<ProtectedRoute><FlashSalePage /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
+        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+        <Route path="/categories" element={<Categories />} />
+        <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+        <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
+        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
+        <Route path="/brands" element={<ProtectedRoute><Category /></ProtectedRoute>} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
 
-      {/* Admin Routes */}
-      <Route path="/admin" element={<AdminRoute />}>
-        <Route element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="products" element={<ProductsManagement />} />
-          <Route path="categories" element={<CategoriesManagement />} />
-          <Route path="attributes" element={<AttributesManagement />} />
-          <Route path="banners" element={<BannersManagement />} />
-          <Route path="brands" element={<BrandsManagement />} />
-          <Route path="orders" element={<OrdersManagement />} />
-          <Route path="users" element={<UsersManagement />} />
-          <Route path="promotions" element={<PromotionsManagement />} />
-          <Route path="coupons" element={<CouponsManagement />} />
-          <Route path="statistics" element={<Statistics />} />
-          <Route path="inventory" element={<InventoryManagement />} />
-          <Route path="product-detail" element={<ProductDetailManagement />} />
-          <Route path="chat" element={<ChatManagement />} />
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<ProductsManagement />} />
+            <Route path="categories" element={<CategoriesManagement />} />
+            <Route path="attributes" element={<AttributesManagement />} />
+            <Route path="banners" element={<BannersManagement />} />
+            <Route path="brands" element={<BrandsManagement />} />
+            <Route path="orders" element={<OrdersManagement />} />
+            <Route path="users" element={<UsersManagement />} />
+            <Route path="promotions" element={<PromotionsManagement />} />
+            <Route path="coupons" element={<CouponsManagement />} />
+            <Route path="statistics" element={<Statistics />} />
+            <Route path="inventory" element={<InventoryManagement />} />
+            <Route path="product-detail" element={<ProductDetailManagement />} />
+            <Route path="chat" element={<ChatManagement />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </Suspense>
   );
 };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Notification } from '../types/notification.type';
 import { notificationService } from '../service/notificationService';
 import { useAuth } from './AuthContext';

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
-import { X, Bot, Sparkles, Send, ArrowLeft, MessageSquare } from 'lucide-react';
+import { X, Bot, Sparkles, Send, MessageSquare, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,7 +24,7 @@ const ChatBot: React.FC = () => {
     const { isAuthenticated, user } = useAuth();
     const { activeMessages, sendMessage: sendP2PMessage, setActivePartner } = useChat();
     const navigate = useNavigate();
-    
+
     const [isOpen, setIsOpen] = useState(false);
     const [mode, setMode] = useState<'ai' | 'admin'>('ai');
     const [messages, setMessages] = useState<Message[]>([
@@ -77,6 +77,16 @@ const ChatBot: React.FC = () => {
         if (isOpen) inputRef.current?.focus();
     }, [isOpen]);
 
+    useEffect(() => {
+        if (isOpen) {
+            if (mode === 'admin') {
+                setActivePartner(ADMIN_EMAIL);
+            } else {
+                setActivePartner(null);
+            }
+        }
+    }, [mode, isOpen, setActivePartner]);
+
     const handleSendMessage = async (content: string) => {
         if (!content.trim()) return;
 
@@ -111,16 +121,6 @@ const ChatBot: React.FC = () => {
         void handleSendMessage(input);
     };
 
-    const switchToAdmin = () => {
-        setMode('admin');
-        setActivePartner(ADMIN_EMAIL);
-    };
-
-    const switchToAI = () => {
-        setMode('ai');
-        setActivePartner(null);
-    };
-
     return (
         <>
             <AnimatePresence>
@@ -130,7 +130,7 @@ const ChatBot: React.FC = () => {
                         animate={{ scale: 1, rotate: 0 }}
                         exit={{ scale: 0, rotate: 180 }}
                         transition={{ type: 'spring', damping: 15, stiffness: 200 }}
-                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50"
+                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 px-2"
                     >
                         <Button
                             onClick={() => {
@@ -140,20 +140,20 @@ const ChatBot: React.FC = () => {
                                     setIsOpen(true);
                                 }
                             }}
-                            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-fuchsia-500 hover:from-pink-600 hover:via-rose-600 hover:to-fuchsia-600 border-0 relative overflow-hidden"
+                            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-pink-500 via-rose-500 to-fuchsia-500 hover:from-pink-600 hover:via-rose-600 hover:to-fuchsia-600 border-0 relative overflow-hidden group"
                             size="icon"
                         >
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.3),transparent_60%)]" />
-                            <Sparkles className="h-6 w-6 text-white relative z-10" />
+                            <div className="absolute inset-0 bg-white/10 group-hover:bg-white/20 transition-colors" />
+                            <Sparkles className="h-6 w-6 text-white relative z-10 animate-pulse" />
                         </Button>
                         <span className="absolute inset-0 rounded-full animate-ping bg-pink-400/25 pointer-events-none" />
                         <motion.div
                             initial={{ opacity: 0, x: 10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg"
+                            className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg hidden md:block"
                         >
-                            AI Trợ lý 🤖
+                            Chat với Bông ✨
                             <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-foreground" />
                         </motion.div>
                     </motion.div>
@@ -167,33 +167,19 @@ const ChatBot: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 40, scale: 0.9 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-8rem)] flex flex-col rounded-3xl border border-border/50 bg-background shadow-2xl overflow-hidden"
+                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-8rem)] flex flex-col rounded-[2.5rem] border border-border/50 bg-background shadow-2xl overflow-hidden"
                     >
-                        <div className="relative px-5 py-4 bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-500">
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
-                            <div className="relative flex items-center justify-between">
+                        <div className="relative pt-6 pb-2 px-6 bg-gradient-to-tr from-pink-50 to-rose-50/30 border-b border-border/50">
+                            <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    {mode === 'admin' ? (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            onClick={switchToAI}
-                                            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/15 rounded-xl mr-1"
-                                        >
-                                            <ArrowLeft className="h-4 w-4" />
-                                        </Button>
-                                    ) : (
-                                        <div className="h-11 w-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/10">
-                                            <Sparkles className="h-5 w-5 text-white" />
-                                        </div>
-                                    )}
+                                    <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-lg shadow-pink-200/50">
+                                        <Bot className="h-5 w-5 text-white" />
+                                    </div>
                                     <div>
-                                        <p className="text-sm font-bold text-white tracking-wide">
-                                            {mode === 'ai' ? 'AI Trợ lý' : 'Chat với Admin'}
-                                        </p>
+                                        <p className="text-sm font-bold text-foreground tracking-tight">Trợ lý Bông Cosmetic</p>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
-                                            <p className="text-xs text-white/75">Luôn sẵn sàng hỗ trợ</p>
+                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Trực tuyến</p>
                                         </div>
                                     </div>
                                 </div>
@@ -201,127 +187,136 @@ const ChatBot: React.FC = () => {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setIsOpen(false)}
-                                    className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/15 rounded-xl"
+                                    className="h-8 w-8 rounded-full hover:bg-secondary/80 text-muted-foreground"
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
+
+                            <div className="flex bg-secondary/50 p-1 rounded-2xl border border-border/30 backdrop-blur-sm">
+                                <button
+                                    onClick={() => setMode('ai')}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[14px] text-xs font-bold transition-all duration-300",
+                                        mode === 'ai' 
+                                            ? "bg-background text-primary shadow-sm scale-[1.02]" 
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <Sparkles className={cn("h-3.5 w-3.5", mode === 'ai' ? "text-primary" : "text-muted-foreground")} />
+                                    AI Trợ lý
+                                </button>
+                                <button
+                                    onClick={() => setMode('admin')}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[14px] text-xs font-bold transition-all duration-300",
+                                        mode === 'admin' 
+                                            ? "bg-background text-primary shadow-sm scale-[1.02]" 
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    <MessageSquare className={cn("h-3.5 w-3.5", mode === 'admin' ? "text-primary" : "text-muted-foreground")} />
+                                    Nhân viên hỗ trợ
+                                </button>
+                            </div>
                         </div>
 
-                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-pink-50/30 to-background">
+                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20">
                             {mode === 'ai' ? (
                                 <>
                                     {messages.map((msg, idx) => (
                                         <motion.div
                                             key={idx}
-                                            initial={{ opacity: 0, y: 8 }}
+                                            initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
-                                            transition={{ duration: 0.2 }}
+                                            className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}
                                         >
-                                            {msg.role === 'assistant' ? (
-                                                <div className="flex gap-2.5 justify-start">
-                                                    <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-sm">
-                                                        <Bot className="h-3.5 w-3.5 text-white" />
-                                                    </div>
-                                                    <div className="max-w-[78%] bg-card border border-border/50 rounded-2xl rounded-bl-md px-3.5 py-2.5 shadow-sm">
-                                                        <div className="prose prose-sm dark:prose-invert max-w-none text-inherit leading-relaxed [&_p]:m-0 [&_ul]:my-1 [&_ol]:my-1 [&_strong]:text-primary">
-                                                            <ReactMarkdown>
-                                                                {displayContent[idx] || (idx === 0 ? msg.content : '')}
-                                                            </ReactMarkdown>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex gap-2 justify-end">
-                                                    <div className="max-w-[78%] bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl rounded-br-md px-3.5 py-2.5 shadow-md">
-                                                        <p className="text-sm">{msg.content}</p>
-                                                    </div>
+                                            {msg.role === 'assistant' && (
+                                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-md">
+                                                    <Bot className="h-4 w-4 text-white" />
                                                 </div>
                                             )}
+                                            <div className={cn(
+                                                "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px] leading-relaxed",
+                                                msg.role === 'user' 
+                                                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none" 
+                                                    : "bg-white border border-border/50 text-foreground rounded-bl-none prose prose-sm prose-pink"
+                                            )}>
+                                                {msg.role === 'assistant' ? (
+                                                    <ReactMarkdown>
+                                                        {displayContent[idx] || (idx === 0 ? msg.content : '')}
+                                                    </ReactMarkdown>
+                                                ) : msg.content}
+                                            </div>
                                         </motion.div>
                                     ))}
-                                    {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                                        <TypingIndicator />
-                                    )}
+                                    {isLoading && <TypingIndicator />}
                                     
-                                    <div className="flex flex-wrap gap-2 mb-3 px-1">
-                                        <button
-                                            onClick={() => handleSendMessage("Tôi muốn kiểm tra tình trạng đơn hàng của mình")}
-                                            className="text-[11px] bg-white hover:bg-pink-50 border border-pink-100/50 rounded-full px-3 py-1.5 transition-colors flex items-center gap-1.5 shadow-sm text-muted-foreground hover:text-pink-500"
-                                        >
-                                            🔍 Kiểm tra đơn hàng
-                                        </button>
-                                        <button
-                                            onClick={switchToAdmin}
-                                            className="text-[11px] bg-white hover:bg-pink-50 border border-pink-100/50 rounded-full px-3 py-1.5 transition-colors flex items-center gap-1.5 shadow-sm text-muted-foreground hover:text-pink-500"
-                                        >
-                                            💬 Chat với Admin
-                                        </button>
-                                    </div>
-
                                     {messages.length === 1 && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: 0.3 }}
-                                            className="mt-4 space-y-2"
+                                            className="space-y-2 mt-6"
                                         >
-                                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider px-1">Gợi ý cho bạn</p>
+                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest px-1">Gợi ý câu hỏi</p>
                                             {quickQuestions.map((q) => (
-                                                <motion.button
+                                                <Button
                                                     key={q.value}
-                                                    whileHover={{ scale: 1.02, x: 4 }}
-                                                    whileTap={{ scale: 0.98 }}
-                                                    onClick={() => void handleSendMessage(q.value)}
-                                                    className="flex items-center gap-2 w-full text-left text-xs border border-border rounded-xl px-3.5 py-2.5 hover:bg-accent hover:border-primary/30 transition-all bg-card text-foreground shadow-sm"
+                                                    variant="outline"
+                                                    onClick={() => handleSendMessage(q.value)}
+                                                    className="w-full justify-start h-auto py-3 px-4 rounded-2xl text-xs hover:bg-pink-50 hover:text-primary hover:border-pink-200 transition-all border-dashed bg-card/50"
                                                 >
                                                     {q.label}
-                                                </motion.button>
+                                                </Button>
                                             ))}
                                         </motion.div>
                                     )}
                                 </>
                             ) : (
                                 <>
-                                    <div className="text-center mb-6 mt-2">
-                                        <div className="h-16 w-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3 border border-pink-100">
-                                            <MessageSquare className="h-8 w-8 text-pink-500" />
+                                    <div className="flex flex-col items-center py-6 px-4 bg-white/50 rounded-3xl border border-pink-100 mb-6">
+                                        <div className="h-16 w-16 rounded-full bg-pink-100 flex items-center justify-center mb-3">
+                                            <ShieldCheck className="h-8 w-8 text-pink-500" />
                                         </div>
-                                        <h3 className="text-sm font-bold text-foreground">Bạn đang chat với Admin</h3>
-                                        <p className="text-[11px] text-muted-foreground mt-1">Hỗ trợ trực tiếp từ đội ngũ CSKH Bông Cosmetic</p>
+                                        <h3 className="text-sm font-bold text-foreground">Hỗ trợ trực tiếp</h3>
+                                        <p className="text-[11px] text-muted-foreground text-center mt-1 px-4 leading-relaxed">
+                                            Vui lòng nhắn tin, chúng tôi sẽ phản hồi bạn trong giây lát 💖
+                                        </p>
                                     </div>
-                                    
+
                                     {activeMessages.map((msg, idx) => {
                                         const isMine = msg.senderEmail === user?.email;
                                         return (
                                             <motion.div
                                                 key={idx}
-                                                initial={{ opacity: 0, y: 5 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                className={cn("flex gap-2", isMine ? "justify-end" : "justify-start")}
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className={cn("flex gap-3", isMine ? "justify-end" : "justify-start")}
                                             >
                                                 {!isMine && (
-                                                    <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-sm">
-                                                        <span className="text-[10px] font-bold text-white">AD</span>
+                                                    <div className="h-8 w-8 rounded-xl bg-pink-100 flex items-center justify-center shrink-0 mt-auto">
+                                                        <span className="text-[10px] font-bold text-pink-500">AD</span>
                                                     </div>
                                                 )}
                                                 <div className={cn(
-                                                    "max-w-[78%] px-3.5 py-2.5 rounded-2xl shadow-sm text-sm",
+                                                    "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px]",
                                                     isMine 
-                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-md" 
-                                                        : "bg-white border border-border rounded-bl-md text-foreground"
+                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none" 
+                                                        : "bg-white border border-border/50 text-foreground rounded-bl-none"
                                                 )}>
-                                                    {msg.content}
-                                                    <p className={cn("text-[9px] mt-1 opacity-70", isMine ? "text-right" : "text-left")}>
+                                                    <p>{msg.content}</p>
+                                                    <p className={cn("text-[9px] mt-1.5 font-medium opacity-70", isMine ? "text-right" : "text-left")}>
                                                         {new Date(msg.timestamp || Date.now()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                     </p>
                                                 </div>
                                             </motion.div>
                                         );
                                     })}
+                                    
                                     {activeMessages.length === 0 && (
                                         <div className="text-center py-10">
-                                            <p className="text-xs text-muted-foreground italic">Gửi tin nhắn để bắt đầu cuộc trò chuyện với Admin ✨</p>
+                                            <p className="text-xs text-muted-foreground italic bg-secondary/30 py-2 px-4 rounded-full inline-block">Bắt đầu cuộc trò chuyện với Admin ✨</p>
                                         </div>
                                     )}
                                 </>
@@ -329,29 +324,30 @@ const ChatBot: React.FC = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* Input */}
-                        <form onSubmit={handleSubmit} className="p-3 border-t border-border bg-card/50 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 bg-background rounded-2xl border border-border px-4 py-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                                <input
-                                    ref={inputRef}
-                                    value={input}
-                                    onChange={(e) => setInput(e.target.value)}
-                                    placeholder={mode === 'ai' ? "Hỏi mình bất cứ điều gì..." : "Nhập tin nhắn cho Admin..."}
-                                    className="flex-1 bg-transparent text-sm py-2.5 focus:outline-none placeholder:text-muted-foreground disabled:opacity-50"
-                                />
-                                <Button
-                                    type="submit"
-                                    size="icon"
-                                    disabled={(mode === 'ai' && isLoading) || !input.trim()}
-                                    className="h-8 w-8 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 disabled:opacity-30 border-0 shrink-0"
-                                >
-                                    <Send className="h-3.5 w-3.5 text-white" />
-                                </Button>
+                        <div className="p-5 bg-white border-t border-border/50">
+                            <form onSubmit={handleSubmit} className="relative group">
+                                <div className="flex items-center gap-2 bg-secondary/40 hover:bg-secondary/60 focus-within:bg-background focus-within:ring-2 focus-within:ring-pink-500/10 focus-within:border-pink-500/30 rounded-[20px] border border-transparent px-4 py-1.5 transition-all duration-300">
+                                    <input
+                                        ref={inputRef}
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        placeholder={mode === 'ai' ? "Hỏi trợ lý Bông..." : "Nhập lời nhắn..."}
+                                        className="flex-1 bg-transparent text-sm py-2.5 focus:outline-none placeholder:text-muted-foreground"
+                                    />
+                                    <Button
+                                        type="submit"
+                                        size="icon"
+                                        disabled={(mode === 'ai' && isLoading) || !input.trim()}
+                                        className="h-9 w-9 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-200/50 border-0 shrink-0 transition-transform active:scale-95"
+                                    >
+                                        <Send className="h-4 w-4 text-white" />
+                                    </Button>
+                                </div>
+                            </form>
+                            <div className="flex items-center justify-center gap-1.5 mt-4">
+                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.1em]">Bông Cosmetic ✨ {mode === 'ai' ? 'AI Power' : 'Hỗ trợ 24/7'}</p>
                             </div>
-                            <p className="text-[10px] text-muted-foreground text-center mt-2">
-                                {mode === 'ai' ? 'Powered by Gemini AI' : 'Hỗ trợ trực tuyến'} · Bông Cosmetic ✨
-                            </p>
-                        </form>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

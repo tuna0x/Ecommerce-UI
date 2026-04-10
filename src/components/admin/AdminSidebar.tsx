@@ -84,8 +84,11 @@ const menuGroups: MenuGroup[] = [
   },
 ];
 
+import { useChat } from '../../context/ChatContext';
+
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
   const location = useLocation();
+  const { totalUnreadCount } = useChat();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     menuGroups.forEach(g => { initial[g.label] = true; });
@@ -108,14 +111,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
         {!collapsed && (
           <span className="text-lg font-bold text-primary">Admin</span>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className={cn('shrink-0 hidden lg:flex', collapsed && 'mx-auto')}
-        >
-          <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className={cn('shrink-0 hidden lg:flex', collapsed && 'mx-auto')}
+          >
+            <ChevronLeft className={cn('h-5 w-5 transition-transform', collapsed && 'rotate-180')} />
+          </Button>
+        </div>
         <Button
           variant="ghost"
           size="icon"
@@ -138,13 +143,19 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
                   end={item.url === '/admin'}
                   title={item.title}
                   className={cn(
-                    'flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors',
+                    'flex items-center justify-center px-3 py-2.5 rounded-lg transition-colors relative group',
                     isActive(item.url)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   )}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
+                  {item.title === 'Chat' && totalUnreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 border border-white"></span>
+                    </span>
+                  )}
                 </NavLink>
               ));
             }
@@ -169,7 +180,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
                       end={item.url === '/admin'}
                       onClick={onMobileClose}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm group',
+                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm group relative',
                         isActive(item.url)
                           ? 'bg-primary text-primary-foreground shadow-sm'
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -177,6 +188,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
                     >
                       <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
                       <span className="font-medium">{item.title}</span>
+                      {item.title === 'Chat' && totalUnreadCount > 0 && (
+                        <div className="ml-auto bg-red-500 text-[10px] font-bold text-white px-1.5 rounded-full min-w-[1.25rem] h-5 flex items-center justify-center border border-white shadow-sm">
+                           {totalUnreadCount}
+                        </div>
+                      )}
                     </NavLink>
                   ))}
                 </CollapsibleContent>

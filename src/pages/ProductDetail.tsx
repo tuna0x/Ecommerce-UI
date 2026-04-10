@@ -233,7 +233,7 @@ const ProductDetail: React.FC = () => {
       navigate('/login');
       return;
     }
-    
+
     setIsAdding(true);
     try {
       await addToCart(product, matchedVariant?.id || null, matchedVariant?.variantAttributes || null, quantity);

@@ -259,8 +259,10 @@ const PromotionsManagement: React.FC = () => {
         toast.success("Đã thêm khuyến mãi mới");
       }
 
-      // Assign products
-      await PromotionService.assignProducts(promoId, selectedProductIds);
+      // Assign products only if NOT global and NOT category-based
+      if (!formData.global && formData.categoryId === undefined) {
+        await PromotionService.assignProducts(promoId, selectedProductIds);
+      }
 
       setIsDialogOpen(false);
       fetchPromotions(meta.page);
