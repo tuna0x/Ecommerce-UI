@@ -130,6 +130,7 @@ const AttributesManagement: React.FC = () => {
     } else {
       setEditingAttributeId(null);
       setAttrForm({ name: "", categoryIds: [], active: true });
+      setSelectedAttribute(null); // Clear selection when adding new
     }
     setIsAttrDialogOpen(true);
   }, []);
@@ -164,6 +165,7 @@ const AttributesManagement: React.FC = () => {
       } else {
         await attributeService.create(attrForm);
         toast.success("Đã thêm thuộc tính mới");
+        setSelectedAttribute(null); // Clear selection after creating new
       }
       setIsAttrDialogOpen(false);
       fetchAttributes();
@@ -191,7 +193,8 @@ const AttributesManagement: React.FC = () => {
   // ---- Value CRUD ----
 
   const fetchAttributeValues = useCallback(async (attributeId: number) => {
-    const res = await attributeValueService.getAll(attributeId.toString());
+    // Correct filter format for spring-filter: field.name:'value'
+    const res = await attributeValueService.getAll(`attribute.id='${attributeId}'`);
 
     if (!res.error) {
       setAttributesValues(res.data?.result);
@@ -252,8 +255,9 @@ const AttributesManagement: React.FC = () => {
 
       fetchAttributeValues(selectedAttribute.id);
       setIsValueDialogOpen(false);
-    } catch {
-      toast.error("Đã xảy ra lỗi");
+    } catch (error: any) {
+      const msg = error.response?.data?.message || "Đã xảy ra lỗi";
+      toast.error(msg);
     }
   }, [selectedAttribute, valueForm.attributeValue, editingValueId, fetchAttributeValues]);
 
@@ -488,9 +492,10 @@ const AttributesManagement: React.FC = () => {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() =>
-                                handleDeleteValue(val.id.toString())
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteValue(val.id.toString());
+                              }}
                             >
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>

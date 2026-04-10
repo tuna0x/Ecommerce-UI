@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import { getChatHistory, getConversations } from '../service/chatService';
@@ -21,9 +21,11 @@ interface ChatContextType {
     conversations: Conversation[];
     activeMessages: ChatMessage[];
     activePartner: string | null;
+    totalUnreadCount: number;
     setActivePartner: (email: string | null) => void;
     sendMessage: (content: string) => void;
     fetchConversations: () => Promise<void>;
+    resetUnreadCount: (email: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -33,20 +35,36 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { stompClient, isConnected } = useSocket();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeMessages, setActiveMessages] = useState<ChatMessage[]>([]);
-    const [activePartner, setActivePartner] = useState<String | null>(null);
+    const [activePartner, setActivePartner] = useState<string | null>(null);
+    const activePartnerRef = useRef<string | null>(null);
+
+    // Sync ref with state
+    useEffect(() => {
+        activePartnerRef.current = activePartner;
+    }, [activePartner]);
+
+    const totalUnreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+    const resetUnreadCount = useCallback((partner: string) => {
+        setConversations(prev => prev.map(c => 
+            c.partnerEmail === partner ? { ...c, unreadCount: 0 } : c
+        ));
+    }, []);
 
     const fetchConversations = useCallback(async () => {
         if (!user) return;
         try {
-            const data = await getConversations();
-            if (data && data.result) {
-                const mapped: Conversation[] = data.result.map((m: any) => {
+            console.log(">>> Fetching conversations for:", user.email);
+            const res = await getConversations(); // res is RestResponse
+            console.log(">>> Received conversations response:", res);
+            if (res && res.data) {
+                const mapped: Conversation[] = res.data.map((m: any) => {
                     const partner = m.senderEmail === user.email ? m.receiverEmail : m.senderEmail;
                     return {
                         partnerEmail: partner,
                         lastMessage: m.content,
                         lastMessageTime: m.timestamp,
-                        unreadCount: 0 // Will implement unread count later if needed
+                        unreadCount: 0 
                     };
                 });
                 setConversations(mapped);
@@ -58,10 +76,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchHistory = useCallback(async (partner: string) => {
         try {
-            const data = await getChatHistory(partner);
-            if (data && data.result) {
-                // Reverse to show oldest first in UI
-                setActiveMessages(data.result.reverse());
+            console.log(">>> Fetching history for partner:", partner);
+            const res = await getChatHistory(partner); // res is RestResponse
+            if (res && res.data) {
+                setActiveMessages(res.data.reverse());
             }
         } catch (err) {
             console.error("Failed to fetch history", err);
@@ -80,48 +98,84 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (activePartner) {
-            fetchHistory(activePartner as string);
+            fetchHistory(activePartner);
+            resetUnreadCount(activePartner);
         } else {
             setActiveMessages([]);
         }
-    }, [activePartner, fetchHistory]);
+    }, [activePartner, fetchHistory, resetUnreadCount]);
 
     useEffect(() => {
         if (isConnected && stompClient && user) {
-            const sub = stompClient.subscribe(`/user/${user.email}/queue/messages`, (message) => {
+            console.log(">>> Subscribing to user messages queue (Standard path):", "/user/queue/messages");
+            const sub = stompClient.subscribe("/user/queue/messages", (message) => {
                 const newMsg: ChatMessage = JSON.parse(message.body);
+                console.log(">>> Received real-time message:", newMsg);
                 
-                // If message belongs to active conversation, add to list
                 const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
+                const currentActive = activePartnerRef.current;
                 
-                if (activePartner === partnerOfNewMsg) {
-                    setActiveMessages(prev => [...prev, newMsg]);
+                if (currentActive === partnerOfNewMsg) {
+                    setActiveMessages(prev => {
+                        // Prevent duplicate if message was already added optimistically
+                        // Check content and a reasonably close timestamp (if available) or just content
+                        const isDuplicate = prev.some(m => 
+                            m.content === newMsg.content && 
+                            m.senderEmail === newMsg.senderEmail &&
+                            Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000
+                        );
+                        return isDuplicate ? prev : [...prev, newMsg];
+                    });
                 }
 
-                // Update conversation list
                 setConversations(prev => {
                     const existing = prev.find(c => c.partnerEmail === partnerOfNewMsg);
+                    const isFocusing = currentActive === partnerOfNewMsg;
+                    const isFromPartner = newMsg.senderEmail === partnerOfNewMsg;
+
                     const updatedConv: Conversation = {
                         partnerEmail: partnerOfNewMsg,
                         lastMessage: newMsg.content,
                         lastMessageTime: newMsg.timestamp,
-                        unreadCount: (existing && activePartner !== partnerOfNewMsg) ? existing.unreadCount + 1 : 0
+                        unreadCount: (isFromPartner && !isFocusing) 
+                            ? (existing ? existing.unreadCount + 1 : 1) 
+                            : 0
                     };
 
-                    if (existing) {
-                        return [updatedConv, ...prev.filter(c => c.partnerEmail !== partnerOfNewMsg)];
-                    } else {
-                        return [updatedConv, ...prev];
-                    }
+                    const filtered = prev.filter(c => c.partnerEmail !== partnerOfNewMsg);
+                    return [updatedConv, ...filtered];
                 });
             });
 
-            return () => sub.unsubscribe();
+            return () => {
+                console.log(">>> Unsubscribing from messages queue");
+                sub.unsubscribe();
+            };
         }
-    }, [isConnected, stompClient, user, activePartner]);
+    }, [isConnected, stompClient, user]);
 
     const sendMessage = (content: string) => {
         if (!stompClient || !isConnected || !user || !activePartner) return;
+        
+        const timestamp = new Date().toISOString();
+        const optimisticMsg: ChatMessage = {
+            senderEmail: user.email,
+            receiverEmail: activePartner,
+            content: content,
+            timestamp: timestamp
+        };
+
+        // Optimistic UI updates
+        setActiveMessages(prev => [...prev, optimisticMsg]);
+        setConversations(prev => {
+            const filtered = prev.filter(c => c.partnerEmail !== activePartner);
+            return [{
+                partnerEmail: activePartner,
+                lastMessage: content,
+                lastMessageTime: timestamp,
+                unreadCount: 0
+            }, ...filtered];
+        });
 
         const chatMessageDTO = {
             receiverEmail: activePartner,
@@ -138,10 +192,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         <ChatContext.Provider value={{
             conversations,
             activeMessages,
-            activePartner: activePartner as string,
-            setActivePartner: (email) => setActivePartner(email),
+            activePartner,
+            totalUnreadCount,
+            setActivePartner,
             sendMessage,
-            fetchConversations
+            fetchConversations,
+            resetUnreadCount
         }}>
             {children}
         </ChatContext.Provider>

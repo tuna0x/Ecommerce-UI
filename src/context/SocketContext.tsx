@@ -19,6 +19,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (user) {
             const socketUrl = import.meta.env.VITE_WS_BASE_URL || "http://localhost:8080/websocket";
             const token = localStorage.getItem("access_token");
+            console.log(">>> SocketProvider: Initializing STOMP client for user:", user?.email);
 
             const client = new Client({
                 webSocketFactory: () => new SockJS(socketUrl),
@@ -26,16 +27,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     Authorization: `Bearer ${token}`
                 },
                 onConnect: () => {
-                    console.log('Connected to Stomp via SocketProvider');
+                    console.log('>>> Connected to STOMP for:', user?.email);
                     setIsConnected(true);
                 },
                 onDisconnect: () => {
-                    console.log('Disconnected from Stomp');
+                    console.log('>>> Disconnected from STOMP');
                     setIsConnected(false);
                 },
                 onStompError: (frame) => {
-                    console.error('Broker reported error: ' + frame.headers['message']);
-                    console.error('Additional details: ' + frame.body);
+                    console.error('>>> STOMP error: ' + frame.headers['message']);
                 },
             });
 

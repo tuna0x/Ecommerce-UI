@@ -11,7 +11,7 @@ const MobileNavBar: React.FC = () => {
     { icon: Home, label: 'Trang chủ', path: '/' },
     { icon: Grid3X3, label: 'Danh mục', path: '/categories' },
     { icon: MessageCircle, label: 'Chat', path: '/chat' },
-    { icon: Bell, label: 'Thông báo', path: '/account' },
+    { icon: Bell, label: 'Thông báo', path: '/notifications' },
     { icon: User, label: 'Tài khoản', path: '/account' },
   ];
 

@@ -208,116 +208,203 @@ const CategoriesManagement: React.FC = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Tên thể loại</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Thể loại cha</TableHead>
-              <TableHead>Số sản phẩm</TableHead>
-              <TableHead>Trạng thái</TableHead>
-              <TableHead>Ngày tạo</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: pageSize }).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell><Skeleton className="h-5 w-[150px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-[100px] ml-auto" /></TableCell>
-                </TableRow>
-              ))
-            ) : category?.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                  Không tìm thấy thể loại nào.
-                </TableCell>
-              </TableRow>
-            ) : (
-              category?.map((category) => (
-                <TableRow key={category.id} className="group hover:bg-muted/50 transition-colors">
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-2">
-                      {category.parentCategory?.id ? (
-                        <FolderTree className="h-4 w-4 text-muted-foreground opacity-70" />
-                      ) : (
-                        <div className="w-4" />
-                      )}
-                      {category.name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {category.slug}
-                  </TableCell>
-                  <TableCell>
-                    {category.parentCategory ? (
-                      <Badge variant="outline" className="font-normal">
-                        {category.parentCategory.name}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm italic">Gốc</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="font-medium">
-                      {category.productCount || 0}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={category.active ? "default" : "secondary"} className="rounded-full">
-                      {category.active ? "Hoạt động" : "Ẩn"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(category.createdAt).toLocaleDateString("vi-VN")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => navigate(`/admin/attributes?categoryId=${category.id}`)}
-                            >
-                              <ListChecks className="h-4 w-4 text-primary" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Xem thuộc tính</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleOpenDialog(category)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleDelete(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        {/* Desktop View: Table */}
+        <div className="hidden md:block">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Tên thể loại</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Thể loại cha</TableHead>
+                <TableHead>Số sản phẩm</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Ngày tạo</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
-              ))
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                Array.from({ length: pageSize }).map((_, idx) => (
+                    <TableRow key={idx}>
+                    <TableCell><Skeleton className="h-5 w-[150px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[100px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[120px]" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-[100px] ml-auto" /></TableCell>
+                    </TableRow>
+                ))
+                ) : category?.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    Không tìm thấy thể loại nào.
+                    </TableCell>
+                </TableRow>
+                ) : (
+                category?.map((category) => (
+                    <TableRow key={category.id} className="group hover:bg-muted/50 transition-colors">
+                    <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                        {category.parentCategory?.id ? (
+                            <FolderTree className="h-4 w-4 text-muted-foreground opacity-70" />
+                        ) : (
+                            <div className="w-4" />
+                        )}
+                        {category.name}
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs">
+                        {category.slug}
+                    </TableCell>
+                    <TableCell>
+                        {category.parentCategory ? (
+                        <Badge variant="outline" className="font-normal">
+                            {category.parentCategory.name}
+                        </Badge>
+                        ) : (
+                        <span className="text-muted-foreground text-sm italic">Gốc</span>
+                        )}
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant="secondary" className="font-medium">
+                        {category.productCount || 0}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={category.active ? "default" : "secondary"} className="rounded-full">
+                        {category.active ? "Hoạt động" : "Ẩn"}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                        {new Date(category.createdAt).toLocaleDateString("vi-VN")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                        <TooltipProvider>
+                            <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => navigate(`/admin/attributes?categoryId=${category.id}`)}
+                                >
+                                <ListChecks className="h-4 w-4 text-primary" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Xem thuộc tính</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenDialog(category)}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(category.id)}
+                        >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                        </div>
+                    </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
+
+        {/* Mobile View: Cards */}
+        <div className="md:hidden space-y-4">
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="p-4 border rounded-xl space-y-3">
+                        <Skeleton className="h-6 w-1/2" />
+                        <Skeleton className="h-4 w-1/3" />
+                        <div className="flex justify-between">
+                            <Skeleton className="h-8 w-24" />
+                            <Skeleton className="h-8 w-24" />
+                        </div>
+                    </div>
+                ))
+            ) : category?.length === 0 ? (
+                <div className="py-10 text-center text-muted-foreground border rounded-xl">
+                    Không tìm thấy thể loại nào.
+                </div>
+            ) : (
+                category?.map((cat) => (
+                    <div key={cat.id} className="p-4 border rounded-xl bg-white shadow-sm space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                    {cat.parentCategory?.id && <FolderTree className="h-3 w-3 text-muted-foreground" />}
+                                    {cat.name}
+                                </h3>
+                                <p className="text-[10px] font-mono text-slate-400 mt-0.5">{cat.slug}</p>
+                            </div>
+                            <Badge variant={cat.active ? "default" : "secondary"} className="text-[10px] scale-90">
+                                {cat.active ? "Hoạt động" : "Ẩn"}
+                            </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-700">{cat.productCount || 0}</span> SP
+                            </span>
+                            <span className="w-1 h-1 rounded-full bg-slate-200" />
+                            <span>
+                                {cat.parentCategory ? (
+                                    <span className="text-pink-600 font-medium">@{cat.parentCategory.name}</span>
+                                ) : "Danh mục Gốc"}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                            <span className="text-[10px] text-slate-400">
+                                {new Date(cat.createdAt).toLocaleDateString("vi-VN")}
+                            </span>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2 text-[10px]"
+                                    onClick={() => navigate(`/admin/attributes?categoryId=${cat.id}`)}
+                                >
+                                    <ListChecks className="h-3 w-3 mr-1" />
+                                    Thuộc tính
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => handleOpenDialog(cat)}
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-destructive border-destructive/20"
+                                    onClick={() => handleDelete(cat.id)}
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                ))
             )}
-          </TableBody>
-        </Table>
+        </div>
+
         <PaginationControl
           currentPage={currentPage}
           totalPages={totalPages}
