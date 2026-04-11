@@ -1,11 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Home, Grid3X3, MessageCircle, Bell, User, ShoppingBag, LayoutDashboard } from 'lucide-react';
+import { Home, Grid3X3, MessageCircle, User, ShoppingBag } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 
 const MobileNavBar: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
 

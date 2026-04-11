@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -75,7 +75,15 @@ const Header: React.FC = () => {
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
-                  <DropdownMenuSeparator />
+                   <DropdownMenuSeparator />
+                  {['SUPER_ADMIN', 'ADMIN'].includes(user?.role?.name?.toUpperCase()) && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center cursor-pointer text-primary font-medium">
+                        <ShoppingBag className="w-4 h-4 mr-2" />
+                        Quản trị Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
@@ -202,7 +210,7 @@ const Header: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar"
+            className="md:hidden border-t border-border overflow-y-auto max-h-[80vh] custom-scrollbar"
           >
             <div className="p-4 space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Danh mục sản phẩm</p>
