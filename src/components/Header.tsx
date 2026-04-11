@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -76,14 +76,6 @@ const Header: React.FC = () => {
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  {['SUPER_ADMIN', 'ADMIN'].includes(user.role.name?.toUpperCase()) && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="flex items-center cursor-pointer text-primary font-medium">
-                        <ShoppingBag className="w-4 h-4 mr-2" />
-                        Quản trị Admin
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/account" className="flex items-center cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
@@ -210,75 +202,24 @@ const Header: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border overflow-hidden"
+            className="md:hidden border-t border-border overflow-y-auto max-h-[calc(100vh-140px)] custom-scrollbar"
           >
-            <div className="p-4 space-y-4">
-              {categories.map((category) => {
-                const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
-                return (
-                  <div key={category.id}>
-                    <Link
-                      to={`/category/${categorySlug}`}
-                      className="font-medium mb-2 block hover:text-primary"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      {category.name}
-                    </Link>
-                    <div className="space-y-1 ml-2 mb-3">
-                      {category.children.map((sub, index) => {
-                        return (
-                          <div key={index}>
-                            <Link
-                              to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}`}
-                              className="text-sm font-medium text-muted-foreground hover:text-primary block py-0.5"
-                              onClick={() => setIsMenuOpen(false)}
-                            >
-                              {sub.name}
-                            </Link>
-                            {sub.children && sub.children.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5 ml-3 mt-0.5">
-                                {sub.children.map((child, cIndex) => (
-                                  <Link
-                                    key={cIndex}
-                                    to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
-                                    className="text-xs text-muted-foreground hover:text-primary px-2 py-0.5 bg-secondary rounded-full"
-                                    onClick={() => setIsMenuOpen(false)}
-                                  >
-                                    {child.name}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="p-4 space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Danh mục sản phẩm</p>
+              {categories.map((category) => (
+                <MobileCategoryAccordion
+                  key={category.id}
+                  category={category}
+                  onClose={() => setIsMenuOpen(false)}
+                />
+              ))}
             </div>
 
-            {/* Admin Section (Mobile) */}
-            {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role.name?.toUpperCase()) && (
-              <div className="border-t border-border pt-4 px-4 space-y-1">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary px-1 mb-2">Quản lý hệ thống</p>
-                <Link
-                  to="/admin"
-                  className="block px-1 py-2 text-sm font-bold text-primary hover:bg-secondary rounded transition-colors"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <div className="flex items-center">
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    Bảng điều khiển Admin
-                  </div>
-                </Link>
-              </div>
-            )}
 
             {/* Separator + Additional Links */}
             <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Khám phá</p>
-            {[
+              {[
                 { to: "/flash-sale", label: "🔥 Flash Sale" },
                 { to: "/orders", label: "📦 Đơn hàng của tôi" },
                 { to: "/blog", label: "Blog làm đẹp" },
@@ -300,6 +241,84 @@ const Header: React.FC = () => {
         )}
       </AnimatePresence>
     </header>
+  );
+};
+
+interface MobileCategoryAccordionProps {
+  category: any;
+  onClose: () => void;
+}
+
+const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ category, onClose }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
+  const hasChildren = category.children && category.children.length > 0;
+
+  return (
+    <div className="border-b border-border/50 last:border-0">
+      <div className="flex items-center justify-between py-3">
+        <Link
+          to={`/category/${categorySlug}`}
+          className="font-semibold text-foreground hover:text-primary transition-colors flex-1"
+          onClick={onClose}
+        >
+          {category.name}
+        </Link>
+        {hasChildren && (
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 hover:bg-secondary rounded-md transition-colors"
+          >
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </motion.div>
+          </button>
+        )}
+      </div>
+
+      <AnimatePresence>
+        {isOpen && hasChildren && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden bg-secondary/30 rounded-lg mb-2"
+          >
+            <div className="p-3 space-y-3">
+              {category.children.map((sub: any, index: number) => (
+                <div key={index} className="space-y-2">
+                  <Link
+                    to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}`}
+                    className="text-sm font-bold text-foreground hover:text-primary block"
+                    onClick={onClose}
+                  >
+                    {sub.name}
+                  </Link>
+                  {sub.children && sub.children.length > 0 && (
+                    <div className="flex flex-wrap gap-2 ml-1">
+                      {sub.children.map((child: any, cIndex: number) => (
+                        <Link
+                          key={cIndex}
+                          to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
+                          className="text-[11px] font-medium text-muted-foreground hover:text-primary px-2 py-1 bg-background border border-border rounded-full hover:border-primary transition-all"
+                          onClick={onClose}
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
