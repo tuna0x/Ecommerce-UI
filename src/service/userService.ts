@@ -40,8 +40,17 @@ export const UserService = {
     age?: number;
     gender?: string;
     image?: string;
-  }): Promise<IApiResponse<IUser>> => {
-    const res = await axiosInstance.put(BASE_URL, data);
+  }, file?: File): Promise<IApiResponse<IUser>> => {
+    const formData = new FormData();
+    formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
+    if (file) {
+      formData.append("file", file);
+    }
+    const res = await axiosInstance.put(BASE_URL, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return res.data;
   },
 };

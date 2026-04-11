@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
@@ -33,12 +33,39 @@ const Account = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!user) {
       navigate('/login');
     }
   }, [user, navigate]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          variant: 'destructive',
+          title: 'Lỗi',
+          description: 'Kích thước ảnh tối đa 5MB.',
+        });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,11 +78,13 @@ const Account = () => {
         age: formData.age,
         gender: formData.gender,
         image: user.image,
-      });
+      }, selectedFile || undefined);
 
       if (res.data) {
         setUser(res.data);
         localStorage.setItem('user', JSON.stringify(res.data));
+        setSelectedFile(null);
+        setPreviewUrl(null);
         toast({
           title: 'Thành công',
           description: 'Thông tin cá nhân đã được cập nhật.',
@@ -101,16 +130,26 @@ const Account = () => {
           <Card className="lg:col-span-1">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-                <div className="relative">
-                  <Avatar className="w-24 h-24">
-                    <AvatarImage src={user.image} />
+                <div className="relative group">
+                  <Avatar className="w-24 h-24 border-2 border-primary/20 cursor-pointer" onClick={handleAvatarClick}>
+                    <AvatarImage src={previewUrl || user.image} />
                     <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                       {user.name && user.name.length > 0 ? user.name.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <button className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full hover:bg-primary/90">
+                  <button 
+                    onClick={handleAvatarClick}
+                    className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 shadow-lg transition-transform hover:scale-110 active:scale-95"
+                  >
                     <Camera className="w-4 h-4" />
                   </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                  />
                 </div>
                 <h2 className="mt-4 font-semibold text-lg">{user.name}</h2>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
