@@ -258,11 +258,29 @@ const Header: React.FC = () => {
               })}
             </div>
 
+            {/* Admin Section (Mobile) */}
+            {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role.name?.toUpperCase()) && (
+              <div className="border-t border-border pt-4 px-4 space-y-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-primary px-1 mb-2">Quản lý hệ thống</p>
+                <Link
+                  to="/admin"
+                  className="block px-1 py-2 text-sm font-bold text-primary hover:bg-secondary rounded transition-colors"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <div className="flex items-center">
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Bảng điều khiển Admin
+                  </div>
+                </Link>
+              </div>
+            )}
+
             {/* Separator + Additional Links */}
             <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Khám phá</p>
-              {[
+            {[
                 { to: "/flash-sale", label: "🔥 Flash Sale" },
+                { to: "/orders", label: "📦 Đơn hàng của tôi" },
                 { to: "/blog", label: "Blog làm đẹp" },
                 { to: "/about", label: "Về chúng tôi" },
                 { to: "/contact", label: "Liên hệ" },

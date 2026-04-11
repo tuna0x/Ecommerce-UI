@@ -118,16 +118,8 @@ const Category = () => {
       setIsLoading(true);
       const filters = [];
 
-      // Hierarchical Category Filter
-      if (activeCategoryNode && slug !== "all") {
-        const allIds = getDescendantIds(activeCategoryNode);
-        if (allIds.length === 1) {
-          filters.push(`category.id:${allIds[0]}`);
-        } else {
-          // Use space instead of comma for spring-filter IN clause
-          filters.push(`category.id in (${allIds.join(" ")})`);
-        }
-      }
+      // hierarchical category is handled by backend if categoryId is passed
+      const categoryIdFilter = (activeCategoryNode && slug !== "all") ? activeCategoryNode.id : undefined;
 
       // Brand filter
       if (selectedBrands.length > 0) {
@@ -146,7 +138,8 @@ const Category = () => {
         meta.pageSize,
         undefined,
         sortBy,
-        filterString
+        filterString,
+        categoryIdFilter
       );
 
       if (res.data) {
