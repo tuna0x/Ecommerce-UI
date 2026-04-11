@@ -123,6 +123,16 @@ const Account = () => {
                 >
                   Đăng xuất
                 </Button>
+
+                {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role.name?.toUpperCase()) && (
+                  <Button
+                    className="mt-2 w-full bg-primary text-primary-foreground font-bold"
+                    onClick={() => navigate('/admin')}
+                  >
+                    <Save className="w-4 h-4 mr-2" /> {/* Reusing Save icon or similar if LayoutDashboard not imported */}
+                    Quản trị hệ thống
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -134,10 +144,10 @@ const Account = () => {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="profile">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
-                  <TabsTrigger value="address">Địa chỉ giao hàng</TabsTrigger>
-                  <TabsTrigger value="password">Đổi mật khẩu</TabsTrigger>
+                <TabsList className="w-full justify-start overflow-x-auto overflow-y-hidden flex-nowrap mb-6 bg-secondary/50 p-1 custom-scrollbar">
+                  <TabsTrigger value="profile" className="flex-shrink-0">Thông tin cá nhân</TabsTrigger>
+                  <TabsTrigger value="address" className="flex-shrink-0">Địa chỉ giao hàng</TabsTrigger>
+                  <TabsTrigger value="password" className="flex-shrink-0">Đổi mật khẩu</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="profile">
