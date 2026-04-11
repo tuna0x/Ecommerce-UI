@@ -50,6 +50,7 @@ const Account = () => {
         name: formData.name,
         age: formData.age,
         gender: formData.gender,
+        image: user.image,
       });
 
       if (res.data) {

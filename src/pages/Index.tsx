@@ -13,6 +13,7 @@ import CartSidebar from '../components/CartSidebar';
 import Footer from '../components/Footer';
 import MobileNavBar from '../components/MobileNavBar';
 import ChatBot from '../components/ChatBot';
+import CategorySlider from '../components/CategorySlider';
 import ScrollReveal from '../components/ScrollReveal';
 
 const Index: React.FC = () => {
@@ -22,6 +23,7 @@ const Index: React.FC = () => {
       <Header />
       <main>
         <HeroSlider />
+        <CategorySlider />
         <ScrollReveal>
           <FlashSale />
         </ScrollReveal>
