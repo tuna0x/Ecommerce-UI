@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Clock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/use-toast";
+import { sendOtpApi, verifyOtpApi } from "../service/authService";
 
 const Register: React.FC = () => {
   const [name, setName] = useState("");
@@ -15,26 +16,89 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // OTP States
+  const [otp, setOtp] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
   const { register } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    let timer: any;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
-    if (password !== confirmPassword) {
+  const handleSendOtp = async () => {
+    if (!email || !email.includes("@")) {
       toast({
         title: "Lỗi",
-        description: "Mật khẩu xác nhận không khớp.",
+        description: "Vui lòng nhập email hợp lệ trước khi gửi mã.",
         variant: "destructive",
       });
       return;
     }
 
-    if (password.length < 6) {
+    setIsSendingOtp(true);
+    try {
+      await sendOtpApi(email);
+      setIsOtpSent(true);
+      setCountdown(60);
+      toast({
+        title: "Đã gửi mã OTP",
+        description: "Vui lòng kiểm tra email của bạn.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Lỗi gửi mã",
+        description: error.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // STEP 1: Send OTP
+    if (!isOtpSent) {
+      if (password !== confirmPassword) {
+        toast({
+          title: "Lỗi",
+          description: "Mật khẩu xác nhận không khớp.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (password.length < 6) {
+        toast({
+          title: "Lỗi",
+          description: "Mật khẩu phải có ít nhất 6 ký tự.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await handleSendOtp();
+      return;
+    }
+
+    // STEP 2: Verify & Register
+    if (!otp) {
       toast({
         title: "Lỗi",
-        description: "Mật khẩu phải có ít nhất 6 ký tự.",
+        description: "Vui lòng nhập mã OTP.",
         variant: "destructive",
       });
       return;
@@ -42,23 +106,35 @@ const Register: React.FC = () => {
 
     setIsLoading(true);
 
-    const success = await register({ name, email, password });
+    try {
+      // 1. Verify OTP
+      await verifyOtpApi(email, otp);
+      
+      // 2. Register
+      const success = await register({ name, email, password });
 
-    if (success) {
+      if (success) {
+        toast({
+          title: "Đăng ký thành công!",
+          description: "Chào mừng bạn đến với Bông Cosmetic.",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Đăng ký thất bại",
+          description: "Email này đã được sử dụng hoặc có lỗi xảy ra.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+      }
+    } catch (error: any) {
       toast({
-        title: "Đăng ký thành công!",
-        description: "Chào mừng bạn đến với Bông Cosmetic.",
-      });
-      navigate("/login");
-    } else {
-      toast({
-        title: "Đăng ký thất bại",
-        description: "Email này đã được sử dụng.",
+        title: "Xác thực thất bại",
+        description: error.response?.data?.message || "Mã OTP không chính xác.",
         variant: "destructive",
       });
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -89,102 +165,158 @@ const Register: React.FC = () => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="name">Họ và tên</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Nguyễn Văn A"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
+            {!isOtpSent ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label htmlFor="name">Họ và tên</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Nguyễn Văn A"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Mật khẩu</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                id="terms"
-                className="rounded border-border mt-1"
-                required
-              />
-              <label htmlFor="terms" className="text-sm text-muted-foreground">
-                Tôi đồng ý với{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Điều khoản dịch vụ
-                </a>{" "}
-                và{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Chính sách bảo mật
-                </a>
-              </label>
-            </div>
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    className="rounded border-border mt-1"
+                    required
+                  />
+                  <label htmlFor="terms" className="text-sm text-muted-foreground">
+                    Tôi đồng ý với{" "}
+                    <a href="#" className="text-primary hover:underline">Điều khoản dịch vụ</a> và{" "}
+                    <a href="#" className="text-primary hover:underline">Chính sách bảo mật</a>
+                  </label>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-6"
+              >
+                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+                  <p className="text-sm text-center text-muted-foreground">
+                    Mã xác thực đã được gửi đến: <br />
+                    <span className="font-semibold text-foreground">{email}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsOtpSent(false)}
+                    className="block mx-auto mt-2 text-xs text-primary hover:underline"
+                  >
+                    Thay đổi Email?
+                  </button>
+                </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Đang đăng ký..." : "Đăng ký"}
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Mã xác thực OTP</Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="otp"
+                      type="text"
+                      placeholder="Nhập 6 số"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      className="pl-10 text-center tracking-[0.5em] font-bold text-lg"
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-xs text-muted-foreground">Không nhận được mã?</span>
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={countdown > 0}
+                      className="text-xs text-primary font-medium disabled:text-muted-foreground hover:underline"
+                    >
+                      {countdown > 0 ? `Gửi lại sau ${countdown}s` : "Gửi lại ngay"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading || isSendingOtp}>
+              {isLoading || isSendingOtp ? (
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Đang xử lý...
+                </div>
+              ) : (
+                isOtpSent ? "Xác nhận & Hoàn tất" : "Tiếp tục đăng ký"
+              )}
             </Button>
           </form>
 

@@ -79,7 +79,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     // Initial Fetch & Sync
     useEffect(() => {
-        const syncAndFetch = async () => {
+        const fetchCartFromDb = async () => {
             if (!isAuthenticated) {
                 hasSyncedRef.current = false;
                 return;
@@ -89,42 +89,24 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
             setIsLoading(true);
             try {
-                // 1. Fetch current DB cart
-                const res = await getCartApi();
-                let currentDbItems = res.data?.data?.item || [];
-
-                // 2. Sync local items if any
-                const localItems = getInitialCart().filter(li => !currentDbItems.some((di: ICartItemResponse) =>
-                    (li.variantId ? li.variantId === di.variantId : li.id === di.product.id)
-                ));
-
-                if (localItems.length > 0) {
-                    for (const item of localItems) {
-                        try {
-                            await addToCartApi(item.id, item.quantity, item.variantId);
-                        } catch (e) {
-                            console.error("Sync failed for", item.name, e);
-                        }
-                    }
-                    // Re-fetch after sync
-                    const finalRes = await getCartApi();
-                    currentDbItems = finalRes.data?.data?.item || [];
-                }
-
-                // BUGFIX: Clear local cart to prevent deleted legacy items from resurrecting on refresh
+                // BUGFIX: Clear local cart immediately to ensure we only use DB data
                 localStorage.removeItem("BÔNGCOSMETIC_cart");
+
+                // Fetch current DB cart
+                const res = await getCartApi();
+                const currentDbItems = res.data?.data?.item || [];
 
                 const mappedItems = currentDbItems.map(mapDbItemToCartItem);
                 setCartItems(mappedItems);
                 hasSyncedRef.current = true;
             } catch (error) {
-                console.error("Cart sync failed", error);
+                console.error("Cart fetch failed", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        syncAndFetch();
+        fetchCartFromDb();
     }, [isAuthenticated, mapDbItemToCartItem]);
 
     // Persist to localStorage (as backup/guest cart)
