@@ -79,10 +79,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (registerData: IRegister): Promise<boolean> => {
     try {
-      await registerApi(registerData);
+      const res = await registerApi(registerData);
+      const token = res.data?.access_token;
+      const userData = res.data?.user;
+
+      if (token && userData) {
+        localStorage.setItem("access_token", token);
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+      }
       return true;
     } catch (error) {
-       console.error("Register error", error);
+      console.error("Register error", error);
       return false;
     }
   };
