@@ -67,3 +67,7 @@ export const updateOrderStatusApi = async (id: number, status: string) => {
 export const bulkUpdateOrderStatusApi = async (ids: number[], status: string) => {
     return axiosInstance.post("/order/bulk-status", { ids, status });
 };
+
+export const cancelOrderApi = async (id: number, reason: string) => {
+    return axiosInstance.put(`/order/${id}/cancel?reason=${encodeURIComponent(reason)}`);
+};

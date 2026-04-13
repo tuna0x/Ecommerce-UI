@@ -36,8 +36,23 @@ import {
   CreditCard,
   Loader2,
   Package,
+  AlertCircle,
 } from "lucide-react";
-import { getMyOrdersApi, type OrderRes } from "../service/orderService";
+import { getMyOrdersApi, cancelOrderApi, type OrderRes } from "../service/orderService";
+import { useToast } from "../hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { Label } from "../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
+import { Input } from "../components/ui/input";
 
 const statusConfig = {
   PENDING: {
@@ -71,17 +86,40 @@ const paymentMethodLabels: Record<string, string> = {
   COD: "Thanh toán khi nhận hàng",
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   VNPAY: "Ví VNPAY",
+  MOMO: "Ví MoMo",
+  BANKING: "Chuyển khoản"
 };
+
+const paymentStatusConfig: Record<string, { label: string; color: string }> = {
+  PAID: {
+    label: "ĐÃ THANH TOÁN",
+    color: "text-green-600 bg-green-50",
+  },
+  UNPAID: {
+    label: "CHỜ THANH TOÁN",
+    color: "text-orange-600 bg-orange-50",
+  },
+};
+
+const CANCEL_REASONS = [
+  "Tôi muốn đổi sản phẩm khác",
+  "Tôi tìm thấy giá tốt hơn ở nơi khác",
+  "Thông tin nhận hàng bị sai",
+  "Thời gian giao hàng quá lâu",
+  "Tôi đổi ý, không muốn mua nữa",
+  "Lý do khác",
+];
 
 // --- Optimized OrderCard (Memoized & External) ---
 interface OrderCardProps {
   order: OrderRes;
   onViewDetail: (order: OrderRes) => void;
+  onCancel: (order: OrderRes) => void;
   formatPrice: (price: string | number | null | undefined) => string;
   formatDate: (date?: string) => string;
 }
 
-const OrderCard = memo(({ order, onViewDetail, formatPrice, formatDate }: OrderCardProps) => {
+const OrderCard = memo(({ order, onViewDetail, onCancel, formatPrice, formatDate }: OrderCardProps) => {
   const config = statusConfig[order.status as keyof typeof statusConfig] || statusConfig.PENDING;
   const StatusIcon = config.icon || Package;
 
@@ -135,15 +173,28 @@ const OrderCard = memo(({ order, onViewDetail, formatPrice, formatDate }: OrderC
                 {formatPrice(order.totalPrice || 0)}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full px-6 hover:bg-pink-600 hover:text-white hover:border-pink-600 transition-[background-color,border-color,color,transform] duration-200 font-bold border-pink-200 text-pink-600 h-10 shadow-sm active:scale-95"
-              onClick={() => onViewDetail(order)}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Chi tiết
-            </Button>
+            <div className="flex flex-col gap-2 w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full px-6 hover:bg-pink-600 hover:text-white hover:border-pink-600 transition-[background-color,border-color,color,transform] duration-200 font-bold border-pink-200 text-pink-600 h-10 shadow-sm active:scale-95 w-full"
+                onClick={() => onViewDetail(order)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Chi tiết
+              </Button>
+              {order.status === 'PENDING' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full px-6 text-red-500 hover:text-red-700 hover:bg-red-50 font-bold h-10 transition-colors duration-200 w-full"
+                  onClick={() => onCancel(order)}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Hủy đơn
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
@@ -159,6 +210,9 @@ const Orders = () => {
   const [orders, setOrders] = useState<OrderRes[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderRes | null>(null);
+
+  // Cancel order state
+  const [cancelOrder, setCancelOrder] = useState<OrderRes | null>(null);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -220,6 +274,10 @@ const Orders = () => {
 
   const handleViewDetail = useCallback((order: OrderRes) => {
     setSelectedOrder(order);
+  }, []);
+
+  const handleCancelClick = useCallback((order: OrderRes) => {
+    setCancelOrder(order);
   }, []);
 
   const filteredOrders = useMemo(() => {
@@ -305,6 +363,7 @@ const Orders = () => {
                             key={order.id}
                             order={order}
                             onViewDetail={handleViewDetail}
+                            onCancel={handleCancelClick}
                             formatPrice={formatPrice}
                             formatDate={formatDate}
                           />
@@ -318,6 +377,16 @@ const Orders = () => {
           </Tabs>
         )}
       </main>
+
+      {/* Cancel Order Dialog */}
+      <CancelOrderDialog
+        order={cancelOrder}
+        onClose={() => setCancelOrder(null)}
+        onSuccess={() => {
+          setCancelOrder(null);
+          fetchOrders();
+        }}
+      />
 
       {/* Order Detail Dialog - BORDERLESS COSMETICURY REFINEMENT */}
       <Dialog
@@ -412,8 +481,11 @@ const Orders = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Tình trạng</p>
-                      <Badge variant="outline" className={`${selectedOrder.paymentStatus === 'PAID' ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50'} font-black px-4 py-1 rounded-full text-[10px] tracking-tighter border-none outline-none`}>
-                        {selectedOrder.paymentStatus === 'PAID' ? 'ĐÃ TRẢ TIỀN' : 'CHỜ THANH TOÁN'}
+                      <Badge 
+                        variant="outline" 
+                        className={`font-black px-4 py-1 rounded-full text-[10px] tracking-tighter border-none outline-none ${(paymentStatusConfig[selectedOrder.paymentStatus] || paymentStatusConfig.UNPAID).color}`}
+                      >
+                        {(paymentStatusConfig[selectedOrder.paymentStatus] || paymentStatusConfig.UNPAID).label}
                       </Badge>
                     </div>
                   </CardContent>
@@ -488,5 +560,131 @@ const Orders = () => {
     </div>
   );
 };
+
+// --- Sub-component: CancelOrderDialog (Optimized) ---
+interface CancelOrderDialogProps {
+  order: OrderRes | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+const CancelOrderDialog = memo(({ order, onClose, onSuccess }: CancelOrderDialogProps) => {
+  const { toast } = useToast();
+  const [cancelReason, setCancelReason] = useState(CANCEL_REASONS[0]);
+  const [customReason, setCustomReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelSubmit = async () => {
+    if (!order) return;
+    
+    const finalReason = cancelReason === "Lý do khác" ? customReason : cancelReason;
+    if (cancelReason === "Lý do khác" && !customReason.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Vui lòng nhập lý do hủy đơn.",
+      });
+      return;
+    }
+
+    try {
+      setCancelling(true);
+      await cancelOrderApi(order.id, finalReason);
+      toast({
+        title: "Thành công",
+        description: `Đơn hàng #${order.id} đã được hủy.`,
+      });
+      onSuccess();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.response?.data?.message || "Không thể hủy đơn hàng vào lúc này.",
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <AlertDialog
+      open={!!order}
+      onOpenChange={(open) => !open && !cancelling && onClose()}
+    >
+      <AlertDialogContent className="max-w-md rounded-3xl p-6 md:p-8 bg-white border-none shadow-2xl">
+        <AlertDialogHeader>
+          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+            <AlertCircle className="w-7 h-7 text-red-500" />
+          </div>
+          <AlertDialogTitle className="text-2xl font-black text-gray-900 tracking-tight">Hủy đơn hàng này?</AlertDialogTitle>
+          <AlertDialogDescription className="text-gray-500 font-bold text-sm leading-relaxed pt-2">
+            Bạn đang yêu cầu hủy đơn hàng <span className="text-red-500 font-black">#{order?.transactionID || order?.id}</span>. 
+            Vui lòng cho chúng tôi biết lý do của bạn nhé.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="py-6">
+          <RadioGroup 
+            value={cancelReason} 
+            onValueChange={setCancelReason}
+            className="space-y-3"
+          >
+            {CANCEL_REASONS.map((reason) => (
+              <div 
+                key={reason} 
+                className="flex items-center space-x-3 bg-gray-50 p-3 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group"
+                onClick={() => setCancelReason(reason)}
+              >
+                <RadioGroupItem value={reason} id={reason} className="border-gray-300 text-pink-600 focus:ring-pink-600" />
+                <Label htmlFor={reason} className="text-sm font-bold text-gray-700 cursor-pointer flex-1 py-1">
+                  {reason}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+
+          {cancelReason === "Lý do khác" && (
+            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <Input 
+                placeholder="Nhập lý do chi tiết của bạn..."
+                className="rounded-xl border-gray-200 font-bold h-12 focus:ring-pink-600"
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <AlertDialogFooter className="gap-3 sm:gap-2">
+          <AlertDialogCancel 
+            disabled={cancelling}
+            className="rounded-full h-12 font-bold bg-gray-50 border-none hover:bg-gray-100 text-gray-500"
+          >
+            Quay lại
+          </AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Button
+              disabled={cancelling}
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelSubmit();
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white rounded-full h-12 font-black shadow-lg shadow-red-200/50 active:scale-95 transition-all w-full sm:w-auto min-w-[120px]"
+            >
+              {cancelling ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Đang xử lý
+                </>
+              ) : (
+                "Xác nhận hủy"
+              )}
+            </Button>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+});
 
 export default Orders;
