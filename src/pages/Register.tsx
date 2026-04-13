@@ -51,7 +51,7 @@ const Register: React.FC = () => {
     try {
       await sendOtpApi(email);
       setIsOtpSent(true);
-      setCountdown(60);
+      setCountdown(300);
       toast({
         title: "Đã gửi mã OTP",
         description: "Vui lòng kiểm tra email của bạn.",
@@ -301,7 +301,9 @@ const Register: React.FC = () => {
                       disabled={countdown > 0}
                       className="text-xs text-primary font-medium disabled:text-muted-foreground hover:underline"
                     >
-                      {countdown > 0 ? `Gửi lại sau ${countdown}s` : "Gửi lại ngay"}
+                      {countdown > 0 
+                        ? `Gửi lại sau ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}` 
+                        : "Gửi lại ngay"}
                     </button>
                   </div>
                 </div>
