@@ -126,11 +126,11 @@ const PaymentResult: React.FC = () => {
                     <CardFooter className="flex flex-col sm:flex-row gap-3 pt-6 pb-8">
                         <Button
                             className="w-full flex items-center justify-center gap-2"
-                            onClick={() => navigate('/orders')}
+                            onClick={() => navigate(isSuccess ? '/orders' : '/checkout')}
                             variant={isSuccess ? "default" : "outline"}
                         >
-                            <Receipt className="w-4 h-4" />
-                            Xem đơn hàng
+                            {isSuccess ? <Receipt className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
+                            {isSuccess ? 'Xem đơn hàng' : 'Thanh toán lại'}
                         </Button>
                         <Button
                             className="w-full relative group overflow-hidden"
