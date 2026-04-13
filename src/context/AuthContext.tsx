@@ -3,7 +3,7 @@ import React, {
   useContext,
   useState,
 } from "react";
-import { loginApi, registerApi } from "../service/authService";
+import { loginApi, registerApi, socialLoginApi } from "../service/authService";
 import type {
   ILoginPayload,
   IRegister,
@@ -24,6 +24,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (login: ILoginPayload) => Promise<boolean>;
+  socialLogin: (idToken: string) => Promise<boolean>;
   register: (register: IRegister) => Promise<boolean>;
   logout: () => void;
   setUser: (user: User | null) => void;
@@ -71,6 +72,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const socialLogin = async (idToken: string): Promise<boolean> => {
+    try {
+      const res = await socialLoginApi(idToken);
+      const token = res.data?.access_token;
+      const userData = res.data?.user;
+
+      if (!token || !userData) {
+        return false;
+      }
+
+      localStorage.setItem("access_token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      setUser(userData);
+      return true;
+    } catch (error) {
+      console.error("Social login error", error);
+      return false;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("access_token");
     localStorage.removeItem("user");
@@ -100,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         login,
+        socialLogin,
         logout,
         register,
         setUser,

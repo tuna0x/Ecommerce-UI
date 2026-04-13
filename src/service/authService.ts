@@ -37,3 +37,11 @@ export const verifyOtpApi = async (email: string, otp: string) => {
   );
   return response.data;
 };
+
+export const socialLoginApi = async (idToken: string) => {
+  const response = await axiosInstance.post<IApiResponse<ILoginResponse>>(
+    "/auth/social-login",
+    { idToken },
+  );
+  return response.data;
+};
