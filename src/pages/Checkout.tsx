@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +37,10 @@ import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import type { ShippingAddress } from '../components/AddressManagement';
+import { addressDataService } from '../service/addressDataService';
+import type { LocationItem } from '../service/addressDataService';
+import { getShippingFeeApi, getShippingFeePreviewApi } from '../service/shippingService';
+import { SearchableSelect } from '../components/SearchableSelect';
 
 
 import { AddressService } from '../service/addressService';
@@ -89,7 +93,11 @@ const Checkout: React.FC = () => {
     district: '',
     ward: '',
     note: '',
+    isDefault: false,
   });
+
+  const [isAddressConfirmed, setIsAddressConfirmed] = useState(false);
+  const [isCheckingFee, setIsCheckingFee] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +108,83 @@ const Checkout: React.FC = () => {
   const [isVoucherLoading, setIsVoucherLoading] = useState(false);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
+
+  // Location Data State
+  const [provinces, setProvinces] = useState<LocationItem[]>([]);
+  const [districts, setDistricts] = useState<LocationItem[]>([]);
+  const [wards, setWards] = useState<LocationItem[]>([]);
+
+  useEffect(() => {
+    const loadProvinces = async () => {
+      const data = await addressDataService.getProvinces();
+      setProvinces(data);
+    };
+    loadProvinces();
+  }, []);
+
+  const handleProvinceChange = async (provinceName: string) => {
+    setFormData(prev => ({ ...prev, city: provinceName, district: '', ward: '' }));
+    setIsAddressConfirmed(false);
+    setDistricts([]);
+    setWards([]);
+    
+    const province = provinces.find(p => p.name === provinceName);
+    if (province) {
+      const data = await addressDataService.getDistricts(province.code);
+      setDistricts(data);
+    }
+  };
+
+  const handleDistrictChange = async (districtName: string) => {
+    setFormData(prev => ({ ...prev, district: districtName, ward: '' }));
+    setIsAddressConfirmed(false);
+    setWards([]);
+
+    const district = districts.find(d => d.name === districtName);
+    if (district) {
+      const data = await addressDataService.getWards(district.code);
+      setWards(data);
+    }
+  };
+
+  const handleConfirmManualAddress = async () => {
+    if (!formData.city || !formData.district) {
+      toast.error('Vui lòng chọn Tỉnh và Quận/Huyện');
+      return;
+    }
+
+    const totalWeight = calculateTotalWeight();
+    const weightInGrams = Math.round(totalWeight * 1000);
+
+    setIsCheckingFee(true);
+    try {
+      const res = await getShippingFeePreviewApi(formData.city, formData.district, formData.ward, weightInGrams);
+      const feeValue = res?.data !== undefined ? res.data : res;
+      
+      if (typeof feeValue === 'number') {
+        setShippingFee(feeValue);
+        setIsAddressConfirmed(true);
+        toast.success('Đã xác nhận địa chỉ và tính phí vận chuyển');
+        
+        const roundedWeight = Math.round(weightInGrams / 100) * 100;
+        lastFetchParams.current = { 
+          addressId: `manual-${formData.city}-${formData.district}`, 
+          weight: roundedWeight 
+        };
+      } else {
+        toast.error('Không thể tính phí vận chuyển. Vui lòng thử lại sau.');
+      }
+    } catch (err) {
+      console.error("Manual Fee Check Error:", err);
+      toast.error('Lỗi khi tính phí vận chuyển');
+    } finally {
+      setIsCheckingFee(false);
+    }
+  };
+
+  // Dynamic Shipping Fee
+  const [shippingFee, setShippingFee] = useState(0);
+  const [isLoadingFee, setIsLoadingFee] = useState(false);
 
   useEffect(() => {
     const fetchUserCoupons = async () => {
@@ -148,6 +233,73 @@ const Checkout: React.FC = () => {
     toast.success('Đã áp dụng mã giảm giá');
   };
 
+  const calculateTotalWeight = () => {
+    return selectedItems.reduce((acc, item) => {
+      const variant = item.variants?.find(v => v.id === item.variantId);
+      const weight = Number(variant?.weight || item.weight || 0.5);
+      const quantity = Number(item.quantity || 1);
+      return acc + (weight * quantity);
+    }, 0);
+  };
+
+  const lastFetchParams = useRef<{ addressId: string; weight: number } | null>(null);
+
+  useEffect(() => {
+    const fetchShippingFee = async () => {
+      if (selectedItems.length === 0) {
+        setShippingFee(0);
+        return;
+      }
+
+      if (selectedTotal >= FREE_SHIPPING_THRESHOLD) {
+        setShippingFee(0);
+        return;
+      }
+
+      // ONLY auto-fetch for saved addresses
+      if (!selectedAddressId) {
+        // In manual mode, we wait for explicit confirmation
+        if (!isAddressConfirmed) {
+            setShippingFee(0);
+        }
+        return;
+      }
+
+      const totalWeight = calculateTotalWeight();
+      const weightInGrams = Math.round(totalWeight * 1000);
+      const roundedWeight = Math.round(weightInGrams / 100) * 100;
+
+      if (
+        lastFetchParams.current?.addressId === selectedAddressId &&
+        lastFetchParams.current?.weight === roundedWeight
+      ) {
+        return;
+      }
+
+      setIsLoadingFee(true);
+      try {
+        const res = await getShippingFeeApi(parseInt(selectedAddressId), weightInGrams);
+        const feeValue = res?.data !== undefined ? res.data : res;
+        
+        if (typeof feeValue === 'number') {
+          setShippingFee(feeValue);
+          lastFetchParams.current = { 
+            addressId: selectedAddressId, 
+            weight: roundedWeight 
+          };
+        }
+      } catch (err) {
+        console.error("Failed to fetch shipping fee", err);
+        setShippingFee(30000); 
+      } finally {
+        setIsLoadingFee(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchShippingFee, 500);
+    return () => clearTimeout(timeoutId);
+  }, [selectedAddressId, selectedTotal, selectedItems, isAddressConfirmed]);
+
   const handleManualApply = async () => {
     if (!couponCode) return;
 
@@ -177,26 +329,30 @@ const Checkout: React.FC = () => {
   };
 
   const hasFreeShipping = selectedTotal >= FREE_SHIPPING_THRESHOLD;
-  const shippingFee = hasFreeShipping ? 0 : 30000;
   const totalAmount = (selectedTotal + shippingFee - discountAmount) > 0 ? (selectedTotal + shippingFee - discountAmount) : 0;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Reset confirmation if critical address fields change
+    if (['city', 'district', 'ward', 'address'].includes(name)) {
+        setIsAddressConfirmed(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate
-    if (hasAddresses) {
-      if (!selectedAddressId) {
-        toast.error('Vui lòng chọn địa chỉ giao hàng');
+    if (hasAddresses && selectedAddressId) {
+      // Logic for existing address
+    } else {
+      if (!formData.fullName || !formData.phone || !formData.address || !formData.city || !formData.district) {
+        toast.error('Vui lòng điền đầy đủ thông tin giao hàng');
         return;
       }
-    } else {
-      if (!formData.fullName || !formData.phone || !formData.address || !formData.city) {
-        toast.error('Vui lòng điền đầy đủ thông tin giao hàng');
+      if (!isAddressConfirmed) {
+        toast.error('Vui lòng bấm "Xác nhận địa chỉ" để tính phí vận chuyển trước khi đặt hàng');
         return;
       }
     }
@@ -209,6 +365,34 @@ const Checkout: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      let finalAddressId = selectedAddressId ? parseInt(selectedAddressId) : null;
+
+      // If manual entry, save address first
+      if (!finalAddressId) {
+        try {
+          const newAddr = await AddressService.create({
+            receiverName: formData.fullName,
+            phone: formData.phone,
+            province: formData.city,
+            district: formData.district,
+            ward: formData.ward,
+            detail: formData.address,
+            isDefault: formData.isDefault
+          });
+          
+          if (newAddr.data) {
+            finalAddressId = (newAddr.data as any).id || (newAddr.data as any).result?.id;
+          }
+        } catch (addrErr) {
+          console.error("Failed to save manual address during checkout", addrErr);
+          throw new Error("Không thể lưu địa chỉ giao hàng. Vui lòng thử lại.");
+        }
+      }
+
+      if (!finalAddressId) {
+        throw new Error("Không tìm thấy địa chỉ giao hàng hợp lệ");
+      }
+
       const cartItemIds = selectedItems.map(item => item.dbItemId).filter(id => id !== undefined) as number[];
 
       interface OrderPayload {
@@ -219,7 +403,7 @@ const Checkout: React.FC = () => {
       }
 
       const payload: OrderPayload = {
-        addressId: parseInt(selectedAddressId as string),
+        addressId: finalAddressId,
         cartItemId: cartItemIds,
         couponCode: appliedCoupon ? appliedCoupon.code : (couponCode || null),
         paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD'
@@ -350,8 +534,8 @@ const Checkout: React.FC = () => {
                       <Input id="fullName" name="fullName" value={formData.fullName} onChange={handleInputChange} placeholder="Nguyễn Văn A" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Số điện thoại *</Label>
-                      <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="0912 345 678" required />
+                       <Label htmlFor="phone">Số điện thoại *</Label>
+                       <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="0912 345 678" required />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor="email">Email</Label>
@@ -362,20 +546,80 @@ const Checkout: React.FC = () => {
                       <Input id="address" name="address" value={formData.address} onChange={handleInputChange} placeholder="Số nhà, tên đường" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="city">Tỉnh/Thành phố *</Label>
-                      <Input id="city" name="city" value={formData.city} onChange={handleInputChange} placeholder="Hồ Chí Minh" required />
+                       <Label>Tỉnh/Thành phố *</Label>
+                       <SearchableSelect 
+                           options={provinces.map(p => ({ value: p.name, label: p.name }))}
+                           value={formData.city}
+                           onValueChange={handleProvinceChange}
+                           placeholder="Chọn Tỉnh/TP"
+                           className="h-11 rounded-xl"
+                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="district">Quận/Huyện</Label>
-                      <Input id="district" name="district" value={formData.district} onChange={handleInputChange} placeholder="Quận 1" />
+                       <Label>Quận/Huyện *</Label>
+                       <SearchableSelect 
+                           options={districts.map(d => ({ value: d.name, label: d.name }))}
+                           value={formData.district}
+                           onValueChange={handleDistrictChange}
+                           placeholder="Chọn Quận/Huyện"
+                           disabled={!formData.city}
+                           className="h-11 rounded-xl"
+                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="ward">Phường/Xã</Label>
-                      <Input id="ward" name="ward" value={formData.ward} onChange={handleInputChange} placeholder="Phường Bến Nghé" />
+                       <Label>Phường/Xã</Label>
+                       <SearchableSelect 
+                           options={wards.map(w => ({ value: w.name, label: w.name }))}
+                           value={formData.ward}
+                           onValueChange={(val) => setFormData(prev => ({ ...prev, ward: val }))}
+                           placeholder="Chọn Phường/Xã"
+                           disabled={!formData.district}
+                           className="h-11 rounded-xl"
+                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="note">Ghi chú</Label>
-                      <Input id="note" name="note" value={formData.note} onChange={handleInputChange} placeholder="Ghi chú cho đơn hàng" />
+                    <div className="space-y-2 sm:col-span-2">
+                       <Label htmlFor="note">Ghi chú</Label>
+                       <Input id="note" name="note" value={formData.note} onChange={handleInputChange} placeholder="Ghi chú cho đơn hàng" />
+                    </div>
+                    <div className="sm:col-span-2 pt-2">
+                       <div className="flex items-center space-x-2">
+                         <input 
+                            type="checkbox" 
+                            id="isDefault" 
+                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            checked={formData.isDefault}
+                            onChange={(e) => setFormData(prev => ({ ...prev, isDefault: e.target.checked }))}
+                         />
+                         <label htmlFor="isDefault" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                           Đặt làm địa chỉ mặc định
+                         </label>
+                       </div>
+                    </div>
+                    <div className="sm:col-span-2 mt-4">
+                        <Button 
+                            type="button"
+                            onClick={handleConfirmManualAddress}
+                            disabled={isCheckingFee}
+                            className={`w-full sm:w-auto h-11 px-8 rounded-xl font-bold transition-all ${
+                                isAddressConfirmed 
+                                ? 'bg-accent/10 border-accent text-accent hover:bg-accent/20' 
+                                : 'bg-primary text-white hover:bg-primary/90'
+                            }`}
+                        >
+                            {isCheckingFee ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Đang kiểm tra...
+                                </span>
+                            ) : isAddressConfirmed ? (
+                                <span className="flex items-center gap-2">
+                                    <Check className="w-4 h-4" />
+                                    Đã xác nhận địa chỉ
+                                </span>
+                            ) : (
+                                "Xác nhận địa chỉ & Tính phí ship"
+                            )}
+                        </Button>
                     </div>
                   </div>
                 )}
@@ -650,7 +894,12 @@ const Checkout: React.FC = () => {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Phí vận chuyển</span>
                     <span className={hasFreeShipping ? 'text-accent' : ''}>
-                      {hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}₫`}
+                      {isLoadingFee ? (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground italic">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Đang tính...
+                        </span>
+                      ) : hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}₫`}
                     </span>
                   </div>
                   {discountAmount > 0 && (
@@ -697,7 +946,7 @@ const Checkout: React.FC = () => {
                 </button>
 
                 <p className="text-xs text-center text-muted-foreground mt-4">
-                  Bằng việc đặt hàng, bạn đồng ý với{' '}
+                  Bằng việc đặt hàng, bận đồng ý với{' '}
                   <a href="#" className="text-primary hover:underline">Điều khoản sử dụng</a>
                   {' '}và{' '}
                   <a href="#" className="text-primary hover:underline">Chính sách bảo mật</a>

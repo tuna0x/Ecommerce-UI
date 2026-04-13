@@ -15,6 +15,9 @@ import {
 } from '../components/ui/dialog';
 import { MapPin, Plus, Pencil, Trash2, Star, Loader2 } from 'lucide-react';
 import { AddressService } from '../service/addressService';
+import { addressDataService } from '../service/addressDataService';
+import type { LocationItem } from '../service/addressDataService';
+import { SearchableSelect } from './SearchableSelect';
 
 export interface ShippingAddress {
     id: number | string;
@@ -45,6 +48,64 @@ const AddressManager: React.FC = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | string | null>(null);
     const [form, setForm] = useState(emptyForm);
+
+    // Location Data State
+    const [provinces, setProvinces] = useState<LocationItem[]>([]);
+    const [districts, setDistricts] = useState<LocationItem[]>([]);
+    const [wards, setWards] = useState<LocationItem[]>([]);
+
+    useEffect(() => {
+        const loadProvinces = async () => {
+            const data = await addressDataService.getProvinces();
+            setProvinces(data);
+        };
+        loadProvinces();
+    }, []);
+
+    const handleProvinceChange = async (provinceName: string) => {
+        setForm({ ...form, province: provinceName, district: '', ward: '' });
+        setDistricts([]);
+        setWards([]);
+        
+        const province = provinces.find(p => p.name === provinceName);
+        if (province) {
+            const data = await addressDataService.getDistricts(province.code);
+            setDistricts(data);
+        }
+    };
+
+    const handleDistrictChange = async (districtName: string) => {
+        setForm({ ...form, district: districtName, ward: '' });
+        setWards([]);
+
+        const district = districts.find(d => d.name === districtName);
+        if (district) {
+            const data = await addressDataService.getWards(district.code);
+            setWards(data);
+        }
+    };
+
+    // Pre-fetch districts/wards when editing
+    useEffect(() => {
+        const fetchDataForEdit = async () => {
+            if (dialogOpen && editingId && form.province) {
+                const province = provinces.find(p => p.name === form.province);
+                if (province) {
+                    const dData = await addressDataService.getDistricts(province.code);
+                    setDistricts(dData);
+                    
+                    if (form.district) {
+                        const district = dData.find(d => d.name === form.district);
+                        if (district) {
+                            const wData = await addressDataService.getWards(district.code);
+                            setWards(wData);
+                        }
+                    }
+                }
+            }
+        };
+        fetchDataForEdit();
+    }, [dialogOpen, editingId, provinces]);
 
     const fetchAddresses = async () => {
         try {
@@ -212,11 +273,12 @@ const AddressManager: React.FC = () => {
 
             {/* Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>{editingId ? 'Sửa địa chỉ' : 'Thêm địa chỉ mới'}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
+                        {/* Hàng 1: Tên & SĐT */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Họ và tên *</Label>
@@ -227,23 +289,46 @@ const AddressManager: React.FC = () => {
                                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0901234567" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                        {/* Hàng 2: Tỉnh & Huyện */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Tỉnh/Thành phố *</Label>
-                                <Input value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} placeholder="TP. Hồ Chí Minh" />
+                                <SearchableSelect
+                                    options={provinces.map(p => ({ value: p.name, label: p.name }))}
+                                    value={form.province}
+                                    onValueChange={handleProvinceChange}
+                                    placeholder="Chọn Tỉnh/TP"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Quận/Huyện *</Label>
-                                <Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} placeholder="Quận 1" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Phường/Xã</Label>
-                                <Input value={form.ward} onChange={(e) => setForm({ ...form, ward: e.target.value })} placeholder="Phường Bến Nghé" />
+                                <SearchableSelect
+                                    options={districts.map(d => ({ value: d.name, label: d.name }))}
+                                    value={form.district}
+                                    onValueChange={handleDistrictChange}
+                                    placeholder="Chọn Quận/Huyện"
+                                    disabled={!form.province}
+                                />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label>Địa chỉ cụ thể *</Label>
-                            <Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} placeholder="123 Nguyễn Huệ" />
+
+                        {/* Hàng 3: Xã & Địa chỉ cụ thể */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Phường/Xã</Label>
+                                <SearchableSelect
+                                    options={wards.map(w => ({ value: w.name, label: w.name }))}
+                                    value={form.ward}
+                                    onValueChange={(val) => setForm({ ...form, ward: val })}
+                                    placeholder="Chọn Phường/Xã"
+                                    disabled={!form.district}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Địa chỉ cụ thể *</Label>
+                                <Input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} placeholder="123 Nguyễn Huệ" />
+                            </div>
                         </div>
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input
