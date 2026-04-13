@@ -15,6 +15,9 @@ export interface OrderRes {
     shippingAddress: string;
     receiverName: string;
     phone: string;
+    province: string;
+    district: string;
+    ward: string;
     transactionID: string;
     paymentMethod: string;
     paymentUrl?: string;

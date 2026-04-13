@@ -386,7 +386,12 @@ const Orders = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Địa chỉ giao hàng</p>
-                      <p className="text-xs text-gray-600 font-bold leading-relaxed">{selectedOrder.shippingAddress || "Chưa cập nhật địa chỉ"}</p>
+                      <p className="text-xs text-gray-600 font-bold leading-relaxed">
+                        {selectedOrder.shippingAddress && `${selectedOrder.shippingAddress}, `}
+                        {selectedOrder.ward && `${selectedOrder.ward}, `}
+                        {selectedOrder.district && `${selectedOrder.district}, `}
+                        {selectedOrder.province || "Chưa cập nhật địa chỉ"}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
