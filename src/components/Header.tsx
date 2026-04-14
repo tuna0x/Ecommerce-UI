@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -16,6 +16,7 @@ import {
 } from '../components/ui/dropdown-menu';
 import SearchDropdown from './SearchDropdown';
 import CategoryDropdown from './CategoryDropdown';
+import { getCategoryIcon } from '../lib/icons';
 
 const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
@@ -39,7 +40,11 @@ const Header: React.FC = () => {
           </button>
 
           {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
+          <Link 
+            to="/" 
+            className="flex-shrink-0"
+            onClick={() => setIsMenuOpen(false)}
+          >
             <h1 className="text-xl md:text-2xl font-bold tracking-tight">
               BÔNG<span className="text-primary">COSMETIC</span>
             </h1>
@@ -210,10 +215,10 @@ const Header: React.FC = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border overflow-y-auto max-h-[80vh] custom-scrollbar"
+            className="md:hidden border-t border-border overflow-y-auto max-h-[85vh] custom-scrollbar bg-background/95 backdrop-blur-xl shadow-2xl"
           >
-            <div className="p-4 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Danh mục sản phẩm</p>
+            <div className="p-4 space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-2 mb-3">Danh mục sản phẩm</p>
               {categories.map((category) => (
                 <MobileCategoryAccordion
                   key={category.id}
@@ -226,22 +231,25 @@ const Header: React.FC = () => {
 
             {/* Separator + Additional Links */}
             <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground px-1 mb-2">Khám phá</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-2 mb-3">Khám phá</p>
               {[
-                { to: "/flash-sale", label: "🔥 Flash Sale" },
-                { to: "/orders", label: "📦 Đơn hàng của tôi" },
-                { to: "/blog", label: "Blog làm đẹp" },
-                { to: "/about", label: "Về chúng tôi" },
-                { to: "/contact", label: "Liên hệ" },
-                { to: "/faq", label: "FAQ - Hỏi đáp" },
-              ].map(({ to, label }) => (
+                { to: "/flash-sale", label: "Flash Sale", icon: Flame, color: "text-orange-500" },
+                { to: "/orders", label: "Đơn hàng của tôi", icon: Package, color: "text-blue-500" },
+                { to: "/blog", label: "Blog làm đẹp", icon: BookOpen, color: "text-emerald-500" },
+                { to: "/about", label: "Về chúng tôi", icon: Info, color: "text-primary" },
+                { to: "/contact", label: "Liên hệ", icon: Phone, color: "text-teal-500" },
+                { to: "/faq", label: "FAQ - Hỏi đáp", icon: HelpCircle, color: "text-indigo-500" },
+              ].map(({ to, label, icon: Icon, color }) => (
                 <Link
                   key={to}
                   to={to}
-                  className="block px-1 py-2 text-sm font-semibold hover:text-primary transition-colors"
+                  className="flex items-center gap-3 px-2 py-3 text-sm font-semibold hover:bg-primary/5 rounded-xl transition-all"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {label}
+                  <div className={`w-8 h-8 rounded-lg bg-secondary flex items-center justify-center ${color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span>{label}</span>
                 </Link>
               ))}
             </div>
@@ -262,15 +270,20 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
   const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
   const hasChildren = category.children && category.children.length > 0;
 
+  const Icon = getCategoryIcon(category.name);
+  
   return (
-    <div className="border-b border-border/50 last:border-0">
-      <div className="flex items-center justify-between py-3">
+    <div className="group">
+      <div className="flex items-center justify-between py-1 px-1">
         <Link
           to={`/category/${categorySlug}`}
-          className="font-semibold text-foreground hover:text-primary transition-colors flex-1"
+          className="flex items-center gap-3 font-semibold text-foreground hover:text-primary transition-all flex-1 py-2"
           onClick={onClose}
         >
-          {category.name}
+          <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+            <Icon className="w-4 h-4" />
+          </div>
+          <span>{category.name}</span>
         </Link>
         {hasChildren && (
           <button
