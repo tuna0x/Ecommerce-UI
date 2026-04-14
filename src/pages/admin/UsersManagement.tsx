@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, Gift } from "lucide-react";
+import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, Gift, X, UserX } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -46,11 +46,13 @@ import { RoleService } from "../../service/roleService";
 import type { IUser, IUserAnalytics } from "../../types/user.type";
 import type { IRole } from "../../types/role.type";
 import PaginationControl from "../../components/PaginationControl";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const UsersManagement: React.FC = () => {
   const [users, setUsers] = useState<IUser[]>([]);
   const [roles, setRoles] = useState<IRole[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [pendingRoleChange, setPendingRoleChange] = useState<{ user: IUser; newRoleId: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +72,7 @@ const UsersManagement: React.FC = () => {
     setIsLoading(true);
     try {
       // Build filter
-      let filter = searchTerm ? `(name~'${searchTerm}' or email~'${searchTerm}')` : "";
+      let filter = debouncedSearchTerm ? `(name~'${debouncedSearchTerm}' or email~'${debouncedSearchTerm}')` : "";
       if (roleFilter !== "all") {
         filter = filter ? `${filter} and role.name:'${roleFilter}'` : `role.name:'${roleFilter}'`;
       }
@@ -87,7 +89,7 @@ const UsersManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, roleFilter, pageSize]);
+  }, [debouncedSearchTerm, roleFilter, pageSize]);
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -105,10 +107,9 @@ const UsersManagement: React.FC = () => {
     fetchRoles();
   }, [currentPage, fetchUsers, fetchRoles]);
 
-  const handleSearch = () => {
+  useEffect(() => {
     setCurrentPage(1);
-    fetchUsers(1);
-  };
+  }, [debouncedSearchTerm, roleFilter]);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -224,18 +225,25 @@ const UsersManagement: React.FC = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1 flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm kiếm theo tên, email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-10"
-                />
-              </div>
-              <Button onClick={handleSearch}>Tìm kiếm</Button>
+            <div className="flex-1 max-w-sm relative group">
+              <Search className={cn(
+                "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
+                isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
+              )} />
+              <Input
+                placeholder="Tìm kiếm theo tên, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-full sm:w-[180px]">
@@ -376,11 +384,28 @@ const UsersManagement: React.FC = () => {
                     </tr>
                   ))}
                   {users.length === 0 && !isLoading && (
-                      <tr>
-                          <td colSpan={6} className="text-center py-20 text-muted-foreground italic">
-                              Không tìm thấy người dùng nào phù hợp
-                          </td>
-                      </tr>
+                    <tr>
+                      <td colSpan={6} className="py-20 text-center">
+                        <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                          <div className="relative mb-4">
+                             <UserX className="w-12 h-12 opacity-20" />
+                             <Search className="w-6 h-6 absolute -bottom-1 -right-1 text-primary animate-bounce" />
+                          </div>
+                          <p className="font-semibold text-foreground">Không tìm thấy kết quả</p>
+                          <p className="text-xs mt-1 text-center">Vui lòng thử lại với từ khóa hoặc bộ lọc khác</p>
+                          {searchTerm && (
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              onClick={() => setSearchTerm("")}
+                              className="mt-2 text-primary h-auto p-0"
+                            >
+                              Xóa tìm kiếm
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

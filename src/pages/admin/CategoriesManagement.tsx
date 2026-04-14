@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, FolderTree, ListChecks, HelpCircle, Loader2, X, SearchX } from "lucide-react";
+import { cn } from "../../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -33,6 +34,7 @@ import {
 import { SearchableSelect } from "../../components/SearchableSelect";
 
 import PaginationControl from "../../components/PaginationControl";
+import { useDebounce } from "../../hooks/useDebounce";
 import type {
   ICategory,
   ICreateCategory,
@@ -49,6 +51,7 @@ const CategoriesManagement: React.FC = () => {
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<ICreateCategory>({
@@ -64,7 +67,7 @@ const CategoriesManagement: React.FC = () => {
       const res = await categoryService.getAll(
         currentPage - 1,
         10,
-        search,
+        debouncedSearch,
         "updatedAt,desc",
       );
       if (res.data) {
@@ -76,7 +79,7 @@ const CategoriesManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search]);
+  }, [currentPage, debouncedSearch]);
 
   const fetchAllCategories = useCallback(async () => {
     try {
@@ -188,17 +191,25 @@ const CategoriesManagement: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 max-w-sm group">
+          <Search className={cn(
+            "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
+            isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
+          )} />
           <Input
             placeholder="Tìm kiếm thể loại..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10"
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 pr-10"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -238,8 +249,24 @@ const CategoriesManagement: React.FC = () => {
                 ))
                 ) : category?.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                    Không tìm thấy thể loại nào.
+                    <TableCell colSpan={7} className="text-center py-20 px-4">
+                        <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                          <div className="relative mb-4">
+                             <SearchX className="w-12 h-12 opacity-20" />
+                          </div>
+                          <p className="font-semibold text-foreground">Không tìm thấy kết quả</p>
+                          <p className="text-xs mt-1 text-center font-normal">Vui lòng thử lại với từ khóa khác</p>
+                          {search && (
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              onClick={() => setSearch("")}
+                              className="mt-2 text-primary h-auto p-0"
+                            >
+                              Xóa tìm kiếm
+                            </Button>
+                          )}
+                        </div>
                     </TableCell>
                 </TableRow>
                 ) : (
