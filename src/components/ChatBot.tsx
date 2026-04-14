@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
 import { X, Bot, Sparkles, Send, MessageSquare, ShieldCheck } from 'lucide-react';
@@ -13,9 +13,10 @@ import { cn } from '../lib/utils';
 type Message = { role: 'user' | 'assistant' | 'admin'; content: string; timestamp?: string };
 
 const quickQuestions = [
-    { label: '💄 Gợi ý sản phẩm', value: 'Gợi ý sản phẩm phù hợp cho mình' },
-    { label: '🔥 Bán chạy nhất', value: 'Sản phẩm bán chạy nhất hiện tại' },
-    { label: '🧴 Tư vấn skincare', value: 'Tư vấn skincare cho da dầu mụn' },
+    { label: '🔥 Đang Flashsale', value: 'Có sản phẩm nào đang flashsale hay giảm giá không?' },
+    { label: '🛒 Xem Giỏ Hàng', value: 'Trong giỏ hàng của tôi đang có những gì?' },
+    { label: '📦 Tình trạng đơn', value: 'Đơn hàng của tôi bao giờ giao?' },
+    { label: '🎟️ Lấy mãi giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
 ];
 
 const ADMIN_EMAIL = 'admin@gmail.com';
@@ -120,7 +121,9 @@ const ChatBot: React.FC = () => {
             setIsLoading(true);
 
             try {
-                const data = await sendChatAPI(content);
+                // Send up to last 10 messages for context
+                const historyStr = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+                const data = await sendChatAPI(content, historyStr);
                 const assistantMsg: Message = {
                     role: 'assistant',
                     content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.'
@@ -269,7 +272,18 @@ const ChatBot: React.FC = () => {
                                                     : "bg-white border border-border/50 text-foreground rounded-bl-none prose prose-sm prose-pink"
                                             )}>
                                                 {msg.role === 'assistant' ? (
-                                                    <ReactMarkdown>
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            a: ({ node, ...props }) => (
+                                                                <Link 
+                                                                    to={props.href || "#"} 
+                                                                    className="text-pink-600 underline hover:text-pink-700 font-bold"
+                                                                >
+                                                                    {props.children}
+                                                                </Link>
+                                                            )
+                                                        }}
+                                                    >
                                                         {displayContent[idx] || (idx === 0 ? msg.content : '')}
                                                     </ReactMarkdown>
                                                 ) : msg.content}

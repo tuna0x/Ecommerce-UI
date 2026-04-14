@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { ArrowLeft, Phone, Video, Bot, Sparkles, MessageSquare, Send } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ChatBubble from '../components/chat/ChatBubble';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import { useChat } from '../context/ChatContext';
@@ -21,9 +21,9 @@ type AIMessage = { role: 'user' | 'assistant'; content: string };
 const Chat: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { 
-        activeMessages, 
-        setActivePartner, 
+    const {
+        activeMessages,
+        setActivePartner,
         sendMessage: sendP2PMessage,
         loadMoreHistory,
         hasMoreHistory,
@@ -108,17 +108,21 @@ const Chat: React.FC = () => {
         setInput('');
 
         if (mode === 'ai') {
-            const userMsg: AIMessage = { role: 'user', content };
-            setAiMessages(prev => [...prev, userMsg]);
+            if (isLoadingAI) return;
+            const newUserMsg: AIMessage = { role: 'user', content: content.trim() };
+            setAiMessages(prev => [...prev, newUserMsg]);
+            setInput('');
             setIsLoadingAI(true);
 
             try {
-                const data = await sendChatAPI(content);
-                const assistantMsg: AIMessage = {
+                // Send up to last 10 messages for context
+                const historyStr = aiMessages.slice(-10).map(m => ({ role: m.role, content: m.content }));
+                const data = await sendChatAPI(content, historyStr);
+                const newAssistantMsg: AIMessage = {
                     role: 'assistant',
                     content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.'
                 };
-                setAiMessages(prev => [...prev, assistantMsg]);
+                setAiMessages(prev => [...prev, newAssistantMsg]);
             } catch (error) {
                 console.error('AI Chat error:', error);
                 setAiMessages(prev => [...prev, { role: 'assistant', content: 'Xin lỗi, đã có lỗi xảy ra khi kết nối tới AI 😔' }]);
@@ -205,8 +209,8 @@ const Chat: React.FC = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div 
-                    ref={scrollRef} 
+                <div
+                    ref={scrollRef}
                     onScroll={handleScroll}
                     className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-6 bg-gradient-to-b from-transparent to-pink-50/10"
                 >
@@ -233,7 +237,18 @@ const Chat: React.FC = () => {
                                                 : "bg-white border border-slate-100 text-slate-800 rounded-bl-none prose prose-sm prose-pink"
                                         )}>
                                             {msg.role === 'assistant' ? (
-                                                <ReactMarkdown>
+                                                <ReactMarkdown
+                                                    components={{
+                                                        a: ({ node, ...props }) => (
+                                                            <Link 
+                                                                to={props.href || "#"} 
+                                                                className="text-pink-600 underline hover:text-pink-700 font-bold"
+                                                            >
+                                                                {props.children}
+                                                            </Link>
+                                                        )
+                                                    }}
+                                                >
                                                     {displayContent[idx] || (idx === 0 ? msg.content : '')}
                                                 </ReactMarkdown>
                                             ) : msg.content}
@@ -263,21 +278,21 @@ const Chat: React.FC = () => {
                                             </div>
                                         )}
                                         {activeMessages.map((msg, i) => {
-                                        const isOwn = msg.senderEmail === user?.email;
-                                        const showAvatar = i === 0 || activeMessages[i - 1]?.senderEmail !== msg.senderEmail;
-                                        return (
-                                            <ChatBubble
-                                                key={i}
-                                                content={msg.content}
-                                                isOwn={isOwn}
-                                                timestamp={msg.timestamp}
-                                                isRead={true}
-                                                showAvatar={showAvatar}
-                                                avatarFallback={isOwn ? (user?.email?.charAt(0).toUpperCase() || 'U') : 'AD'}
-                                            />
-                                        );
-                                    })}
-                                </>
+                                            const isOwn = msg.senderEmail === user?.email;
+                                            const showAvatar = i === 0 || activeMessages[i - 1]?.senderEmail !== msg.senderEmail;
+                                            return (
+                                                <ChatBubble
+                                                    key={i}
+                                                    content={msg.content}
+                                                    isOwn={isOwn}
+                                                    timestamp={msg.timestamp}
+                                                    isRead={true}
+                                                    showAvatar={showAvatar}
+                                                    avatarFallback={isOwn ? (user?.email?.charAt(0).toUpperCase() || 'U') : 'AD'}
+                                                />
+                                            );
+                                        })}
+                                    </>
                                 )}
                             </motion.div>
                         )}
@@ -305,7 +320,7 @@ const Chat: React.FC = () => {
                         </div>
                     </form>
                     <p className="text-[10px] text-center text-slate-400 mt-4 uppercase tracking-[0.2em] font-bold">
-                        Bong Cosmetic ✨ Trải nghiệm làm đẹp thông minh
+                        Bông Cosmetic ✨ Trải nghiệm làm đẹp thông minh
                     </p>
                 </div>
             </div>
