@@ -22,7 +22,14 @@ const ADMIN_EMAIL = 'admin@gmail.com';
 
 const ChatBot: React.FC = () => {
     const { isAuthenticated, user } = useAuth();
-    const { activeMessages, sendMessage: sendP2PMessage, setActivePartner } = useChat();
+    const { 
+        activeMessages, 
+        sendMessage: sendP2PMessage, 
+        setActivePartner,
+        loadMoreHistory,
+        hasMoreHistory,
+        isLoadingHistory
+    } = useChat();
     const navigate = useNavigate();
 
     const [isOpen, setIsOpen] = useState(false);
@@ -41,13 +48,28 @@ const ChatBot: React.FC = () => {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const prevScrollHeightRef = useRef<number | null>(null);
 
     useEffect(() => {
-        scrollToBottom();
+        if (scrollRef.current) {
+            if (prevScrollHeightRef.current !== null) {
+                const heightDiff = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+                scrollRef.current.scrollTop = heightDiff;
+                prevScrollHeightRef.current = null;
+            } else {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+        }
     }, [messages, displayContent, activeMessages, mode]);
+
+    const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+        if (mode !== 'admin') return;
+        const target = e.target as HTMLDivElement;
+        if (target.scrollTop === 0 && hasMoreHistory && !isLoadingHistory) {
+            prevScrollHeightRef.current = target.scrollHeight;
+            await loadMoreHistory();
+        }
+    };
 
     useEffect(() => {
         if (mode === 'ai') {
@@ -221,7 +243,11 @@ const ChatBot: React.FC = () => {
                             </div>
                         </div>
 
-                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20">
+                        <div 
+                            ref={scrollRef} 
+                            onScroll={handleScroll}
+                            className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20"
+                        >
                             {mode === 'ai' ? (
                                 <>
                                     {messages.map((msg, idx) => (
@@ -284,6 +310,12 @@ const ChatBot: React.FC = () => {
                                             Vui lòng nhắn tin, chúng tôi sẽ phản hồi bạn trong giây lát 💖
                                         </p>
                                     </div>
+
+                                    {isLoadingHistory && mode === 'admin' && (
+                                        <div className="flex justify-center py-2">
+                                            <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải tin nhắn cũ...</span>
+                                        </div>
+                                    )}
 
                                     {activeMessages.map((msg, idx) => {
                                         const isMine = msg.senderEmail === user?.email;

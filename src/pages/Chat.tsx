@@ -21,8 +21,16 @@ type AIMessage = { role: 'user' | 'assistant'; content: string };
 const Chat: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
-    const { activeMessages, setActivePartner, sendMessage: sendP2PMessage } = useChat();
+    const { 
+        activeMessages, 
+        setActivePartner, 
+        sendMessage: sendP2PMessage,
+        loadMoreHistory,
+        hasMoreHistory,
+        isLoadingHistory
+    } = useChat();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const prevScrollHeightRef = useRef<number | null>(null);
 
     // Duo mode states
     const [mode, setMode] = useState<'ai' | 'admin'>('ai');
@@ -70,12 +78,27 @@ const Chat: React.FC = () => {
         }
     }, [aiMessages, displayContent]);
 
-    // Scroll to bottom
+    // Scroll to bottom or restore scroll position
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            if (prevScrollHeightRef.current !== null) {
+                const heightDiff = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+                scrollRef.current.scrollTop = heightDiff;
+                prevScrollHeightRef.current = null;
+            } else {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
         }
     }, [aiMessages, activeMessages, displayContent, mode]);
+
+    const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+        if (mode !== 'admin') return;
+        const target = e.target as HTMLDivElement;
+        if (target.scrollTop === 0 && hasMoreHistory && !isLoadingHistory) {
+            prevScrollHeightRef.current = target.scrollHeight;
+            await loadMoreHistory();
+        }
+    };
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,7 +205,11 @@ const Chat: React.FC = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-6 bg-gradient-to-b from-transparent to-pink-50/10">
+                <div 
+                    ref={scrollRef} 
+                    onScroll={handleScroll}
+                    className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-6 bg-gradient-to-b from-transparent to-pink-50/10"
+                >
                     <AnimatePresence mode="wait">
                         {mode === 'ai' ? (
                             <motion.div
@@ -229,7 +256,13 @@ const Chat: React.FC = () => {
                                         <p className="text-sm font-medium">Bắt đầu trò chuyện với nhân viên tư vấn</p>
                                     </div>
                                 ) : (
-                                    activeMessages.map((msg, i) => {
+                                    <>
+                                        {isLoadingHistory && mode === 'admin' && (
+                                            <div className="flex justify-center py-2">
+                                                <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải tin nhắn cũ...</span>
+                                            </div>
+                                        )}
+                                        {activeMessages.map((msg, i) => {
                                         const isOwn = msg.senderEmail === user?.email;
                                         const showAvatar = i === 0 || activeMessages[i - 1]?.senderEmail !== msg.senderEmail;
                                         return (
@@ -243,7 +276,8 @@ const Chat: React.FC = () => {
                                                 avatarFallback={isOwn ? (user?.email?.charAt(0).toUpperCase() || 'U') : 'AD'}
                                             />
                                         );
-                                    })
+                                    })}
+                                </>
                                 )}
                             </motion.div>
                         )}

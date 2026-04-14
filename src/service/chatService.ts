@@ -5,8 +5,8 @@ export const sendMessage = async (message: string) => {
     return res.data;
 };
 
-export const getChatHistory = async (participant: string) => {
-    const res = await axiosInstance.get(`/chat/history?participant=${participant}`);
+export const getChatHistory = async (participant: string, page: number = 0) => {
+    const res = await axiosInstance.get(`/chat/history?participant=${participant}&page=${page}&size=20`);
     return res.data;
 };
 

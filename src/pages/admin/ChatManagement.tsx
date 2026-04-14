@@ -13,24 +13,43 @@ const ChatManagement: React.FC = () => {
         activePartner, 
         setActivePartner, 
         sendMessage,
-        resetUnreadCount 
+        resetUnreadCount,
+        loadMoreHistory,
+        hasMoreHistory,
+        isLoadingHistory
     } = useChat();
     
     const [search, setSearch] = useState('');
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const prevScrollHeightRef = useRef<number | null>(null);
+
     const filtered = conversations.filter((c) =>
         c.partnerEmail.toLowerCase().includes(search.toLowerCase())
     );
 
+    const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLDivElement;
+        if (target.scrollTop === 0 && hasMoreHistory && !isLoadingHistory) {
+            prevScrollHeightRef.current = target.scrollHeight;
+            await loadMoreHistory();
+        }
+    };
+
     // Auto scroll to bottom
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-                top: scrollRef.current.scrollHeight,
-                behavior: 'smooth'
-            });
+            if (prevScrollHeightRef.current !== null) {
+                const heightDiff = scrollRef.current.scrollHeight - prevScrollHeightRef.current;
+                scrollRef.current.scrollTop = heightDiff;
+                prevScrollHeightRef.current = null;
+            } else {
+                scrollRef.current.scrollTo({
+                    top: scrollRef.current.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
         }
     }, [activeMessages]);
 
@@ -183,8 +202,14 @@ const ChatManagement: React.FC = () => {
                         {/* Chat Messages */}
                         <div 
                             ref={scrollRef} 
+                            onScroll={handleScroll}
                             className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/50 custom-scrollbar"
                         >
+                            {isLoadingHistory && (
+                                <div className="flex justify-center py-2">
+                                    <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải biểu mẫu cũ...</span>
+                                </div>
+                            )}
                             {activeMessages.map((msg, i) => {
                                 const isMine = msg.senderEmail === user?.email;
                                 const showDate = i === 0 || new Date(msg.timestamp).toDateString() !== new Date(activeMessages[i-1].timestamp).toDateString();
