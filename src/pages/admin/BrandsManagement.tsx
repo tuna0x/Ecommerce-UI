@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import PaginationControl from "../../components/PaginationControl";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   Plus,
   Pencil,
@@ -9,9 +10,10 @@ import {
   ImageIcon,
   X,
   Loader2,
+  SearchX
 } from "lucide-react";
 import { Switch } from "../../components/ui/switch";
-// import { cn } from "../../lib/utils";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -38,7 +40,7 @@ import { toast } from "sonner";
 const BrandsManagement: React.FC = () => {
   const [brandList, setBrandList] = useState<IBrand[]>([]);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,14 +77,9 @@ const BrandsManagement: React.FC = () => {
     fetchBrands();
   }, [fetchBrands]);
 
-  // Handle search debounce
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -212,14 +209,25 @@ const BrandsManagement: React.FC = () => {
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative group">
+            <Search className={cn(
+              "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
+              isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
+            )} />
             <Input
               placeholder="Tìm kiếm thương hiệu..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -276,8 +284,24 @@ const BrandsManagement: React.FC = () => {
                   ))
                 ) : brandList.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-muted-foreground italic">
-                      Không tìm thấy thương hiệu nào
+                    <td colSpan={6} className="text-center py-20 px-4">
+                        <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                          <div className="relative mb-4">
+                             <SearchX className="w-12 h-12 opacity-20" />
+                          </div>
+                          <p className="font-semibold text-foreground">Không thấy thương hiệu</p>
+                          <p className="text-xs mt-1 text-center font-normal italic">Thử lại với từ khóa khác</p>
+                          {search && (
+                            <Button 
+                              variant="link" 
+                              size="sm" 
+                              onClick={() => setSearch("")}
+                              className="mt-2 text-primary h-auto p-0"
+                            >
+                              Xóa tìm kiếm
+                            </Button>
+                          )}
+                        </div>
                     </td>
                   </tr>
                 ) : (

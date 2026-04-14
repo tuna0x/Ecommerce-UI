@@ -6,7 +6,6 @@ import {
   Trash2,
   Search,
   ImageIcon,
-  X,
   Loader2,
   FileText,
   ChevronDown,
@@ -15,7 +14,9 @@ import {
   Boxes,
   LayoutGrid,
   Scale,
+  X,
 } from "lucide-react";
+import { cn } from "../../lib/utils";
 import {
   Card,
   CardContent,
@@ -53,11 +54,12 @@ import { BrandService } from "../../service/brandService";
 import { categoryService } from "../../service/categoryService";
 import type { IAttributeValue } from "../../types/attribute.type";
 import { attributeValueService } from "../../service/attributeService";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const ProductsManagement: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -245,14 +247,9 @@ const ProductsManagement: React.FC = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Handle search debounce
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
 
   const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -598,17 +595,25 @@ const ProductsManagement: React.FC = () => {
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative group">
+            <Search className={cn(
+              "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
+              isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
+            )} />
             <Input
               placeholder="Tìm kiếm sản phẩm..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10"
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 pr-10"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>

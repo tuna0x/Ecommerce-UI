@@ -15,7 +15,8 @@ import {
   History,
   Table as TableIcon,
   RefreshCcw,
-  Monitor
+  Monitor,
+  SearchX
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import {
@@ -54,6 +55,7 @@ import PaginationControl from "../../components/PaginationControl";
 import AnalyticsCards from "../../components/admin/tracking/AnalyticsCards";
 import AnalyticsCharts from "../../components/admin/tracking/AnalyticsCharts";
 import SessionTimeline from "../../components/admin/tracking/SessionTimeline";
+import { useDebounce } from "../../hooks/useDebounce";
 
 interface IUserBehavior {
   id: number;
@@ -72,6 +74,7 @@ const UserActivityLog: React.FC = () => {
   const [logs, setLogs] = useState<IUserBehavior[]>([]);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
@@ -96,7 +99,7 @@ const UserActivityLog: React.FC = () => {
   const fetchLogs = useCallback(async (page: number) => {
     setIsLoading(true);
     try {
-      let filter = searchTerm ? `userEmail~'${searchTerm}'` : "";
+      let filter = debouncedSearchTerm ? `userEmail~'${debouncedSearchTerm}'` : "";
       if (actionFilter !== "all") {
         filter = filter ? `${filter} and actionType:'${actionFilter}'` : `actionType:'${actionFilter}'`;
       }
@@ -113,7 +116,7 @@ const UserActivityLog: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm, actionFilter, pageSize]);
+  }, [debouncedSearchTerm, actionFilter, pageSize]);
 
   useEffect(() => {
     fetchLogs(currentPage);
@@ -123,10 +126,9 @@ const UserActivityLog: React.FC = () => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  const handleSearch = () => {
+  useEffect(() => {
     setCurrentPage(1);
-    fetchLogs(1);
-  };
+  }, [debouncedSearchTerm, actionFilter]);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString("vi-VN", {
@@ -215,15 +217,24 @@ const UserActivityLog: React.FC = () => {
                  <CardTitle className="text-sm font-bold flex items-center gap-2">
                     <Monitor className="h-4 w-4" /> Hành trình theo phiên làm việc
                  </CardTitle>
-                 <div className="flex gap-2">
-                    <Input 
-                      placeholder="Tìm email khách..." 
-                      className="h-8 max-w-[200px]" 
-                      value={searchTerm} 
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    />
-                    <Button size="sm" variant="secondary" onClick={handleSearch} className="h-8">Tìm</Button>
+                 <div className="flex gap-2 items-center">
+                    <div className="relative group">
+                       <Input 
+                         placeholder="Tìm email khách..." 
+                         className="h-8 max-w-[200px] pl-8 pr-8" 
+                         value={searchTerm} 
+                         onChange={(e) => setSearchTerm(e.target.value)}
+                       />
+                       <SearchIcon className="h-3 w-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                       {searchTerm && (
+                         <button 
+                           onClick={() => setSearchTerm("")}
+                           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                         >
+                           <X className="h-3 w-3" />
+                         </button>
+                       )}
+                    </div>
                  </div>
                </div>
              </CardHeader>
@@ -245,17 +256,26 @@ const UserActivityLog: React.FC = () => {
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row gap-4 mb-6">
                 <div className="flex-1 flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <div className="relative flex-1 group">
+                    <Search className={cn(
+                      "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
+                      isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
+                    )} />
                     <Input
                       placeholder="Tìm email khách hàng..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                      className="pl-10 h-10"
+                      className="pl-10 pr-10 h-10"
                     />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                  <Button onClick={handleSearch} className="h-10">Lọc</Button>
                 </div>
                 <Select value={actionFilter} onValueChange={setActionFilter}>
                   <SelectTrigger className="w-full lg:w-[250px] h-10">
@@ -394,8 +414,27 @@ const UserActivityLog: React.FC = () => {
                       ))}
                       {logs.length === 0 && !isLoading && (
                         <tr>
-                          <td colSpan={5} className="text-center py-20 text-muted-foreground italic">
-                            Chưa có dữ liệu nhật ký nào phù hợp
+                          <td colSpan={5} className="py-20 text-center">
+                            <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                              <div className="relative mb-4">
+                                <SearchX className="w-12 h-12 opacity-20" />
+                                <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-sm">
+                                  <Clock className="w-4 h-4 text-primary animate-spin-slow" />
+                                </div>
+                              </div>
+                              <p className="font-semibold text-foreground">Không tìm thấy nhật ký</p>
+                              <p className="text-xs mt-1 text-center">Không có hành động nào phù hợp với bộ lọc hiện tại</p>
+                              {searchTerm && (
+                                <Button 
+                                  variant="link" 
+                                  size="sm" 
+                                  onClick={() => setSearchTerm("")}
+                                  className="mt-2 text-primary h-auto p-0"
+                                >
+                                  Xóa tìm kiếm
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}

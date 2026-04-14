@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2, Globe, Lock } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2, Globe, Lock, X, SearchX } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -234,14 +234,22 @@ const CouponsManagement: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative flex-1 max-w-sm group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input
             placeholder="Tìm kiếm mã giảm giá..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-10"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -268,8 +276,25 @@ const CouponsManagement: React.FC = () => {
             <TableBody>
               {filteredCoupons.length === 0 && !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground italic">
-                    Không tìm thấy mã giảm giá nào
+                  <TableCell colSpan={8} className="text-center py-20 px-4">
+                    <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                      <div className="relative mb-4">
+                         <SearchX className="w-12 h-12 opacity-20" />
+                         <Tag className="w-6 h-6 absolute -bottom-1 -right-1 text-primary animate-bounce shadow-xl" />
+                      </div>
+                      <p className="font-semibold text-foreground">Không tìm thấy kết quả</p>
+                      <p className="text-xs mt-1 text-center font-normal italic">Vui lòng thử lại với từ khóa khác hoặc tạo mới</p>
+                      {searchTerm && (
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          onClick={() => setSearchTerm("")}
+                          className="mt-2 text-primary h-auto p-0"
+                        >
+                          Xóa tìm kiếm
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (

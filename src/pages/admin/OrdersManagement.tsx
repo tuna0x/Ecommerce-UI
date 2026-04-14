@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -353,14 +353,22 @@ const OrdersManagement: React.FC = () => {
       <Card>
         <CardContent className="pt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   placeholder="Mã đơn, tên, SĐT..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -430,9 +438,25 @@ const OrdersManagement: React.FC = () => {
                   </tr>
                 ) : displayedOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-20 text-muted-foreground">
-                      <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p className="italic">Không có đơn hàng nào</p>
+                    <td colSpan={10} className="text-center py-20 px-4">
+                      <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
+                        <div className="relative mb-4">
+                           <SearchX className="w-12 h-12 opacity-20" />
+                           <Package className="w-6 h-6 absolute -bottom-1 -right-1 text-primary animate-bounce" />
+                        </div>
+                        <p className="font-semibold text-foreground">Không tìm thấy đơn hàng</p>
+                        <p className="text-xs mt-1 text-center font-normal italic">Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc ngày</p>
+                        {searchTerm && (
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            onClick={() => setSearchTerm("")}
+                            className="mt-2 text-primary h-auto p-0"
+                          >
+                            Xóa tìm kiếm
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
