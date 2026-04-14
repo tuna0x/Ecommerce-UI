@@ -33,6 +33,7 @@ import {
   SheetTrigger,
 } from "../components/ui/sheet";
 import { ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
+import { logActivity } from "../service/trackingService";
 
 const Category = () => {
   const { slug } = useParams();
@@ -160,7 +161,14 @@ const Category = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    if (activeCategoryNode) {
+      logActivity('VIEW_CATEGORY', {
+        categoryId: activeCategoryNode.id,
+        categoryName: activeCategoryNode.name,
+        productCount: meta.total
+      });
+    }
+  }, [fetchProducts, activeCategoryNode?.id]);
 
   // Reset page to 0 when filters change
   useEffect(() => {

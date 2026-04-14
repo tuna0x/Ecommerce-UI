@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { logActivity } from '../service/trackingService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -54,6 +55,13 @@ const Checkout: React.FC = () => {
   const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const hasAddresses = addresses.length > 0;
+
+  useEffect(() => {
+    logActivity('BEGIN_CHECKOUT', {
+      cartTotal: selectedTotal,
+      itemCount: selectedCount
+    });
+  }, []);
 
   useEffect(() => {
     const loadAddresses = async () => {
@@ -228,8 +236,16 @@ const Checkout: React.FC = () => {
     }
     setAppliedCoupon(coupon);
     setCouponCode(coupon.code);
-    setDiscountAmount(calculateDiscount(coupon, selectedTotal));
+    const amount = calculateDiscount(coupon, selectedTotal);
+    setDiscountAmount(amount);
     setIsWalletOpen(false);
+    
+    logActivity('USE_COUPON', {
+      couponCode: coupon.code,
+      discountAmount: amount,
+      success: true
+    });
+    
     toast.success('Đã áp dụng mã giảm giá');
   };
 

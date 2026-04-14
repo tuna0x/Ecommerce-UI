@@ -76,7 +76,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
     e.preventDefault();
     if (query.trim()) {
       setIsOpen(false);
-      logActivity('SEARCH', { keyword: query.trim() });
+      logActivity('SEARCH', { keyword: query.trim(), resultCount: filteredProducts.length });
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
@@ -90,7 +90,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const handleViewAll = () => {
     if (query.trim()) {
       setIsOpen(false);
-      logActivity('SEARCH', { keyword: query.trim() });
+      logActivity('SEARCH', { keyword: query.trim(), resultCount: filteredProducts.length });
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };

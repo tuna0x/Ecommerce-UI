@@ -16,16 +16,16 @@ const quickQuestions = [
     { label: '🔥 Đang Flashsale', value: 'Có sản phẩm nào đang flashsale hay giảm giá không?' },
     { label: '🛒 Xem Giỏ Hàng', value: 'Trong giỏ hàng của tôi đang có những gì?' },
     { label: '📦 Tình trạng đơn', value: 'Đơn hàng của tôi bao giờ giao?' },
-    { label: '🎟️ Lấy mãi giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
+    { label: '🎟️ Lấy mã giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
 ];
 
 const ADMIN_EMAIL = 'admin@gmail.com';
 
 const ChatBot: React.FC = () => {
     const { isAuthenticated, user } = useAuth();
-    const { 
-        activeMessages, 
-        sendMessage: sendP2PMessage, 
+    const {
+        activeMessages,
+        sendMessage: sendP2PMessage,
         setActivePartner,
         loadMoreHistory,
         hasMoreHistory,
@@ -223,8 +223,8 @@ const ChatBot: React.FC = () => {
                                     onClick={() => setMode('ai')}
                                     className={cn(
                                         "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[14px] text-xs font-bold transition-all duration-300",
-                                        mode === 'ai' 
-                                            ? "bg-background text-primary shadow-sm scale-[1.02]" 
+                                        mode === 'ai'
+                                            ? "bg-background text-primary shadow-sm scale-[1.02]"
                                             : "text-muted-foreground hover:text-foreground"
                                     )}
                                 >
@@ -235,8 +235,8 @@ const ChatBot: React.FC = () => {
                                     onClick={() => setMode('admin')}
                                     className={cn(
                                         "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-[14px] text-xs font-bold transition-all duration-300",
-                                        mode === 'admin' 
-                                            ? "bg-background text-primary shadow-sm scale-[1.02]" 
+                                        mode === 'admin'
+                                            ? "bg-background text-primary shadow-sm scale-[1.02]"
                                             : "text-muted-foreground hover:text-foreground"
                                     )}
                                 >
@@ -246,8 +246,8 @@ const ChatBot: React.FC = () => {
                             </div>
                         </div>
 
-                        <div 
-                            ref={scrollRef} 
+                        <div
+                            ref={scrollRef}
                             onScroll={handleScroll}
                             className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20"
                         >
@@ -267,16 +267,16 @@ const ChatBot: React.FC = () => {
                                             )}
                                             <div className={cn(
                                                 "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px] leading-relaxed",
-                                                msg.role === 'user' 
-                                                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none" 
+                                                msg.role === 'user'
+                                                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
                                                     : "bg-white border border-border/50 text-foreground rounded-bl-none prose prose-sm prose-pink"
                                             )}>
                                                 {msg.role === 'assistant' ? (
                                                     <ReactMarkdown
                                                         components={{
                                                             a: ({ node, ...props }) => (
-                                                                <Link 
-                                                                    to={props.href || "#"} 
+                                                                <Link
+                                                                    to={props.href || "#"}
                                                                     className="text-pink-600 underline hover:text-pink-700 font-bold"
                                                                 >
                                                                     {props.children}
@@ -291,7 +291,7 @@ const ChatBot: React.FC = () => {
                                         </motion.div>
                                     ))}
                                     {isLoading && <TypingIndicator />}
-                                    
+
                                     {messages.length === 1 && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10 }}
@@ -347,8 +347,8 @@ const ChatBot: React.FC = () => {
                                                 )}
                                                 <div className={cn(
                                                     "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px]",
-                                                    isMine 
-                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none" 
+                                                    isMine
+                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
                                                         : "bg-white border border-border/50 text-foreground rounded-bl-none"
                                                 )}>
                                                     <p>{msg.content}</p>
@@ -359,7 +359,7 @@ const ChatBot: React.FC = () => {
                                             </motion.div>
                                         );
                                     })}
-                                    
+
                                     {activeMessages.length === 0 && (
                                         <div className="text-center py-10">
                                             <p className="text-xs text-muted-foreground italic bg-secondary/30 py-2 px-4 rounded-full inline-block">Bắt đầu cuộc trò chuyện với Admin ✨</p>

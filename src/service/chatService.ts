@@ -1,7 +1,14 @@
 import axiosInstance from "./axiosInstance";
+import { getSessionId, getDeviceType } from "./trackingService";
 
 export const sendMessage = async (message: string, history: {role: string, content: string}[] = []) => {
-    const res = await axiosInstance.post("/chat", { message, history });
+    const res = await axiosInstance.post("/chat", { 
+        message, 
+        history,
+        sessionId: getSessionId(),
+        deviceType: getDeviceType(),
+        pageUrl: window.location.pathname
+    });
     return res.data;
 };
 
