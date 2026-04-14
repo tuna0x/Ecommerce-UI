@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { BannerLinkPicker } from "../../components/admin/BannerLinkPicker";
+import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
 
 const BannersManagement: React.FC = () => {
   const [bannerList, setBannerList] = useState<IBanner[]>([]);
@@ -145,6 +146,11 @@ const BannersManagement: React.FC = () => {
 
     if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+      return;
+    }
+
+    if ((formData.startDate && !isValidDate(formData.startDate)) || (formData.endDate && !isValidDate(formData.endDate))) {
+      toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
       return;
     }
 
@@ -402,11 +408,11 @@ const BannersManagement: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Ngày bắt đầu</Label>
-                <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
+                <Input type="date" value={formData.startDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
               </div>
               <div className="grid gap-2">
                 <Label>Ngày kết thúc</Label>
-                <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
+                <Input type="date" value={formData.endDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
               </div>
             </div>
             <div className="grid gap-2">

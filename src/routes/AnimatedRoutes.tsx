@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { logActivity } from "../service/trackingService";
+import UserLayout from "../components/layout/UserLayout";
 
 // Lazy load all pages
 const Index = lazy(() => import("../pages/Index"));
@@ -81,27 +82,30 @@ const AnimatedRoutes = () => {
       </div>
     }>
       <Routes>
-        {/* User Routes */}
-        <Route path="/" element={<Index />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/flash-sale" element={<ProtectedRoute><FlashSalePage /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
-        <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-        <Route path="/categories" element={<Categories />} />
-        <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-        <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
-        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-        <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
-        <Route path="/brands" element={<ProtectedRoute><Category /></ProtectedRoute>} />
-        <Route path="/blog" element={<Blog />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
+
+        {/* User Layout Wrapper */}
+        <Route element={<UserLayout />}>
+          <Route path="/" element={<Index />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/flash-sale" element={<ProtectedRoute><FlashSalePage /></ProtectedRoute>} />
+          <Route path="/search" element={<ProtectedRoute><SearchResults /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+          <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
+          <Route path="/brands" element={<ProtectedRoute><Category /></ProtectedRoute>} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
+        </Route>
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminRoute />}>

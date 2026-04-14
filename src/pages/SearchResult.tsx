@@ -9,11 +9,6 @@ import {
   X,
   Loader2
 } from "lucide-react";
-import TopBar from "../components/TopBar";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import MobileNavBar from "../components/MobileNavBar";
-import CartSidebar from "../components/CartSidebar";
 import ProductCard from "../components/ProductCard";
 import type { IProduct } from "../types/product.type";
 import { ProductService } from "../service/productService";
@@ -24,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import SEO from "../components/ui/SEO";
 
 const SearchResults: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,6 +46,13 @@ const SearchResults: React.FC = () => {
       if (categoryParam) conditions.push(`category.name:'${categoryParam}'`);
       if (selectedCategory !== "all" && !categoryParam) conditions.push(`category.name:'${selectedCategory}'`);
 
+      if (priceRange !== "all") {
+        if (priceRange === "under200") conditions.push("price < 200000");
+        else if (priceRange === "200-500") conditions.push("price >= 200000 and price <= 500000");
+        else if (priceRange === "500-1000") conditions.push("price >= 500000 and price <= 1000000");
+        else if (priceRange === "over1000") conditions.push("price > 1000000");
+      }
+
       filter = conditions.join(" and ");
 
       const res = await ProductService.getAll(0, 50, undefined, sortBy, filter || undefined);
@@ -61,14 +64,13 @@ const SearchResults: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, brandParam, categoryParam, selectedCategory, sortBy]);
+  }, [query, brandParam, categoryParam, selectedCategory, priceRange, sortBy]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
   const uniqueCategories = useMemo(() => {
-    // In a real app, this should come from a Categories API
     return ["Skin Care", "Makeup", "Hair Care", "Body Care", "Fragrance"];
   }, []);
 
@@ -84,13 +86,15 @@ const SearchResults: React.FC = () => {
   };
 
   const hasActiveFilters = selectedCategory !== "all" || priceRange !== "all" || brandParam || categoryParam;
-  const filteredProducts = products; // Sorting and filtering is now mostly handled by API
+  const filteredProducts = products;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
-      <TopBar />
-      <Header />
-
+    <>
+      <SEO 
+        title={`Kết quả tìm kiếm: ${query}`}
+        description={`Tìm thấy ${filteredProducts.length} sản phẩm phù hợp với từ khóa "${query}" tại Bông Cosmetic.`}
+      />
+      
       <main className="container mx-auto px-4 py-6">
         <div className="mb-6">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
@@ -276,11 +280,7 @@ const SearchResults: React.FC = () => {
           </div>
         )}
       </main>
-
-      <CartSidebar />
-      <Footer />
-      <MobileNavBar />
-    </div>
+    </>
   );
 };
 

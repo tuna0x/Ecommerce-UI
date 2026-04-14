@@ -1,9 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import MobileNavBar from "../components/MobileNavBar";
 import ProductCard from "../components/ProductCard";
 import { useCategories } from "../hooks/useCategories";
 import type { FrontendCategory } from "../hooks/useCategories";
@@ -18,7 +15,7 @@ import { Checkbox } from "../components/ui/Checkbox";
 import { Slider } from "../components/ui/slider";
 import { Input } from "../components/ui/input";
 import PaginationControl from "../components/PaginationControl";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { BannerService } from "../service/bannerService";
 import type { IBanner } from "../types/banner.type";
 import {
@@ -35,7 +32,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../components/ui/sheet";
-import { ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { logActivity } from "../service/trackingService";
 import SEO from "../components/ui/SEO";
 
@@ -58,12 +54,9 @@ const Category = () => {
     total: 0,
   });
 
-  const [currentPage, setCurrentPage] = useState(0); // 0-indexed for API
-  
-  // Banner states
+  const [currentPage, setCurrentPage] = useState(0); 
   const [categoryBanners, setCategoryBanners] = useState<IBanner[]>([]);
 
-  // Find root category by slug
   const category = useMemo(() => {
     return categories.find(
       (c) =>
@@ -73,18 +66,15 @@ const Category = () => {
     );
   }, [slug, categories]);
 
-  // Find active node in the hierarchy (Level 1, 2, or 3)
   const activeCategoryNode = useMemo(() => {
     if (!category) return undefined;
 
-    // Level 3 Check
     if (subcategoryName && subSubcategoryName) {
       const level2 = category.children?.find(c => c.name === subcategoryName);
       const level3 = level2?.children?.find(c => c.name === subSubcategoryName);
       if (level3) return level3;
     }
 
-    // Level 2 Check
     if (subcategoryName) {
       return category.children?.find(c => c.name === subcategoryName) || category;
     }
@@ -92,12 +82,19 @@ const Category = () => {
     return category;
   }, [category, subcategoryName, subSubcategoryName]);
 
-  // Filter states
-  const [priceRange, setPriceRange] = useState([0, 2000000]);
+  const [priceRange, setPriceRange] = useState([0, 5000000]);
+  const [debouncedPriceRange, setDebouncedPriceRange] = useState(priceRange);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("createdAt,desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedPriceRange(priceRange);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [priceRange]);
 
   const fetchBrands = async () => {
     try {
@@ -111,48 +108,53 @@ const Category = () => {
   };
 
   const fetchProducts = useCallback(async () => {
-    // Collect all category IDs in a subtree
-    const getDescendantIds = (node: FrontendCategory): number[] => {
-      let ids = [node.id];
-      if (node.children && node.children.length > 0) {
-        node.children.forEach(child => {
-          ids = [...ids, ...getDescendantIds(child)];
-        });
-      }
-      return ids;
-    };
-
     try {
       setIsLoading(true);
-      const filters = [];
+      const filters: string[] = [];
 
-      // hierarchical category is handled by backend if categoryId is passed
-      const categoryIdFilter = (activeCategoryNode && slug !== "all") ? activeCategoryNode.id : undefined;
+      if (activeCategoryNode && slug !== "all") {
+        const getDescendantIds = (node: FrontendCategory): number[] => {
+          let ids = [node.id];
+          if (node.children && node.children.length > 0) {
+            node.children.forEach(child => {
+              ids = [...ids, ...getDescendantIds(child)];
+            });
+          }
+          return ids;
+        };
 
-      // Brand filter
+        const descendantIds = getDescendantIds(activeCategoryNode);
+        if (descendantIds.length > 0) {
+          const catFilters = descendantIds.map(id => `category.id:${id}`).join(" or ");
+          filters.push(`(${catFilters})`);
+        }
+      }
+
       if (selectedBrands.length > 0) {
-        const brandFilters = selectedBrands.map(b => `brand.name:'${b}'`).join(" OR ");
+        const brandFilters = selectedBrands.map(b => `brand.name:'${b}'`).join(" or ");
         filters.push(`(${brandFilters})`);
       }
 
-      // Price filter
-      filters.push(`originalPrice >= ${priceRange[0]}`);
-      filters.push(`originalPrice <= ${priceRange[1]}`);
+      if (selectedSkinTypes.length > 0) {
+        const skinFilters = selectedSkinTypes.map(s => `skinType:'${s}'`).join(" or ");
+        filters.push(`(${skinFilters})`);
+      }
 
-      const filterString = filters.join(" AND ");
+      filters.push(`price>=${debouncedPriceRange[0]}`);
+      filters.push(`price<=${debouncedPriceRange[1]}`);
+
+      const filterString = filters.join(" and ");
 
       const res = await ProductService.getAll(
-        currentPage, // Use 0-indexed page
+        currentPage,
         meta.pageSize,
         undefined,
         sortBy,
-        filterString,
-        categoryIdFilter
+        filterString
       );
 
       if (res.data) {
         setProductsList(res.data.result);
-        // Update meta for display (e.g. meta.page will be currentPage + 1)
         setMeta(res.data.meta);
       }
     } catch (error) {
@@ -160,13 +162,12 @@ const Category = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, priceRange, sortBy, slug]);
+  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, selectedSkinTypes, debouncedPriceRange, sortBy, slug]);
 
   const fetchCategoryBanners = useCallback(async () => {
     try {
       const res = await BannerService.getAll(0, 50);
       if (res.data?.result) {
-        // Filter banners that are for categories AND match the current category link
         const currentPath = `/category/${slug}`;
         const matchedBanners = res.data.result.filter(
           (b) => b.isActive && 
@@ -197,18 +198,11 @@ const Category = () => {
     }
   }, [fetchProducts, activeCategoryNode?.id]);
 
-  // Reset page to 0 when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [slug, subcategoryName, subSubcategoryName, selectedBrands, priceRange, sortBy]);
+  }, [slug, subcategoryName, subSubcategoryName, selectedBrands, selectedSkinTypes, debouncedPriceRange, sortBy]);
 
-  const skinTypes = [
-    "Da dầu",
-    "Da khô",
-    "Da hỗn hợp",
-    "Da nhạy cảm",
-    "Mọi loại da",
-  ];
+  const skinTypes = ["Da dầu", "Da khô", "Da hỗn hợp", "Da nhạy cảm", "Mọi loại da"];
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands((prev) =>
@@ -223,7 +217,7 @@ const Category = () => {
   };
 
   const clearFilters = () => {
-    setPriceRange([0, 2000000]);
+    setPriceRange([0, 5000000]);
     setSelectedBrands([]);
     setSelectedSkinTypes([]);
   };
@@ -232,11 +226,10 @@ const Category = () => {
     selectedBrands.length > 0 ||
     selectedSkinTypes.length > 0 ||
     priceRange[0] > 0 ||
-    priceRange[1] < 2000000;
+    priceRange[1] < 5000000;
 
   const filterContent = (
     <div className="space-y-6">
-      {/* Price Range */}
       <div>
         <h3 className="font-semibold mb-3">Khoảng giá</h3>
         <div className="flex items-center gap-2 mb-3">
@@ -263,13 +256,12 @@ const Category = () => {
         <Slider
           value={priceRange}
           onValueChange={setPriceRange}
-          max={2000000}
+          max={5000000}
           step={10000}
           className="mb-2"
         />
       </div>
 
-      {/* Brands */}
       <div>
         <h3 className="font-semibold mb-3">Thương hiệu</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
@@ -285,7 +277,6 @@ const Category = () => {
         </div>
       </div>
 
-      {/* Skin Type */}
       <div>
         <h3 className="font-semibold mb-3">Loại da</h3>
         <div className="space-y-2">
@@ -310,16 +301,14 @@ const Category = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+    <>
       <SEO 
         title={activeCategoryNode ? activeCategoryNode.name : (category ? category.name : "Tất cả sản phẩm")}
         description={`Khám phá bộ sưu tập ${activeCategoryNode?.name || category?.name || "sản phẩm"} tại Bông Cosmetic. Hiện có ${meta.total} sản phẩm chất lượng, chính hãng.`}
         url={`/category/${slug}`}
       />
 
-      <main className="flex-1 container mx-auto px-4 py-6 pb-24 md:pb-8">
-        {/* Breadcrumb */}
+      <main className="container mx-auto px-4 py-6">
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
           <Link to="/" className="hover:text-primary">Trang chủ</Link>
           <ChevronRight className="w-4 h-4" />
@@ -344,7 +333,6 @@ const Category = () => {
           )}
         </nav>
 
-        {/* Category Banner Section */}
         {categoryBanners.length > 0 && (
           <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
             <div className="relative w-full aspect-[21/6] md:aspect-[21/5] rounded-3xl overflow-hidden shadow-xl border border-border/50 group">
@@ -354,45 +342,23 @@ const Category = () => {
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-8 md:px-16 text-white">
-                <motion.span 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="text-xs md:text-sm font-bold tracking-widest uppercase mb-2 text-primary-foreground/90"
-                >
+                <motion.span className="text-xs md:text-sm font-bold tracking-widest uppercase mb-2 text-primary-foreground/90">
                   {categoryBanners[0].subtitle || "Khám phá ngay"}
                 </motion.span>
-                <motion.h2 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-2xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-md"
-                >
+                <motion.h2 className="text-2xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-md">
                   {categoryBanners[0].title}
                 </motion.h2>
-                {categoryBanners[0].description && (
-                  <motion.p 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-sm md:text-base text-white/80 max-w-md line-clamp-2"
-                  >
-                    {categoryBanners[0].description}
-                  </motion.p>
-                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold">
               {activeCategoryNode ? activeCategoryNode.name : (category ? category.name : "Tất cả sản phẩm")}
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {meta.total} sản phẩm tìm thấy
-            </p>
+            <p className="text-muted-foreground mt-1 text-sm">{meta.total} sản phẩm tìm thấy</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -415,8 +381,8 @@ const Category = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="createdAt,desc">Mới nhất</SelectItem>
-                <SelectItem value="originalPrice,asc">Giá thấp đến cao</SelectItem>
-                <SelectItem value="originalPrice,desc">Giá cao đến thấp</SelectItem>
+                <SelectItem value="price,asc">Giá thấp đến cao</SelectItem>
+                <SelectItem value="price,desc">Giá cao đến thấp</SelectItem>
                 <SelectItem value="name,asc">Tên A-Z</SelectItem>
                 <SelectItem value="soldCount,desc">Bán chạy nhất</SelectItem>
               </SelectContent>
@@ -425,7 +391,6 @@ const Category = () => {
         </div>
 
         <div className="flex gap-6">
-          {/* Desktop Sidebar */}
           <aside className="hidden md:block w-64 flex-shrink-0">
             <Card>
               <CardContent className="p-4">
@@ -436,7 +401,6 @@ const Category = () => {
               </CardContent>
             </Card>
 
-            {/* Subcategories (Dynamic based on logic) */}
             {activeCategoryNode && activeCategoryNode.children && activeCategoryNode.children.length > 0 && (
               <Card className="mt-4">
                 <CardContent className="p-4">
@@ -457,7 +421,6 @@ const Category = () => {
             )}
           </aside>
 
-          {/* Products Grid */}
           <div className="flex-1">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
@@ -490,10 +453,7 @@ const Category = () => {
           </div>
         </div>
       </main>
-
-      <Footer />
-      <MobileNavBar />
-    </div>
+    </>
   );
 };
 

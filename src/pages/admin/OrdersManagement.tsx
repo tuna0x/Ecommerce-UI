@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, type OrderRes } from "../../service/orderService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
+import { DATE_MIN, getTodayStr, isValidDate } from "../../lib/date";
 
 // --------- Constants ---------
 const STATUS_OPTIONS = [
@@ -97,7 +98,12 @@ const OrdersManagement: React.FC = () => {
   // ---- Fetch ----
   const fetchOrders = useCallback(async (page: number, status: string, start?: string, end?: string) => {
     try {
-      setLoading(true);
+      if ((start && !isValidDate(start)) || (end && !isValidDate(end))) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
       // Backend expects ISO Strings for Instants
       const startISO = start ? new Date(start).toISOString() : undefined;
       const endISO = end ? new Date(end).toISOString() : undefined;
@@ -148,6 +154,8 @@ const OrdersManagement: React.FC = () => {
   }, [orders, searchTerm]);
 
   // ---- Bulk Operations ----
+  // ---- Bulk Operations ----
+
   const toggleSelectAll = () => {
     if (selectedIds.size === displayedOrders.length) {
       setSelectedIds(new Set());
@@ -376,6 +384,8 @@ const OrdersManagement: React.FC = () => {
                   type="date"
                   placeholder="Từ ngày"
                   value={startDate}
+                  min={DATE_MIN}
+                  max={getTodayStr()}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="pl-10"
                 />
@@ -386,10 +396,23 @@ const OrdersManagement: React.FC = () => {
                   type="date"
                   placeholder="Đến ngày"
                   value={endDate}
+                  min={DATE_MIN}
+                  max={getTodayStr()}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="pl-10"
                 />
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="h-9 px-3"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" /> Reset
+              </Button>
             </div>
         </CardContent>
       </Card>

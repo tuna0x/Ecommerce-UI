@@ -60,6 +60,7 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import type { IProduct } from "../../types/product.type";
+import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
 
 const PromotionsManagement: React.FC = () => {
   const [promotions, setPromotions] = useState<IPromotion[]>([]);
@@ -230,6 +231,11 @@ const PromotionsManagement: React.FC = () => {
   const handleSave = async () => {
     if (!formData.name || !formData.startAt || !formData.endAt) {
       toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    if (!isValidDate(formData.startAt) || !isValidDate(formData.endAt)) {
+      toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
       return;
     }
 
@@ -621,6 +627,8 @@ const PromotionsManagement: React.FC = () => {
                       <Input
                         type="date"
                         value={formData.startAt}
+                        min={DATE_MIN}
+                        max={DATE_MAX}
                         onChange={(e) =>
                           setFormData({ ...formData, startAt: e.target.value })
                         }
@@ -631,6 +639,8 @@ const PromotionsManagement: React.FC = () => {
                       <Input
                         type="date"
                         value={formData.endAt}
+                        min={DATE_MIN}
+                        max={DATE_MAX}
                         onChange={(e) =>
                           setFormData({ ...formData, endAt: e.target.value })
                         }

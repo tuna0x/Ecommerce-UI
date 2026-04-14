@@ -26,11 +26,7 @@ import ProductCard from "../components/ProductCard";
 import ProductReviews from "../components/ProductReviews";
 import ProductDetailSidebar from "../components/ProductDetailSidebar";
 import ImageLightbox from "../components/ImageLightBox";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 import { cn } from "../lib/utils";
-import CartSidebar from "../components/CartSidebar";
-import MobileNavBar from "../components/MobileNavBar";
 import { useAuth } from "../context/AuthContext";
 import { logActivity } from "../service/trackingService";
 import { ImageMagnifier } from "../components/ImageMagnifier";
@@ -209,32 +205,24 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
-          <p className="text-muted-foreground animate-pulse">Đang tải thông tin sản phẩm...</p>
-        </div>
-        <Footer />
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
+        <p className="text-muted-foreground animate-pulse">Đang tải thông tin sản phẩm...</p>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <div className="bg-secondary/20 p-6 rounded-full mb-4">
-            <ShoppingBag className="w-12 h-12 text-muted-foreground" />
-          </div>
-          <h2 className="text-xl font-bold mb-2">Không tìm thấy sản phẩm</h2>
-          <p className="text-muted-foreground mb-6">Sản phẩm bạn đang tìm kiếm có thể đã bị gỡ bỏ hoặc không tồn tại.</p>
-          <Link to="/" className="btn-primary px-8">
-            Quay lại trang chủ
-          </Link>
+      <div className="flex-1 flex flex-col items-center justify-center p-4 text-center min-h-[60vh]">
+        <div className="bg-secondary/20 p-6 rounded-full mb-4">
+          <ShoppingBag className="w-12 h-12 text-muted-foreground" />
         </div>
-        <Footer />
+        <h2 className="text-xl font-bold mb-2">Không tìm thấy sản phẩm</h2>
+        <p className="text-muted-foreground mb-6">Sản phẩm bạn đang tìm kiếm có thể đã bị gỡ bỏ hoặc không tồn tại.</p>
+        <Link to="/" className="btn-primary px-8">
+          Quay lại trang chủ
+        </Link>
       </div>
     );
   }
@@ -266,8 +254,7 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
-      <Header />
+    <>
       <SEO 
         title={product.name}
         description={(detailContent?.description || "").replace(/<[^>]*>?/gm, '').slice(0, 160) || product.name}
@@ -276,7 +263,6 @@ const ProductDetail: React.FC = () => {
         url={`/product/${product.id}`}
         keywords={`${product.name}, ${brandName}, ${categoryName}`}
       />
-      <CartSidebar />
 
       <main className="container mx-auto px-4 py-4 md:py-8">
         {/* Breadcrumb */}
@@ -633,9 +619,6 @@ const ProductDetail: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <Footer />
-      <MobileNavBar />
-
       <ImageLightbox
         images={images}
         currentIndex={selectedImage}
@@ -643,7 +626,7 @@ const ProductDetail: React.FC = () => {
         onClose={() => setLightboxOpen(false)}
         onNavigate={(i) => setSelectedImage(i)}
       />
-    </div>
+    </>
   );
 };
 

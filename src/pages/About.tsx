@@ -1,8 +1,6 @@
 
 import { motion } from 'framer-motion';
 import { Heart, Leaf, Shield, Star, Award } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 30 },
@@ -36,8 +34,7 @@ const milestones = [
 
 const About = () => {
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
+        <div className="min-h-screen bg-background pb-20">
 
             {/* Hero */}
             <section className="relative overflow-hidden py-20 md:py-32" style={{ background: 'var(--gradient-hero)' }}>
@@ -173,7 +170,6 @@ const About = () => {
                 </div>
             </section>
 
-            <Footer />
         </div>
     );
 };

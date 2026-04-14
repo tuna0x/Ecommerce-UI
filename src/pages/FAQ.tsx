@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { Search, ShieldCheck, RotateCcw, Truck, CreditCard, HelpCircle, Package } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../components/ui/accordion';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 
 const faqCategories = [
     {
@@ -58,8 +56,7 @@ const FAQ = () => {
     })).filter(cat => cat.questions.length > 0);
 
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
+        <div className="min-h-screen bg-background pb-20">
 
             {/* Hero */}
             <section className="py-16 md:py-20" style={{ background: 'var(--gradient-hero)' }}>
@@ -130,7 +127,6 @@ const FAQ = () => {
                 </motion.div>
             </section>
 
-            <Footer />
         </div>
     );
 };

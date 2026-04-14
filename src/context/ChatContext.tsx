@@ -145,14 +145,23 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
                 const currentActive = activePartnerRef.current;
                 
+                // Fallback for missing/invalid timestamp from server
+                if (!newMsg.timestamp || new Date(newMsg.timestamp).getFullYear() < 2000) {
+                    newMsg.timestamp = new Date().toISOString();
+                }
+
                 if (currentActive === partnerOfNewMsg) {
                     setActiveMessages(prev => {
-                        // Prevent duplicate if message was already added optimistically
-                        // Check content and a reasonably close timestamp (if available) or just content
+                        // Improved duplicate detection: 
+                        // If content and sender match, and timestamps are either close OR one is very old (faulty echo)
                         const isDuplicate = prev.some(m => 
                             m.content === newMsg.content && 
                             m.senderEmail === newMsg.senderEmail &&
-                            Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000
+                            (
+                                Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000 ||
+                                new Date(m.timestamp).getFullYear() < 2000 || 
+                                new Date(newMsg.timestamp).getFullYear() < 2000
+                            )
                         );
                         return isDuplicate ? prev : [...prev, newMsg];
                     });
