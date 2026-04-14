@@ -3,35 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Menu, 
     ChevronRight, 
-    Palette, 
-    Sparkles, 
-    UserCircle, 
-    Wind, 
-    ShoppingBag, 
-    Heart, 
-    Zap, 
     LayoutGrid,
-    Star,
-    Scissors,
-    Shield
 } from 'lucide-react';
+import { getCategoryIcon } from '../lib/icons';
 import { Link } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
 
-const getCategoryIcon = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes('trang điểm')) return Palette;
-    if (n.includes('da') || n.includes('skincare')) return Sparkles;
-    if (n.includes('mặt') || n.includes('face')) return UserCircle;
-    if (n.includes('tóc') || n.includes('hair')) return Wind;
-    if (n.includes('phụ kiện') || n.includes('accessory')) return ShoppingBag;
-    if (n.includes('nước hoa') || n.includes('perfume')) return Heart;
-    if (n.includes('khuyến mãi') || n.includes('sale')) return Zap;
-    if (n.includes('mới') || n.includes('new')) return Star;
-    if (n.includes('nails') || n.includes('móng')) return Scissors;
-    if (n.includes('vệ sinh') || n.includes('clean')) return Shield;
-    return LayoutGrid;
-};
 
 const CategoryDropdown: React.FC = () => {
     const { data: categories = [] } = useCategories();
@@ -39,6 +16,7 @@ const CategoryDropdown: React.FC = () => {
     const [activeCategory, setActiveCategory] = useState<number | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const categoryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleMouseEnter = () => {
         if (timeoutRef.current) {
@@ -49,6 +27,10 @@ const CategoryDropdown: React.FC = () => {
     };
 
     const handleMouseLeave = () => {
+        if (categoryTimeoutRef.current) {
+            clearTimeout(categoryTimeoutRef.current);
+        }
+        
         timeoutRef.current = setTimeout(() => {
             setIsOpen(false);
             setActiveCategory(null);
@@ -56,11 +38,18 @@ const CategoryDropdown: React.FC = () => {
     };
 
     const handleCategoryMouseEnter = (id: number) => {
+        if (categoryTimeoutRef.current) {
+            clearTimeout(categoryTimeoutRef.current);
+        }
+
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
-        setActiveCategory(id);
+
+        categoryTimeoutRef.current = setTimeout(() => {
+            setActiveCategory(id);
+        }, 50); // Reduced delay for better responsiveness
     };
 
     useEffect(() => {
@@ -74,6 +63,7 @@ const CategoryDropdown: React.FC = () => {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            if (categoryTimeoutRef.current) clearTimeout(categoryTimeoutRef.current);
         };
     }, []);
 
@@ -141,66 +131,70 @@ const CategoryDropdown: React.FC = () => {
                         </div>
 
                         {/* Mega Menu Panel (Level 2 + 3) */}
-                        <AnimatePresence>
-                            {activeCategory && (
-                                <motion.div
-                                    key={activeCategory}
-                                    initial={{ opacity: 0, x: -4 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -4 }}
-                                    transition={{ duration: 0.1 }}
-                                    className="ml-3 w-[720px] bg-background/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-8 relative overflow-hidden transform-gpu"
-                                >
-                                    {/* Abstract background element */}
-                                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-                                    
-                                    <div className="relative z-10 grid grid-cols-3 gap-x-10 gap-y-8">
-                                        {categories
-                                            .find((c) => c.id === activeCategory)
-                                            ?.children.map((sub, i) => {
-                                                const parentCategory = categories.find((c) => c.id === activeCategory)!;
-                                                const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase().replace(/\s+/g, '-');
-                                                return (
-                                                    <motion.div 
-                                                        key={i}
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        transition={{ delay: i * 0.02 }}
-                                                    >
-                                                        <Link
-                                                            to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}`}
-                                                            onClick={() => { setIsOpen(false); setActiveCategory(null); }}
-                                                            className="font-bold text-[15px] text-foreground hover:text-primary transition-colors block mb-4 border-b border-border/50 pb-2 flex items-center justify-between group"
-                                                        >
-                                                            <span>{sub.name}</span>
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
-                                                        </Link>
-                                                        <ul className="space-y-2.5">
-                                                            {sub.children.map((child, j) => (
-                                                                <li key={j}>
-                                                                    <Link
-                                                                        to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
-                                                                        onClick={() => { setIsOpen(false); setActiveCategory(null); }}
-                                                                        className="block text-sm text-muted-foreground hover:text-primary hover:pl-2 transition-all duration-200 border-l border-transparent hover:border-primary/30"
-                                                                    >
-                                                                        {child.name}
-                                                                    </Link>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                    </div>
-                                    
-                                    {/* Bottom suggestion/footer if needed */}
-                                    <div className="mt-12 pt-6 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground italic">
-                                        <p>✨ Khám phá xu hướng làm đẹp mới nhất cùng Bông Cosmetic</p>
-                                        <Link to="/flash-sale" className="not-italic font-bold text-primary hover:underline">Xem tất cả sản phẩm →</Link>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <div className={`ml-3 transition-all duration-300 ${activeCategory ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'}`}>
+                            <div className="w-[720px] min-h-full bg-background/98 backdrop-blur-2xl border border-border rounded-2xl shadow-2xl p-8 relative overflow-hidden transform-gpu flex flex-col">
+                                {/* Abstract background element */}
+                                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+                                
+                                <div className="relative z-10">
+                                    <AnimatePresence mode="wait">
+                                        {activeCategory ? (
+                                            <motion.div
+                                                key={activeCategory}
+                                                initial={{ opacity: 0, x: 4 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -4 }}
+                                                transition={{ duration: 0.15, ease: "easeOut" }}
+                                                className="grid grid-cols-3 gap-x-10 gap-y-8"
+                                            >
+                                                {categories
+                                                    .find((c) => c.id === activeCategory)
+                                                    ?.children.map((sub, i) => {
+                                                        const parentCategory = categories.find((c) => c.id === activeCategory)!;
+                                                        const parentSlug = parentCategory.slug || parentCategory.name.toLowerCase().replace(/\s+/g, '-');
+                                                        return (
+                                                            <div key={i}>
+                                                                <Link
+                                                                    to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}`}
+                                                                    onClick={() => { setIsOpen(false); setActiveCategory(null); }}
+                                                                    className="font-bold text-[15px] text-foreground hover:text-primary transition-colors block mb-4 border-b border-border/50 pb-2 flex items-center justify-between group"
+                                                                >
+                                                                    <span>{sub.name}</span>
+                                                                    <div className="w-1.5 h-1.5 rounded-full bg-primary scale-0 group-hover:scale-100 transition-transform" />
+                                                                </Link>
+                                                                <ul className="space-y-2.5">
+                                                                    {sub.children.map((child, j) => (
+                                                                        <li key={j}>
+                                                                            <Link
+                                                                                to={`/category/${parentSlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}
+                                                                                onClick={() => { setIsOpen(false); setActiveCategory(null); }}
+                                                                                className="block text-sm text-muted-foreground hover:text-primary hover:pl-2 transition-all duration-200 border-l border-transparent hover:border-primary/30"
+                                                                            >
+                                                                                {child.name}
+                                                                            </Link>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </motion.div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground opacity-50">
+                                                <LayoutGrid className="w-12 h-12 mb-4" />
+                                                <p>Chọn một danh mục để xem thêm</p>
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                                
+                                {/* Bottom suggestion/footer */}
+                                <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground italic relative z-10">
+                                    <p>✨ Khám phá xu hướng làm đẹp mới nhất cùng Bông Cosmetic</p>
+                                    <Link to="/flash-sale" className="not-italic font-bold text-primary hover:underline">Xem tất cả sản phẩm →</Link>
+                                </div>
+                            </div>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
