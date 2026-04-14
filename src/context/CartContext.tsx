@@ -119,7 +119,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     const addToCart = async (product: IProduct, variantId: number | null = null, variantAttributes: IVariantAttribute[] | null = null, quantity: number = 1) => {
         const cartItemId = variantId ? `v-${variantId}` : `p-${product.id}`;
-        logActivity('ADD_CART', { productId: product.id, productName: product.name, quantity });
+        logActivity('ADD_CART', {
+            productId: product.id,
+            productName: product.name,
+            quantity,
+            price: product.finalPrice || product.price || 0
+        });
 
         if (isAuthenticated) {
             try {
@@ -157,7 +162,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     const removeFromCart = async (cartItemId: string) => {
         const itemToRemove = cartItems.find(item => item.cartItemId === cartItemId);
         if (itemToRemove) {
-            logActivity('REMOVE_CART', { productId: itemToRemove.id, productName: itemToRemove.name });
+            logActivity('REMOVE_CART', {
+                productId: itemToRemove.id,
+                productName: itemToRemove.name,
+                quantity: itemToRemove.quantity
+            });
         }
 
         setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
@@ -191,6 +200,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         }
 
         const itemToUpdate = cartItems.find(item => item.cartItemId === cartItemId);
+        if (itemToUpdate) {
+            logActivity('UPDATE_CART', {
+                productId: itemToUpdate.id,
+                productName: itemToUpdate.name,
+                oldQuantity: itemToUpdate.quantity,
+                newQuantity: quantity
+            });
+        }
 
         // 1. Optimistic UI update for instant feedback
         setCartItems((prev) =>

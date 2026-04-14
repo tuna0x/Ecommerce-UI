@@ -42,7 +42,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const hoverImage = product.hoverImage || (Array.isArray(product.image) && product.image.length > 1 ? product.image[1] : null);
 
   const handleClick = () => {
-    logActivity('CLICK_PRODUCT', { productId: product.id, productName: product.name });
+    logActivity('CLICK_PRODUCT', {
+      productId: product.id,
+      productName: product.name,
+      source: 'product_listing'
+    });
   };
 
   return (

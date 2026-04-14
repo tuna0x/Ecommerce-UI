@@ -102,7 +102,13 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     if (product) {
-      logActivity('VIEW_PRODUCT', { productId: product.id, productName: product.name });
+      const catName = typeof product.category === 'string' ? product.category : product.category?.name || '';
+      logActivity('VIEW_PRODUCT', {
+        productId: product.id,
+        productName: product.name,
+        categoryName: catName,
+        price: product.finalPrice || product.price || product.originalPrice || 0
+      });
     }
   }, [product?.id]);
 
