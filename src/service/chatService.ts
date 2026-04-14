@@ -1,7 +1,7 @@
 import axiosInstance from "./axiosInstance";
 
-export const sendMessage = async (message: string) => {
-    const res = await axiosInstance.post("/chat", { message });
+export const sendMessage = async (message: string, history: {role: string, content: string}[] = []) => {
+    const res = await axiosInstance.post("/chat", { message, history });
     return res.data;
 };
 
