@@ -10,6 +10,7 @@ export interface IUser {
   createdBy?: string;
   updateBy?: string;
   active: boolean;
+  verified?: boolean;
   lastLoginAt?: string;
   lastIpAddress?: string;
   role: {

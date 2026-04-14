@@ -57,6 +57,10 @@ export const UserService = {
     const res = await axiosInstance.get(`${BASE_URL}/${id}/analytics`);
     return res.data;
   },
+  getAccountPermissions: async (): Promise<IApiResponse<any>> => {
+    const res = await axiosInstance.get(`/auth/permissions`);
+    return res.data;
+  },
   updateAdminNotes: async (id: number, notes: string): Promise<IApiResponse<IUser>> => {
     const res = await axiosInstance.patch(`${BASE_URL}/${id}/admin-notes`, { notes });
     return res.data;

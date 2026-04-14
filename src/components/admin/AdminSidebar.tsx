@@ -19,6 +19,8 @@ import {
   Warehouse,
   X,
   MessageSquare,
+  Shield,
+  Lock,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -80,6 +82,8 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: 'Chat', url: '/admin/chat', icon: MessageSquare },
       { title: 'Người dùng', url: '/admin/users', icon: Users },
+      { title: 'Vai trò', url: '/admin/roles', icon: Shield },
+      { title: 'Quyền hạn', url: '/admin/permissions', icon: Lock },
       { title: 'Hoạt động', url: '/admin/user-activities', icon: MousePointer2 },
       { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
     ],
