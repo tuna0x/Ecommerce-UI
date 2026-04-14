@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MobileNavBar from "../components/MobileNavBar";
@@ -18,6 +19,8 @@ import { Slider } from "../components/ui/slider";
 import { Input } from "../components/ui/input";
 import PaginationControl from "../components/PaginationControl";
 import { Loader2 } from "lucide-react";
+import { BannerService } from "../service/bannerService";
+import type { IBanner } from "../types/banner.type";
 import {
   Select,
   SelectContent,
@@ -55,6 +58,9 @@ const Category = () => {
   });
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed for API
+  
+  // Banner states
+  const [categoryBanners, setCategoryBanners] = useState<IBanner[]>([]);
 
   // Find root category by slug
   const category = useMemo(() => {
@@ -155,12 +161,32 @@ const Category = () => {
     }
   }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, priceRange, sortBy, slug]);
 
+  const fetchCategoryBanners = useCallback(async () => {
+    try {
+      const res = await BannerService.getAll(0, 50);
+      if (res.data?.result) {
+        // Filter banners that are for categories AND match the current category link
+        const currentPath = `/category/${slug}`;
+        const matchedBanners = res.data.result.filter(
+          (b) => b.isActive && 
+                 b.position?.toLowerCase() === "category" && 
+                 b.link === currentPath
+        ).sort((a, b) => a.order - b.order);
+        
+        setCategoryBanners(matchedBanners);
+      }
+    } catch (error) {
+      console.error("Failed to fetch category banners", error);
+    }
+  }, [slug]);
+
   useEffect(() => {
     fetchBrands();
   }, []);
 
   useEffect(() => {
     fetchProducts();
+    fetchCategoryBanners();
     if (activeCategoryNode) {
       logActivity('VIEW_CATEGORY', {
         categoryId: activeCategoryNode.id,
@@ -311,6 +337,46 @@ const Category = () => {
             <span className="text-foreground">Tất cả sản phẩm</span>
           )}
         </nav>
+
+        {/* Category Banner Section */}
+        {categoryBanners.length > 0 && (
+          <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="relative w-full aspect-[21/6] md:aspect-[21/5] rounded-3xl overflow-hidden shadow-xl border border-border/50 group">
+              <img 
+                src={categoryBanners[0].image} 
+                alt={categoryBanners[0].title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-8 md:px-16 text-white">
+                <motion.span 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-xs md:text-sm font-bold tracking-widest uppercase mb-2 text-primary-foreground/90"
+                >
+                  {categoryBanners[0].subtitle || "Khám phá ngay"}
+                </motion.span>
+                <motion.h2 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-2xl md:text-4xl lg:text-5xl font-black mb-4 drop-shadow-md"
+                >
+                  {categoryBanners[0].title}
+                </motion.h2>
+                {categoryBanners[0].description && (
+                  <motion.p 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-sm md:text-base text-white/80 max-w-md line-clamp-2"
+                  >
+                    {categoryBanners[0].description}
+                  </motion.p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
