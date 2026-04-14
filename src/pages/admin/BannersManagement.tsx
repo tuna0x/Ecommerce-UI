@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Search, Pencil, Trash2, ImageIcon, Upload, X, Loader2, Calendar, ExternalLink } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ImageIcon, Upload, X, Loader2, Calendar, ExternalLink, Package, LayoutGrid } from "lucide-react";
 import { BannerService } from "../../service/bannerService";
 import type { IBanner, ICreateBanner, IUpdateBanner } from "../../types/banner.type";
 import { Button } from "../../components/ui/button";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { BannerLinkPicker } from "../../components/admin/BannerLinkPicker";
 
 const BannersManagement: React.FC = () => {
   const [bannerList, setBannerList] = useState<IBanner[]>([]);
@@ -272,7 +273,19 @@ const BannersManagement: React.FC = () => {
                             <span className="font-bold text-foreground text-base leading-tight group-hover:text-primary transition-colors line-clamp-1">{banner.title}</span>
                             {banner.subtitle && <span className="text-sm text-muted-foreground line-clamp-1 italic font-medium">{banner.subtitle}</span>}
                             <div className="flex items-center gap-2 mt-1.5 p-1 px-2 bg-muted/50 rounded w-fit border border-border/50 text-[10px] text-muted-foreground">
-                              <ExternalLink className="h-3 w-3" />
+                              {banner.link?.startsWith("/product/") ? (
+                                <div className="flex items-center gap-1 text-blue-500 font-bold uppercase">
+                                  <Package className="h-3 w-3" />
+                                  <span>Sản phẩm</span>
+                                </div>
+                              ) : banner.link?.startsWith("/category/") ? (
+                                <div className="flex items-center gap-1 text-emerald-500 font-bold uppercase">
+                                  <LayoutGrid className="h-3 w-3" />
+                                  <span>Danh mục</span>
+                                </div>
+                              ) : (
+                                <ExternalLink className="h-3 w-3" />
+                              )}
                               <span className="truncate max-w-[150px]">{banner.link || "Không có link"}</span>
                             </div>
                           </div>
@@ -358,7 +371,10 @@ const BannersManagement: React.FC = () => {
             </div>
             <div className="grid gap-2">
               <Label>Liên kết (URL)</Label>
-              <Input value={formData.link || ""} onChange={(e) => setFormData({ ...formData, link: e.target.value })} placeholder="/product/1 hoặc https://..." />
+              <BannerLinkPicker 
+                value={formData.link || ""} 
+                onChange={(val) => setFormData({ ...formData, link: val })} 
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
