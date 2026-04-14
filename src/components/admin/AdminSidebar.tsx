@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronDown,
   LogOut,
+  MousePointer2,
   FolderTree,
   Palette,
   Percent,
@@ -79,6 +80,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: 'Chat', url: '/admin/chat', icon: MessageSquare },
       { title: 'Người dùng', url: '/admin/users', icon: Users },
+      { title: 'Hoạt động', url: '/admin/user-activities', icon: MousePointer2 },
       { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
     ],
   },

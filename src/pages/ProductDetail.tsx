@@ -32,6 +32,7 @@ import { cn } from "../lib/utils";
 import CartSidebar from "../components/CartSidebar";
 import MobileNavBar from "../components/MobileNavBar";
 import { useAuth } from "../context/AuthContext";
+import { logActivity } from "../service/trackingService";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,6 +99,12 @@ const ProductDetail: React.FC = () => {
     fetchData();
     window.scrollTo(0, 0);
   }, [fetchData]);
+
+  useEffect(() => {
+    if (product) {
+      logActivity('VIEW_PRODUCT', { productId: product.id, productName: product.name });
+    }
+  }, [product?.id]);
 
   const images = useMemo(() => {
     if (!product) return [];

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { IProduct } from '../types/product.type';
 import { useQuickView } from '../context/QuickViewContext';
+import { logActivity } from '../service/trackingService';
 
 interface ProductCardProps {
   product: IProduct;
@@ -40,10 +41,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const mainImage = product.thumbnail || (Array.isArray(product.image) && product.image.length > 0 ? product.image[0] : (typeof product.image === 'string' ? product.image : ''));
   const hoverImage = product.hoverImage || (Array.isArray(product.image) && product.image.length > 1 ? product.image[1] : null);
 
+  const handleClick = () => {
+    logActivity('CLICK_PRODUCT', { productId: product.id, productName: product.name });
+  };
+
   return (
     <Link
       to={`/product/${product.id}`}
       className="group block"
+      onClick={handleClick}
     >
       <div className="bg-card rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
         {/* Image Container - 1:1 */}

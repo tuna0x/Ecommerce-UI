@@ -5,6 +5,7 @@ import { Search, X, ArrowRight, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ProductService } from "../service/productService";
 import type { IProduct } from "../types/product.type";
+import { logActivity } from "../service/trackingService";
 
 interface SearchDropdownProps {
   className?: string;
@@ -75,6 +76,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
     e.preventDefault();
     if (query.trim()) {
       setIsOpen(false);
+      logActivity('SEARCH', { keyword: query.trim() });
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
@@ -88,6 +90,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const handleViewAll = () => {
     if (query.trim()) {
       setIsOpen(false);
+      logActivity('SEARCH', { keyword: query.trim() });
       navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };

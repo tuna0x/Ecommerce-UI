@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../hooks/use-toast';
+import { logActivity } from '../service/trackingService';
 
 const PaymentResult: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -36,6 +37,8 @@ const PaymentResult: React.FC = () => {
                 clearSelectedItems();
             }, 500);
             hasClearedRef.current = true;
+
+            logActivity('PURCHASE', { orderId, transactionId, method });
 
             toast({
                 title: isConfirmed ? "Xác nhận thành công" : (isCod ? "Đã tiếp nhận đơn hàng" : "Thanh toán thành công"),
