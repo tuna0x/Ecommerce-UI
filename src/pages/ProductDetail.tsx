@@ -36,6 +36,7 @@ import { logActivity } from "../service/trackingService";
 import { ImageMagnifier } from "../components/ImageMagnifier";
 import { useInView } from "react-intersection-observer";
 import { PremiumImage } from "../components/ui/PremiumImage";
+import SEO from "../components/ui/SEO";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -267,6 +268,14 @@ const ProductDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
+      <SEO 
+        title={product.name}
+        description={(detailContent?.description || "").replace(/<[^>]*>?/gm, '').slice(0, 160) || product.name}
+        image={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : product.image)}
+        type="product"
+        url={`/product/${product.id}`}
+        keywords={`${product.name}, ${brandName}, ${categoryName}`}
+      />
       <CartSidebar />
 
       <main className="container mx-auto px-4 py-4 md:py-8">

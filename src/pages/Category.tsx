@@ -37,6 +37,7 @@ import {
 } from "../components/ui/sheet";
 import { ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { logActivity } from "../service/trackingService";
+import SEO from "../components/ui/SEO";
 
 const Category = () => {
   const { slug } = useParams();
@@ -311,6 +312,11 @@ const Category = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
+      <SEO 
+        title={activeCategoryNode ? activeCategoryNode.name : (category ? category.name : "Tất cả sản phẩm")}
+        description={`Khám phá bộ sưu tập ${activeCategoryNode?.name || category?.name || "sản phẩm"} tại Bông Cosmetic. Hiện có ${meta.total} sản phẩm chất lượng, chính hãng.`}
+        url={`/category/${slug}`}
+      />
 
       <main className="flex-1 container mx-auto px-4 py-6 pb-24 md:pb-8">
         {/* Breadcrumb */}
