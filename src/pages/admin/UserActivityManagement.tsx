@@ -314,20 +314,78 @@ const UserActivityLog: React.FC = () => {
                                  {log.pageUrl || 'N/A'}
                              </div>
                           </td>
-                          <td className="py-3 px-4 max-w-[250px]">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="text-xs text-muted-foreground truncate cursor-help bg-muted/50 p-1 px-2 rounded font-mono">
-                                    {log.metadata}
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-[400px] p-2 bg-card border shadow-lg text-xs leading-relaxed break-all">
-                                  <div className="font-bold mb-1 border-b pb-1">Chi tiết JSON:</div>
-                                  {log.metadata}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                          <td className="py-3 px-4 max-w-[300px]">
+                            {(() => {
+                              try {
+                                const meta = JSON.parse(log.metadata);
+                                if (log.actionType === 'TIME_ON_PAGE') {
+                                  const seconds = Math.floor(meta.durationMs / 1000);
+                                  const durationText = seconds >= 60 
+                                    ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+                                    : `${(meta.durationMs / 1000).toFixed(1)} giây`;
+                                  return (
+                                    <div className="flex items-center gap-2 group cursor-help">
+                                      <Clock className="h-3 w-3 text-blue-500 shrink-0" />
+                                      <span className="text-xs font-semibold text-blue-600">Ở lại: {durationText}</span>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">({meta.path})</span>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{meta.path}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  );
+                                }
+                                if (log.actionType === 'PURCHASE') {
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <ShoppingBag className="h-3 w-3 text-green-500" />
+                                        <span className="text-xs font-bold text-green-700">Đơn hàng #{meta.orderId}</span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground italic pl-4">PTTT: {meta.method}</span>
+                                    </div>
+                                  );
+                                }
+                                if (log.actionType === 'BEGIN_CHECKOUT') {
+                                  return (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1.5 font-semibold text-orange-700">
+                                        <Activity className="h-3 w-3" />
+                                        <span className="text-xs">Checkout: {new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground pl-4">({meta.itemCount} sản phẩm)</span>
+                                    </div>
+                                  );
+                                }
+                                if (log.actionType === 'ADD_CART' || log.actionType === 'UPDATE_CART') {
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <ShoppingCart className="h-3 w-3 text-emerald-500" />
+                                      <span className="text-xs font-medium">{meta.productName || 'Cập nhật giỏ hàng'}</span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="text-[10px] text-muted-foreground truncate cursor-help bg-muted/50 p-1 px-2 rounded font-mono">
+                                          {log.metadata}
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent className="max-w-[300px] break-all text-[10px]">
+                                        {log.metadata}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              } catch (e) {
+                                return <span className="text-xs font-mono text-muted-foreground">{log.metadata}</span>;
+                              }
+                            })()}
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div className="text-xs font-medium tabular-nums">{formatDateTime(log.createdAt)}</div>

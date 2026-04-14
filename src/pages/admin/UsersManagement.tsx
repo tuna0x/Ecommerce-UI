@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity } from "lucide-react";
+import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, Gift } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -426,8 +426,8 @@ const UsersManagement: React.FC = () => {
 
       {/* Customer 360 View Dialog */}
       <Dialog open={!!analyticsUser} onOpenChange={() => { setAnalyticsUser(null); setAnalyticsData(null); }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="p-6 pb-2">
+        <DialogContent className="max-w-4xl h-[750px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+          <DialogHeader className="p-6 pb-2 shrink-0">
             <div className="flex items-center gap-4">
                <Avatar className="w-16 h-16 border-2 border-primary/20">
                 <AvatarImage src={analyticsUser?.image} />
@@ -464,7 +464,7 @@ const UsersManagement: React.FC = () => {
           ) : (
             <div className="flex-1 overflow-hidden">
               <Tabs defaultValue="overview" className="h-full flex flex-col">
-                <div className="px-6 border-b">
+                <div className="px-6 border-b shrink-0">
                   <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6">
                     <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold">Tổng quan</TabsTrigger>
                     <TabsTrigger value="activity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold">Dòng thời gian</TabsTrigger>
@@ -580,9 +580,56 @@ const UsersManagement: React.FC = () => {
                                   {new Date(activity.timestamp).toLocaleString('vi-VN')}
                                 </span>
                               </div>
-                              <p className="text-sm font-semibold text-foreground truncate max-w-full" title={activity.metadata}>
-                                {activity.metadata}
-                              </p>
+                              <div className="mt-1">
+                                {(() => {
+                                  try {
+                                    const meta = JSON.parse(activity.metadata);
+                                    if (activity.action === 'TIME_ON_PAGE') {
+                                      const seconds = Math.floor(meta.durationMs / 1000);
+                                      const durationText = seconds >= 60 
+                                        ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+                                        : `${(meta.durationMs / 1000).toFixed(1)} giây`;
+                                      return (
+                                        <div className="text-sm space-y-0.5">
+                                          <p className="font-semibold text-foreground flex items-center gap-2">
+                                            <Clock className="w-3 h-3 text-blue-500" />
+                                            Ở lại trang: <span className="text-blue-600">{durationText}</span>
+                                          </p>
+                                          <p className="text-xs text-muted-foreground italic">Đường dẫn: {meta.path}</p>
+                                        </div>
+                                      );
+                                    }
+                                    if (activity.action === 'PURCHASE') {
+                                      return (
+                                        <div className="text-sm space-y-0.5">
+                                          <p className="font-semibold text-foreground flex items-center gap-2">
+                                            <Gift className="w-3 h-3 text-green-500" />
+                                            Mua đơn hàng: <span className="text-green-600">#{meta.orderId}</span>
+                                          </p>
+                                          <p className="text-[11px] text-muted-foreground flex gap-2">
+                                            <span>PTTT: <b>{meta.method}</b></span>
+                                            {meta.transactionId && <span>Mã GD: <b>{meta.transactionId}</b></span>}
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+                                    if (activity.action === 'BEGIN_CHECKOUT') {
+                                      return (
+                                        <div className="text-sm">
+                                          <p className="font-semibold text-foreground flex items-center gap-2">
+                                            <TrendingUp className="w-3 h-3 text-orange-500" />
+                                            Bắt đầu thanh toán: <span className="text-orange-600">{new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span>
+                                          </p>
+                                          <p className="text-[11px] text-muted-foreground">Số lượng: {meta.itemCount} sản phẩm</p>
+                                        </div>
+                                      );
+                                    }
+                                    return <p className="text-sm font-semibold text-foreground">{activity.metadata}</p>;
+                                  } catch (e) {
+                                    return <p className="text-sm font-semibold text-foreground">{activity.metadata}</p>;
+                                  }
+                                })()}
+                              </div>
                               <p className="text-xs text-muted-foreground truncate hover:text-primary transition-colors cursor-default">
                                 {activity.pageUrl}
                               </p>

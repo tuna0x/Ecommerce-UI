@@ -15,19 +15,14 @@ import {
   Smartphone,
   Plus,
   Ticket,
-  ChevronRight,
   Loader2,
-  X
+  X,
+  Gift
 } from 'lucide-react';
 import { voucherService, type Coupon, type UserCoupon } from '../service/voucherService';
 import type { IPagination } from '../types/api.type';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Button } from "../components/ui/button";
 import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
@@ -113,7 +108,9 @@ const Checkout: React.FC = () => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [userCoupons, setUserCoupons] = useState<UserCoupon[]>([]);
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
   const [isVoucherLoading, setIsVoucherLoading] = useState(false);
+  const [isCollecting, setIsCollecting] = useState<number | null>(null);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
 
@@ -194,27 +191,52 @@ const Checkout: React.FC = () => {
   const [shippingFee, setShippingFee] = useState(0);
   const [isLoadingFee, setIsLoadingFee] = useState(false);
 
-  useEffect(() => {
-    const fetchUserCoupons = async () => {
-      if (user) {
-        setIsVoucherLoading(true);
-        try {
-          const res = await voucherService.getMyVouchers();
-          if (res && res.data) {
-            const data = Array.isArray(res.data)
-              ? res.data
-              : (res.data as unknown as IPagination<UserCoupon>).result || [];
-            setUserCoupons(data.filter((v: UserCoupon) => !v.isUsed));
-          }
-        } catch (err) {
-          console.error("Failed to fetch user coupons", err);
-        } finally {
-          setIsVoucherLoading(false);
-        }
+  const fetchVouchers = async () => {
+    if (!user) return;
+    setIsVoucherLoading(true);
+    try {
+      const [myRes, availableRes] = await Promise.all([
+        voucherService.getMyVouchers(),
+        voucherService.getAvailableVouchers()
+      ]);
+      
+      if (myRes && myRes.data) {
+        const data = Array.isArray(myRes.data)
+          ? myRes.data
+          : (myRes.data as unknown as IPagination<UserCoupon>).result || [];
+        setUserCoupons(data.filter((v: UserCoupon) => !v.isUsed));
       }
-    };
-    fetchUserCoupons();
+      
+      if (availableRes && availableRes.data) {
+        const data = Array.isArray(availableRes.data)
+          ? availableRes.data
+          : (availableRes.data as unknown as IPagination<Coupon>).result || [];
+        setAvailableCoupons(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vouchers", err);
+    } finally {
+      setIsVoucherLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVouchers();
   }, [user]);
+
+  const handleCollectVoucher = async (id: number) => {
+    setIsCollecting(id);
+    try {
+      await voucherService.collectVoucher(id);
+      toast.success('Đã lưu voucher vào ví!');
+      await fetchVouchers();
+    } catch (err) {
+      console.error("Failed to collect voucher", err);
+      toast.error('Không thể lưu voucher này');
+    } finally {
+      setIsCollecting(null);
+    }
+  };
 
   const calculateDiscount = (coupon: Coupon, subTotal: number) => {
     let discount = 0;
@@ -797,64 +819,111 @@ const Checkout: React.FC = () => {
                             Ví Voucher của bạn
                           </DialogTitle>
                         </DialogHeader>
-                        <ScrollArea className="max-h-[60vh] p-4">
-                          {isVoucherLoading ? (
-                            <div className="flex flex-col items-center justify-center py-10 gap-2">
-                              <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
-                              <p className="text-sm text-muted-foreground">Đang tải voucher...</p>
-                            </div>
-                          ) : userCoupons.length === 0 ? (
-                            <div className="text-center py-10">
-                              <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                              <p className="text-sm font-medium">Bạn chưa có mã giảm giá nào</p>
-                              <p className="text-xs text-muted-foreground mt-1">Hãy thu thập thêm tại trang chủ!</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-3 pr-2">
-                              {userCoupons.map((vc) => {
-                                const isApplicable = selectedTotal >= vc.coupon.minOrderValue;
-                                return (
-                                  <button
-                                    key={vc.id}
-                                    type="button"
-                                    disabled={!isApplicable}
-                                    onClick={() => handleApplyCoupon(vc.coupon)}
-                                    className={`w-full text-left p-4 border rounded-xl flex items-center gap-4 transition-all ${appliedCoupon?.id === vc.coupon.id
-                                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
-                                      : isApplicable
-                                        ? 'border-border hover:border-primary/50'
-                                        : 'border-border/30 opacity-60 grayscale cursor-not-allowed'
-                                      }`}
-                                  >
-                                    <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center shrink-0 ${isApplicable ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                      <Ticket className="w-6 h-6" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-bold text-sm">
-                                        {vc.coupon.type === 'PERCENT' ? `${vc.coupon.discountValue}%` : `${formatPrice(vc.coupon.discountValue)}₫`} GIẢM
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground line-clamp-1">{vc.coupon.name}</p>
-                                      <p className="text-xs font-semibold text-primary mt-1">Mã: {vc.coupon.code}</p>
-                                      {!isApplicable && (
-                                        <p className="text-[10px] text-destructive mt-1 font-medium">
-                                          Cần đơn từ {formatPrice(vc.coupon.minOrderValue)}₫
-                                        </p>
-                                      )}
-                                    </div>
-                                    {appliedCoupon?.id === vc.coupon.id && (
-                                      <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shrink-0">
-                                        <Check className="w-3 h-3 text-white" />
+                        <Tabs defaultValue="mine" className="w-full">
+                          <div className="px-4 pt-2">
+                             <TabsList className="w-full grid grid-cols-2 h-10 p-1 bg-muted/50 rounded-xl">
+                               <TabsTrigger value="mine" className="rounded-lg text-xs font-bold uppercase tracking-tight">Mã của bạn</TabsTrigger>
+                               <TabsTrigger value="collect" className="rounded-lg text-xs font-bold uppercase tracking-tight">Sưu tầm thêm</TabsTrigger>
+                             </TabsList>
+                          </div>
+
+                          <TabsContent value="mine" className="outline-none">
+                            <ScrollArea className="max-h-[45vh] p-4">
+                              {isVoucherLoading ? (
+                                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                  <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+                                  <p className="text-sm text-muted-foreground">Đang tải...</p>
+                                </div>
+                              ) : userCoupons.length === 0 ? (
+                                <div className="text-center py-10 px-4">
+                                  <Ticket className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                  <p className="text-sm font-bold">Bạn chưa có mã giảm giá nào</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Hãy sang tab Sưu tầm để lấy ngay!</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {userCoupons.map((vc) => {
+                                    const isApplicable = selectedTotal >= vc.coupon.minOrderValue;
+                                    return (
+                                      <button
+                                        key={vc.id}
+                                        type="button"
+                                        disabled={!isApplicable}
+                                        onClick={() => handleApplyCoupon(vc.coupon)}
+                                        className={`w-full text-left p-4 border rounded-xl flex items-center gap-4 transition-all ${appliedCoupon?.id === vc.coupon.id
+                                          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                          : isApplicable
+                                            ? 'border-border hover:border-primary/50'
+                                            : 'border-border/30 opacity-60 grayscale cursor-not-allowed'
+                                          }`}
+                                      >
+                                        <div className={`w-12 h-12 rounded-lg flex flex-col items-center justify-center shrink-0 ${isApplicable ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                           <div className="font-black text-xs">{vc.coupon.type === 'PERCENT' ? `${vc.coupon.discountValue}%` : 'VNĐ'}</div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-bold text-sm line-clamp-1">{vc.coupon.name}</p>
+                                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Mã: {vc.coupon.code}</p>
+                                          {!isApplicable && (
+                                            <p className="text-[10px] text-destructive mt-1 font-bold italic">
+                                              Thiếu {formatPrice(vc.coupon.minOrderValue - selectedTotal)}₫ để áp dụng
+                                            </p>
+                                          )}
+                                        </div>
+                                        {appliedCoupon?.id === vc.coupon.id && (
+                                          <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center shrink-0">
+                                            <Check className="w-3 h-3 text-white" />
+                                          </div>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </ScrollArea>
+                          </TabsContent>
+
+                          <TabsContent value="collect" className="outline-none">
+                             <ScrollArea className="max-h-[45vh] p-4">
+                              {isVoucherLoading ? (
+                                <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                  <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+                                  <p className="text-sm text-muted-foreground">Đang tải...</p>
+                                </div>
+                              ) : availableCoupons.length === 0 ? (
+                                <div className="text-center py-10 px-4">
+                                  <Gift className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                  <p className="text-sm font-bold">Hết sạch mã rồi!</p>
+                                  <p className="text-xs text-muted-foreground mt-1">Quay lại sau bạn nhé.</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {availableCoupons.map((c) => (
+                                    <div
+                                      key={c.id}
+                                      className="w-full p-4 border border-border rounded-xl flex items-center gap-4 bg-muted/20"
+                                    >
+                                      <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                                         <Gift className="w-6 h-6" />
                                       </div>
-                                    )}
-                                    {isApplicable && appliedCoupon?.id !== vc.coupon.id && (
-                                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                                    )}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </ScrollArea>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-bold text-sm line-clamp-1">{c.name}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Giảm {c.type === 'PERCENT' ? `${c.discountValue}%` : `${formatPrice(c.discountValue)}₫`}</p>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        className="h-8 text-[11px] font-bold px-3 rounded-lg"
+                                        onClick={() => handleCollectVoucher(c.id)}
+                                        disabled={isCollecting === c.id}
+                                      >
+                                        {isCollecting === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Lưu mã"}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </ScrollArea>
+                          </TabsContent>
+                        </Tabs>
                         <div className="p-4 border-t bg-muted/30">
                           <Button className="w-full" variant="outline" onClick={() => setIsWalletOpen(false)}>Đóng</Button>
                         </div>
