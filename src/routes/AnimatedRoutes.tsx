@@ -1,6 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
+import { logActivity } from "../service/trackingService";
 
 // Lazy load all pages
 const Index = lazy(() => import("../pages/Index"));
@@ -36,6 +38,7 @@ const BrandsManagement = lazy(() => import("../pages/admin/BrandsManagement"));
 const BannersManagement = lazy(() => import("../pages/admin/BannersManagement"));
 const ChatManagement = lazy(() => import("../pages/admin/ChatManagement"));
 const InventoryManagement = lazy(() => import("../pages/admin/InventoryManagement"));
+const UserActivityManagement = lazy(() => import("../pages/admin/UserActivityManagement"));
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
@@ -45,6 +48,29 @@ const FAQ = lazy(() => import("../pages/FAQ"));
 const About = lazy(() => import("../pages/About"));
 
 const AnimatedRoutes = () => {
+  const location = useLocation();
+  const lastLocationStr = useRef(location.pathname);
+  const startTime = useRef(Date.now());
+
+  useEffect(() => {
+    if (lastLocationStr.current !== location.pathname) {
+      const timeSpent = Date.now() - startTime.current;
+      logActivity('TIME_ON_PAGE', { path: lastLocationStr.current, durationMs: timeSpent });
+      
+      lastLocationStr.current = location.pathname;
+      startTime.current = Date.now();
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const timeSpent = Date.now() - startTime.current;
+      logActivity('TIME_ON_PAGE', { path: lastLocationStr.current, durationMs: timeSpent, event: 'unload' });
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, []);
+
   return (
     <Suspense fallback={
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background">
@@ -92,6 +118,7 @@ const AnimatedRoutes = () => {
             <Route path="inventory" element={<InventoryManagement />} />
             <Route path="product-detail" element={<ProductDetailManagement />} />
             <Route path="chat" element={<ChatManagement />} />
+            <Route path="user-activities" element={<UserActivityManagement />} />
           </Route>
         </Route>
 

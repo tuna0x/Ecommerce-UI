@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { addToCartApi, getCartApi, removeCartItemApi, updateCartItemQuantityApi } from "../service/cartService";
 import type { ICartItemResponse } from "../types/cart.type";
 import { toast } from "sonner";
+import { logActivity } from "../service/trackingService";
 
 export interface CartItem extends IProduct {
     cartItemId: string; // Unique ID: v-{variantId} or p-{productId}
@@ -118,6 +119,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     const addToCart = async (product: IProduct, variantId: number | null = null, variantAttributes: IVariantAttribute[] | null = null, quantity: number = 1) => {
         const cartItemId = variantId ? `v-${variantId}` : `p-${product.id}`;
+        logActivity('ADD_CART', { productId: product.id, productName: product.name, quantity });
 
         if (isAuthenticated) {
             try {
@@ -154,6 +156,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     const removeFromCart = async (cartItemId: string) => {
         const itemToRemove = cartItems.find(item => item.cartItemId === cartItemId);
+        if (itemToRemove) {
+            logActivity('REMOVE_CART', { productId: itemToRemove.id, productName: itemToRemove.name });
+        }
 
         setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
 
