@@ -33,6 +33,9 @@ import CartSidebar from "../components/CartSidebar";
 import MobileNavBar from "../components/MobileNavBar";
 import { useAuth } from "../context/AuthContext";
 import { logActivity } from "../service/trackingService";
+import { ImageMagnifier } from "../components/ImageMagnifier";
+import { useInView } from "react-intersection-observer";
+import { PremiumImage } from "../components/ui/PremiumImage";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,6 +53,12 @@ const ProductDetail: React.FC = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState(false);
+  
+  const { ref: mainButtonRef, inView: isMainButtonInView } = useInView({
+    threshold: 0,
+  });
+
+  const showStickyBar = !isMainButtonInView && !loading && product;
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -282,23 +291,30 @@ const ProductDetail: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_320px] gap-6 md:gap-8 mb-12">
           {/* Column 1: Image Gallery */}
           <div className="space-y-3">
-            <div
-              className="relative aspect-square bg-secondary/30 rounded-2xl overflow-hidden cursor-pointer"
-              onClick={() => setLightboxOpen(true)}
-            >
+            <div className="relative aspect-square bg-white rounded-2xl overflow-hidden cursor-pointer group/magnifier">
               <AnimatePresence mode="wait">
-                <motion.img
+                <motion.div
                   key={selectedImage}
-                  src={images[selectedImage]}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                />
+                >
+                  <ImageMagnifier 
+                    src={images[selectedImage]} 
+                    className="w-full h-full"
+                  />
+                </motion.div>
               </AnimatePresence>
-              <div className="absolute top-3 right-3 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-colors">
+              
+              <div 
+                className="absolute top-3 right-3 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-all md:opacity-0 md:group-hover/magnifier:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxOpen(true);
+                }}
+              >
                 <ZoomIn className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
@@ -313,7 +329,7 @@ const ProductDetail: React.FC = () => {
                     : 'border-border/50 hover:border-primary/50'
                     }`}
                 >
-                  <img src={img} alt={`${product.name} - ảnh ${index + 1}`} className="w-full h-full object-cover" />
+                  <PremiumImage src={img} alt={`${product.name} - ảnh ${index + 1}`} />
                 </button>
               ))}
             </div>
@@ -409,7 +425,7 @@ const ProductDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2 sm:gap-3">
+            <div ref={mainButtonRef} className="flex gap-2 sm:gap-3">
               <button
                 onClick={handleAddToCart}
                 disabled={currentStock === 0 || isAdding}
@@ -567,6 +583,46 @@ const ProductDetail: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Mobile Sticky Add to Cart Bar */}
+      <AnimatePresence>
+        {showStickyBar && (
+          <motion.div
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-t border-border p-4 md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-safe"
+          >
+            <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                  <PremiumImage 
+                    src={images[0]} 
+                    alt={product.name} 
+                    containerClassName="bg-secondary/30"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm truncate">{product.name}</p>
+                  <p className="text-primary font-bold">{formatPrice(displayPrice)}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleAddToCart}
+                disabled={currentStock === 0 || isAdding}
+                className="btn-primary py-2.5 px-6 text-sm flex items-center gap-2 whitespace-nowrap"
+              >
+                {isAdding ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ShoppingBag className="w-4 h-4" />
+                )}
+                {currentStock === 0 ? "Hết hàng" : "Mua ngay"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Footer />
       <MobileNavBar />
