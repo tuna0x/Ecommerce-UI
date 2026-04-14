@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Shield, ShieldOff, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity } from "lucide-react";
+import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -10,6 +10,7 @@ import {
   CardDescription,
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { AccessControl } from "../../components/auth/AccessControl";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -34,12 +35,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "../../components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { Textarea } from "../../components/ui/textarea";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { toast } from "sonner";
 import { UserService } from "../../service/userService";
 import { RoleService } from "../../service/roleService";
@@ -52,7 +52,7 @@ const UsersManagement: React.FC = () => {
   const [roles, setRoles] = useState<IRole[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [userToToggleRole, setUserToToggleRole] = useState<IUser | null>(null);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ user: IUser; newRoleId: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // New states for Customer 360
@@ -119,37 +119,24 @@ const UsersManagement: React.FC = () => {
     });
   };
 
-  const toggleUserRole = useCallback((user: IUser) => {
-    setUserToToggleRole(user);
-  }, []);
+  const handleRoleChange = (user: IUser, roleId: string) => {
+    setPendingRoleChange({ user, newRoleId: roleId });
+  };
 
-  const confirmToggleRole = useCallback(async () => {
-    if (!userToToggleRole) return;
-
+  const confirmRoleChange = async () => {
+    if (!pendingRoleChange) return;
+    const { user, newRoleId } = pendingRoleChange;
     try {
-      const adminRole = roles.find((r) => r.name === "SUPER_ADMIN");
-      const userRole = roles.find((r) => r.name === "ROLE_USER");
-
-      if (!adminRole || !userRole) {
-        toast.error("Không tìm thấy thông tin vai trò trên hệ thống");
-        return;
-      }
-
-      const isCurrentlyAdmin = userToToggleRole.role?.name === "SUPER_ADMIN";
-      const newRole = isCurrentlyAdmin ? userRole : adminRole;
-      
-      await UserService.updateRole(userToToggleRole.id, newRole.id);
-      toast.success(
-        `Đã ${newRole.name === "SUPER_ADMIN" ? "cấp" : "thu hồi"} quyền admin cho ${userToToggleRole.name}`,
-      );
+      await UserService.updateRole(user.id, parseInt(newRoleId));
+      toast.success(`Đã cập nhật vai trò cho ${user.name}`);
       fetchUsers(currentPage);
     } catch (error) {
       console.error(error);
-      toast.error("Cập nhật quyền thất bại");
+      toast.error("Cập nhật vai trò thất bại");
     } finally {
-      setUserToToggleRole(null);
+      setPendingRoleChange(null);
     }
-  }, [userToToggleRole, roles, fetchUsers, currentPage]);
+  };
 
   const toggleUserStatus = useCallback(async (user: IUser) => {
     try {
@@ -188,17 +175,6 @@ const UsersManagement: React.FC = () => {
       console.error(error);
       toast.error("Không thể lưu ghi chú");
     }
-  };
-
-  const getStatusColor = (status: string) => {
-      const colors: Record<string, string> = {
-          'DELIVERED': '#22c55e',
-          'CANCELLED': '#ef4444',
-          'PROCESSING': '#3b82f6',
-          'PENDING': '#f59e0b',
-          'SHIPPING': '#8b5cf6'
-      };
-      return colors[status] || '#94a3b8';
   };
 
   const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
@@ -334,14 +310,21 @@ const UsersManagement: React.FC = () => {
                           <span className="font-medium text-foreground">{user.age ?? 'N/A'}</span> tuổi
                       </td>
                       <td className="py-4 px-4">
-                        <Badge
-                          variant={
-                            user.role?.name === "SUPER_ADMIN" ? "default" : "secondary"
-                          }
-                          className={cn("text-[10px] uppercase font-bold tracking-wider", user.role?.name === "SUPER_ADMIN" ? "bg-primary" : "")}
+                        <Select
+                          value={user.role?.id.toString()}
+                          onValueChange={(value) => handleRoleChange(user, value)}
                         >
-                          {user.role?.name === "SUPER_ADMIN" ? "Admin" : "Người dùng"}
-                        </Badge>
+                          <SelectTrigger className="w-[140px] h-8 text-[10px] font-bold uppercase tracking-wider">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((r) => (
+                              <SelectItem key={r.id} value={r.id.toString()} className="text-[10px] font-bold uppercase">
+                                {r.name === "SUPER_ADMIN" ? "Admin" : r.name === "ROLE_USER" ? "Người dùng" : r.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="py-4 px-4">
                         <Badge
@@ -361,23 +344,8 @@ const UsersManagement: React.FC = () => {
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
-                            title={
-                              user.role?.name === "SUPER_ADMIN"
-                                ? "Thu hồi quyền admin"
-                                : "Cấp quyền admin"
-                            }
-                            onClick={() => toggleUserRole(user)}
-                          >
-                            {user.role?.name === "SUPER_ADMIN" ? (
-                              <ShieldOff className="h-4 w-4 text-orange-500" />
-                            ) : (
-                              <Shield className="h-4 w-4 text-green-500" />
-                            )}
-                          </Button>
+
+
                           <Button
                             variant="ghost"
                             size="icon"
@@ -387,19 +355,22 @@ const UsersManagement: React.FC = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-destructive/10 transition-colors"
-                            title={
-                              user.active
-                                ? "Vô hiệu hóa"
-                                : "Kích hoạt"
-                            }
-                            onClick={() => toggleUserStatus(user)}
-                          >
-                            <UserCog className={`h-4 w-4 ${user.active ? "text-muted-foreground" : "text-destructive font-bold"}`} />
-                          </Button>
+
+                          <AccessControl module="USERS" action="TOGGLE_STATUS">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-destructive/10 transition-colors"
+                              title={
+                                user.active
+                                  ? "Vô hiệu hóa"
+                                  : "Kích hoạt"
+                              }
+                              onClick={() => toggleUserStatus(user)}
+                            >
+                              <UserCog className={`h-4 w-4 ${user.active ? "text-muted-foreground" : "text-destructive font-bold"}`} />
+                            </Button>
+                          </AccessControl>
                         </div>
                       </td>
                     </tr>
@@ -425,32 +396,33 @@ const UsersManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Confirm Role Toggle Dialog */}
+      {/* Confirm Role Change Dialog */}
       <AlertDialog
-        open={!!userToToggleRole}
-        onOpenChange={() => setUserToToggleRole(null)}
+        open={!!pendingRoleChange}
+        onOpenChange={(open) => !open && setPendingRoleChange(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {userToToggleRole?.role?.name === "SUPER_ADMIN"
-                ? "Thu hồi quyền admin?"
-                : "Cấp quyền admin?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Xác nhận thay đổi vai trò</AlertDialogTitle>
             <AlertDialogDescription>
-              {userToToggleRole?.role?.name === "SUPER_ADMIN"
-                ? `Bạn có chắc muốn thu hồi quyền admin của ${userToToggleRole?.name}? Họ sẽ không còn truy cập được trang quản trị.`
-                : `Bạn có chắc muốn cấp quyền admin cho ${userToToggleRole?.name}? Họ sẽ có thể truy cập và quản lý toàn bộ hệ thống.`}
+              Bạn có chắc chắn muốn thay đổi vai trò của <strong>{pendingRoleChange?.user.name}</strong> 
+              từ <span className="font-bold text-primary">{pendingRoleChange?.user.role?.name === "SUPER_ADMIN" ? "Admin" : pendingRoleChange?.user.role?.name === "ROLE_USER" ? "Người dùng" : pendingRoleChange?.user.role?.name}</span>{' '}
+              sang <span className="font-bold text-green-600">{roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name === "SUPER_ADMIN" ? "Admin" : roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name === "ROLE_USER" ? "Người dùng" : roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmToggleRole}>
-              Xác nhận
+            <AlertDialogCancel onClick={() => setPendingRoleChange(null)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary hover:bg-primary/90"
+              onClick={confirmRoleChange}
+            >
+              Xác nhận thay đổi
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
 
       {/* Customer 360 View Dialog */}
       <Dialog open={!!analyticsUser} onOpenChange={() => { setAnalyticsUser(null); setAnalyticsData(null); }}>
@@ -545,7 +517,7 @@ const UsersManagement: React.FC = () => {
                                   paddingAngle={5}
                                   dataKey="value"
                                 >
-                                  {Object.entries(analyticsData?.orderStatusDistribution || {}).map((entry, index) => (
+                                  {Object.entries(analyticsData?.orderStatusDistribution || {}).map((_, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                   ))}
                                 </Pie>

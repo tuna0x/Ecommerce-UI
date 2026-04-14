@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
 import { AuthProvider } from "./context/AuthContext";
+import { PermissionProvider } from "./context/PermissionContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ChatProvider } from "./context/ChatContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -25,21 +26,23 @@ function App() {
       <ThemeProvider>
         <Router>
           <AuthProvider>
-            <SocketProvider>
-              <NotificationProvider>
-                <ChatProvider>
-                  <CartProvider>
-                    <QuickViewProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <Sonner />
-                        <AnimatedRoutes />
-                      </TooltipProvider>
-                    </QuickViewProvider>
-                  </CartProvider>
-                </ChatProvider>
-              </NotificationProvider>
-            </SocketProvider>
+            <PermissionProvider>
+              <SocketProvider>
+                <NotificationProvider>
+                  <ChatProvider>
+                    <CartProvider>
+                      <QuickViewProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <Sonner />
+                          <AnimatedRoutes />
+                        </TooltipProvider>
+                      </QuickViewProvider>
+                    </CartProvider>
+                  </ChatProvider>
+                </NotificationProvider>
+              </SocketProvider>
+            </PermissionProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>
