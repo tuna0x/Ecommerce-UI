@@ -83,16 +83,48 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
     }
   };
 
-  const formatMetadata = (jsonStr: string) => {
+  const formatMetadata = (jsonStr: string, actionType: string) => {
     try {
       const data = JSON.parse(jsonStr);
-      if (data.productName) return `Sản phẩm: ${data.productName}`;
-      if (data.query) return `Tìm kiếm: "${data.query}"`;
-      if (data.categoryName) return `Danh mục: ${data.categoryName}`;
-      if (data.intent) return `Ý định: ${data.intent}`;
-      return jsonStr.length > 50 ? jsonStr.slice(0, 50) + "..." : jsonStr;
+      
+      if (actionType === 'TIME_ON_PAGE' && data.durationMs) {
+        const seconds = Math.floor(data.durationMs / 1000);
+        const durationText = seconds >= 60 
+          ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+          : `${(data.durationMs / 1000).toFixed(1)} giây`;
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-bold text-blue-600">Ở lại trang: {durationText}</span>
+            <span className="text-muted-foreground italic text-[10px]">Đường dẫn: {data.path}</span>
+          </div>
+        );
+      }
+
+      if (actionType === 'PURCHASE' && data.orderId) {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-bold text-green-600">Mua đơn hàng #{data.orderId}</span>
+            <span className="text-muted-foreground text-[10px]">PTTT: {data.method} | Mã GD: {data.transactionId || 'N/A'}</span>
+          </div>
+        );
+      }
+
+      if (actionType === 'BEGIN_CHECKOUT' && data.cartTotal) {
+        return (
+           <span className="font-bold text-orange-600">
+             Thanh toán: {new Intl.NumberFormat('vi-VN').format(data.cartTotal)}₫ ({data.itemCount} SP)
+           </span>
+        );
+      }
+
+      if (data.productName) return <span>Sản phẩm: <b>{data.productName}</b></span>;
+      if (data.query) return <span>Tìm kiếm: <b>"{data.query}"</b></span>;
+      if (data.categoryName) return <span>Danh mục: <b>{data.categoryName}</b></span>;
+      if (data.intent) return <span>Ý định: <b>{data.intent}</b></span>;
+      
+      return <span className="font-mono text-[10px] break-all opacity-70">{jsonStr}</span>;
     } catch {
-      return jsonStr;
+      return <span>{jsonStr}</span>;
     }
   };
 
@@ -181,7 +213,7 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
                              </div>
                           </div>
                           <div className="mt-2 p-3 rounded-lg bg-muted/20 border border-muted/50 text-[11px] leading-relaxed">
-                             {formatMetadata(log.metadata)}
+                             {formatMetadata(log.metadata, log.actionType)}
                           </div>
                         </div>
                       </div>
