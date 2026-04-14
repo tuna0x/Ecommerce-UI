@@ -5,8 +5,6 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 import { toast } from 'sonner';
 
 const contactInfo = [
@@ -31,8 +29,7 @@ const Contact = () => {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
+        <div className="min-h-screen bg-background pb-20">
 
             {/* Hero */}
             <section className="py-16 md:py-20" style={{ background: 'var(--gradient-hero)' }}>
@@ -122,7 +119,6 @@ const Contact = () => {
                 </div>
             </section>
 
-            <Footer />
         </div>
     );
 };

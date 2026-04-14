@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { Clock, User, ChevronRight, Search } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 import SEO from '../components/ui/SEO';
 
 const categories = ['Tất cả', 'Chăm sóc da', 'Makeup', 'Review sản phẩm', 'Mẹo làm đẹp', 'Xu hướng'];
@@ -64,8 +62,7 @@ const Blog = () => {
     });
 
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
+        <div className="min-h-screen bg-background pb-20">
             <SEO 
                 title="Blog Làm Đẹp" 
                 description="Khám phá các bí quyết chăm sóc da, xu hướng trang điểm và review mỹ phẩm chân thực từ chuyên gia tại Bông Cosmetic."
@@ -142,7 +139,6 @@ const Blog = () => {
                 )}
             </section>
 
-            <Footer />
         </div>
     );
 };

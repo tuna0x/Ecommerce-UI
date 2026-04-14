@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { Textarea } from '../../components/ui/textarea';
+import { DATE_MIN, getTodayStr, isValidDate } from '../../lib/date';
 
 type StockFilter = 'all' | 'low' | 'out' | 'ok';
 
@@ -320,6 +321,8 @@ const InventoryManagement: React.FC = () => {
                                 <input
                                     type="date"
                                     value={startDate}
+                                    min={DATE_MIN}
+                                    max={getTodayStr()}
                                     onChange={(e) => setStartDate(e.target.value)}
                                     className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
                                     placeholder="Từ ngày"
@@ -328,6 +331,8 @@ const InventoryManagement: React.FC = () => {
                                 <input
                                     type="date"
                                     value={endDate}
+                                    min={DATE_MIN}
+                                    max={getTodayStr()}
                                     onChange={(e) => setEndDate(e.target.value)}
                                     className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
                                     placeholder="Đến ngày"
@@ -350,7 +355,13 @@ const InventoryManagement: React.FC = () => {
                             <Button
                                 variant="secondary"
                                 className="h-10 gap-2 border-primary/10 transition-all font-semibold"
-                                onClick={() => setAppliedRange({ start: startDate, end: endDate })}
+                                onClick={() => {
+                                    if ((startDate && !isValidDate(startDate)) || (endDate && !isValidDate(endDate))) {
+                                        toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
+                                        return;
+                                    }
+                                    setAppliedRange({ start: startDate, end: endDate });
+                                }}
                             >
                                 <Search className="h-4 w-4" /> Lọc
                             </Button>

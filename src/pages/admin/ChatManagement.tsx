@@ -212,7 +212,12 @@ const ChatManagement: React.FC = () => {
                             )}
                             {activeMessages.map((msg, i) => {
                                 const isMine = msg.senderEmail === user?.email;
-                                const showDate = i === 0 || new Date(msg.timestamp).toDateString() !== new Date(activeMessages[i-1].timestamp).toDateString();
+                                const msgDate = new Date(msg.timestamp);
+                                const isValidDateMsg = msgDate.getFullYear() >= 2000;
+                                
+                                const showDate = isValidDateMsg && (i === 0 || 
+                                    new Date(activeMessages[i-1].timestamp).toDateString() !== msgDate.toDateString()
+                                );
                                 
                                 return (
                                     <React.Fragment key={i}>

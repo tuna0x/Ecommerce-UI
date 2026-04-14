@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { dashboardService, type StatisticsData } from "../../service/dashboardService";
+import { DATE_MIN, getTodayStr, isValidDate } from "../../lib/date";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#6366f1'];
 
@@ -60,13 +61,16 @@ const Statistics: React.FC = () => {
   const [endDate, setEndDate] = React.useState<string>("");
   const [quickFilter, setQuickFilter] = React.useState<string>("last_30_days");
 
-  const fetchData = async () => {
+  const fetchData = async (s?: string, e?: string) => {
     try {
       setLoading(true);
-      // Convert dates to ISO for backend Instant if provided
-      const startISO = startDate ? new Date(startDate).toISOString() : undefined;
-      const endISO = endDate ? new Date(endDate).toISOString() : undefined;
-      
+      // Use parameters if provided, otherwise use current state
+      const currentStart = s !== undefined ? s : startDate;
+      const currentEnd = e !== undefined ? e : endDate;
+
+      const startISO = currentStart ? new Date(currentStart).toISOString() : undefined;
+      const endISO = currentEnd ? new Date(currentEnd).toISOString() : undefined;
+
       const stats = await dashboardService.getStatistics(startISO, endISO);
       setData(stats);
       setError(null);
@@ -110,9 +114,14 @@ const Statistics: React.FC = () => {
     
     setStartDate(startStr);
     setEndDate(endStr);
+    fetchData(startStr, endStr);
   };
 
   const handleSearch = () => {
+    if ((startDate && !isValidDate(startDate)) || (endDate && !isValidDate(endDate))) {
+      toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
+      return;
+    }
     fetchData();
   };
 
@@ -120,7 +129,7 @@ const Statistics: React.FC = () => {
     setStartDate("");
     setEndDate("");
     setQuickFilter("last_30_days");
-    fetchData();
+    fetchData("", "");
   };
 
   const [isExporting, setIsExporting] = React.useState(false);
@@ -187,7 +196,7 @@ const Statistics: React.FC = () => {
           <p className="text-muted-foreground">{error}</p>
         </div>
         <button 
-          onClick={fetchData}
+          onClick={() => fetchData()}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
         >
           <RefreshCcw className="h-4 w-4" /> Thử lại
@@ -238,7 +247,7 @@ const Statistics: React.FC = () => {
           <p className="text-muted-foreground">Phân tích hiệu suất kinh doanh và quản lý kho</p>
         </div>
         <button 
-          onClick={fetchData}
+          onClick={() => fetchData()}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors bg-secondary/50 px-3 py-1.5 rounded-full border border-border/50"
         >
           {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
@@ -273,6 +282,8 @@ const Statistics: React.FC = () => {
                   <Input 
                     type="date" 
                     value={startDate} 
+                    min={DATE_MIN}
+                    max={getTodayStr()}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="bg-background pl-10"
                   />
@@ -286,6 +297,8 @@ const Statistics: React.FC = () => {
                   <Input 
                     type="date" 
                     value={endDate} 
+                    min={DATE_MIN}
+                    max={getTodayStr()}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="bg-background pl-10"
                   />
