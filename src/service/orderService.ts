@@ -21,6 +21,10 @@ export interface OrderRes {
     transactionID: string;
     paymentMethod: string;
     paymentUrl?: string;
+    shippingCode?: string;
+    deliveredAt?: string;
+    confirmedAt?: string;
+    discountPrice?: number;
     createdAt?: string;
     items?: {
         productId: number;
