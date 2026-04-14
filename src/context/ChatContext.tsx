@@ -26,6 +26,9 @@ interface ChatContextType {
     sendMessage: (content: string) => void;
     fetchConversations: () => Promise<void>;
     resetUnreadCount: (email: string) => void;
+    loadMoreHistory: () => Promise<void>;
+    hasMoreHistory: boolean;
+    isLoadingHistory: boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -37,6 +40,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [activeMessages, setActiveMessages] = useState<ChatMessage[]>([]);
     const [activePartner, setActivePartner] = useState<string | null>(null);
     const activePartnerRef = useRef<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [hasMoreHistory, setHasMoreHistory] = useState(true);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
     // Sync ref with state
     useEffect(() => {
@@ -77,14 +83,38 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchHistory = useCallback(async (partner: string) => {
         try {
             console.log(">>> Fetching history for partner:", partner);
-            const res = await getChatHistory(partner); // res is RestResponse
+            setIsLoadingHistory(true);
+            const res = await getChatHistory(partner, 0); // res is RestResponse
             if (res && res.data) {
                 setActiveMessages(res.data.reverse());
+                setCurrentPage(0);
+                setHasMoreHistory(res.data.length === 20); // API uses limit 20
             }
         } catch (err) {
             console.error("Failed to fetch history", err);
+        } finally {
+            setIsLoadingHistory(false);
         }
     }, []);
+
+    const loadMoreHistory = useCallback(async () => {
+        if (!activePartner || !hasMoreHistory || isLoadingHistory) return;
+        try {
+            setIsLoadingHistory(true);
+            const nextPage = currentPage + 1;
+            const res = await getChatHistory(activePartner, nextPage);
+            if (res && res.data) {
+                const olderMessages = res.data.reverse();
+                setActiveMessages(prev => [...olderMessages, ...prev]);
+                setCurrentPage(nextPage);
+                setHasMoreHistory(res.data.length === 20);
+            }
+        } catch (err) {
+            console.error("Failed to load more history", err);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    }, [activePartner, currentPage, hasMoreHistory, isLoadingHistory]);
 
     useEffect(() => {
         if (user) {
@@ -197,7 +227,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setActivePartner,
             sendMessage,
             fetchConversations,
-            resetUnreadCount
+            resetUnreadCount,
+            loadMoreHistory,
+            hasMoreHistory,
+            isLoadingHistory
         }}>
             {children}
         </ChatContext.Provider>
