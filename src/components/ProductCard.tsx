@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import type { IProduct } from '../types/product.type';
 import { useQuickView } from '../context/QuickViewContext';
 import { logActivity } from '../service/trackingService';
+import { PremiumImage } from './ui/PremiumImage';
 
 interface ProductCardProps {
   product: IProduct;
@@ -58,17 +59,18 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="bg-card rounded-lg overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
         {/* Image Container - 1:1 */}
         <div className="relative aspect-square bg-secondary/30 overflow-hidden">
-          <img
+          <PremiumImage
             src={mainImage}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="transition-transform duration-500 group-hover:scale-105"
           />
-
+ 
           {hoverImage && (
-            <img
+            <PremiumImage
               src={hoverImage}
               alt={product.name}
-              className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              showSkeleton={false}
+              containerClassName="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
             />
           )}
 
