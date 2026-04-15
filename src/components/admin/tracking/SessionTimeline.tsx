@@ -57,11 +57,30 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
     });
     
     // Sort sessions by the most recent log
-    return Object.entries(grouped).sort((a, b) => {
-      const lastA = new Date(a[1][0].createdAt).getTime();
-      const lastB = new Date(b[1][0].createdAt).getTime();
-      return lastB - lastA;
-    });
+    const entries = Object.entries(grouped);
+    
+    return entries.map(([id, sessionLogs]) => {
+      const sortedLogs = [...sessionLogs].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      
+      const first = sortedLogs[0];
+      const last = sortedLogs[sortedLogs.length - 1];
+      const durationMs = new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime();
+      const hasPurchase = sessionLogs.some(l => l.actionType === 'PURCHASE');
+      
+      return {
+        id,
+        logs: sortedLogs,
+        startTime: first.createdAt,
+        durationMs,
+        hasPurchase,
+        userEmail: first.userEmail,
+        deviceType: first.deviceType,
+        ipAddress: first.ipAddress,
+        referrer: first.referrer
+      };
+    }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [logs]);
 
   const getLogIcon = (type: string) => {
@@ -130,18 +149,33 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
 
   return (
     <div className="space-y-4">
-      {sessions.map(([sessionId, sessionLogs]) => {
-        const isExpanded = expandedSessions.has(sessionId);
-        const firstLog = sessionLogs[0];
+      {sessions.map((session) => {
+        const isExpanded = expandedSessions.has(session.id);
+        
+        const formatDuration = (ms: number) => {
+          if (ms < 1000) return 'Vài giây';
+          const seconds = Math.floor(ms / 1000);
+          if (seconds < 60) return `${seconds} giây`;
+          return `${Math.floor(seconds / 60)} phút ${seconds % 60} giây`;
+        };
+
+        const getReferrerText = (ref: string) => {
+           if (!ref) return 'Trực tiếp';
+           try {
+             return new URL(ref).hostname;
+           } catch {
+             return ref;
+           }
+        };
         
         return (
-          <div key={sessionId} className="border rounded-xl bg-card overflow-hidden transition-all">
+          <div key={session.id} className="border rounded-xl bg-card overflow-hidden transition-all">
             <div 
               className={cn(
                 "p-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer hover:bg-muted/30 gap-4",
                 isExpanded && "border-b bg-muted/10"
               )}
-              onClick={() => toggleSession(sessionId)}
+              onClick={() => toggleSession(session.id)}
             >
               <div className="flex items-center gap-4">
                 <div className="flex items-center justify-center p-2 rounded-lg bg-primary/10">
@@ -149,31 +183,45 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm">{firstLog.userEmail}</span>
+                    <User className={cn("h-4 w-4", !session.userEmail ? "text-orange-500" : "text-muted-foreground")} />
+                    <span className={cn("font-semibold text-sm", !session.userEmail && "text-orange-600 italic")}>
+                        {session.userEmail || `Khách vãng lai (Guest_${session.id.slice(0, 6)})`}
+                    </span>
                     <Badge variant="secondary" className="text-[10px] h-5 px-1.5 flex gap-1 items-center">
-                      {getDeviceIcon(firstLog.deviceType)}
-                      {firstLog.deviceType}
+                      {getDeviceIcon(session.deviceType)}
+                      {session.deviceType}
                     </Badge>
+                    {session.hasPurchase && (
+                      <Badge className="bg-green-500 text-white border-none text-[10px] h-5 px-1.5 animate-pulse">
+                        ĐÃ MUA HÀNG
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground font-mono">
-                    <span className="bg-secondary px-1 rounded">{sessionId.slice(0, 8)}...</span>
-                    <span>{firstLog.ipAddress}</span>
+                    <span className="bg-secondary px-1 rounded">{session.id.slice(0, 8)}...</span>
+                    <span>{session.ipAddress}</span>
                     <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {new Date(firstLog.createdAt).toLocaleString()}
+                        {new Date(session.startTime).toLocaleString()}
+                    </span>
+                    <span className="bg-blue-50 text-blue-600 px-1.5 rounded-full border border-blue-100 flex items-center gap-1">
+                        <ArrowRight className="h-2.5 w-2.5" />
+                        {getReferrerText(session.referrer)}
                     </span>
                   </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
-                 <div className="text-right hidden sm:block">
-                    <p className="text-xs font-bold">{sessionLogs.length} sự kiện</p>
-                    <p className="text-[10px] text-muted-foreground italic">Trong phiên này</p>
+              <div className="flex items-center gap-4">
+                 <div className="text-right hidden sm:block border-r pr-4">
+                    <p className="text-xs font-bold text-foreground flex items-center justify-end gap-1">
+                        <Clock className="h-3 w-3 text-muted-foreground" />
+                        {formatDuration(session.durationMs)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-medium">{session.logs.length} sự kiện</p>
                  </div>
                  <div className="flex -space-x-2">
-                    {Array.from(new Set(sessionLogs.map(l => l.actionType))).slice(0, 4).map((type, i) => (
+                    {Array.from(new Set(session.logs.map(l => l.actionType))).slice(0, 4).map((type, i) => (
                       <div key={i} className="bg-background border rounded-full p-1 shadow-sm" title={type}>
                         {getLogIcon(type)}
                       </div>
@@ -186,7 +234,7 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
               <div className="p-6 relative">
                  <div className="absolute left-[39px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-primary/50 via-primary/20 to-transparent" />
                  <div className="space-y-6">
-                    {sessionLogs.map((log) => (
+                    {session.logs.map((log) => (
                       <div key={log.id} className="flex gap-6 relative group">
                         <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background border-2 border-primary z-10 transition-transform group-hover:scale-110">
                            {getLogIcon(log.actionType)}

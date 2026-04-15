@@ -48,6 +48,7 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import { toast } from "sonner";
+import { Switch } from "../../components/ui/switch";
 import { getAllLogs, getAnalytics } from "../../service/trackingService";
 import PaginationControl from "../../components/PaginationControl";
 
@@ -81,7 +82,8 @@ const UserActivityLog: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(50);
+  const [pageSize] = useState(200);
+  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
 
   const fetchAnalytics = useCallback(async () => {
     setIsAnalyticsLoading(true);
@@ -129,6 +131,19 @@ const UserActivityLog: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, actionFilter]);
+
+  useEffect(() => {
+    let interval: any;
+    if (isAutoRefresh) {
+      interval = setInterval(() => {
+        if (!isLoading && !isAnalyticsLoading) {
+           fetchLogs(currentPage);
+           fetchAnalytics();
+        }
+      }, 30000); // 30 seconds
+    }
+    return () => clearInterval(interval);
+  }, [isAutoRefresh, currentPage, isLoading, isAnalyticsLoading, fetchLogs, fetchAnalytics]);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString("vi-VN", {
@@ -179,7 +194,15 @@ const UserActivityLog: React.FC = () => {
           <h1 className="text-2xl font-bold text-foreground">Phân tích hành vi</h1>
           <p className="text-muted-foreground">Theo dõi và tối ưu hóa trải nghiệm khách hàng</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/50 rounded-full border border-border/50">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground mr-1">Tự động làm mới</span>
+                <Switch 
+                  checked={isAutoRefresh} 
+                  onCheckedChange={setIsAutoRefresh} 
+                  className="scale-75 data-[state=checked]:bg-green-500" 
+                />
+            </div>
             <Button variant="outline" size="sm" onClick={() => { fetchAnalytics(); fetchLogs(1); }} className="gap-2">
                 <RefreshCcw className={cn("h-4 w-4", (isAnalyticsLoading || isLoading) && "animate-spin")} />
                 Làm mới
@@ -316,9 +339,11 @@ const UserActivityLog: React.FC = () => {
                         <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
+                              <User className={cn("h-4 w-4", !log.userEmail ? "text-orange-500" : "text-muted-foreground")} />
                               <div>
-                                <p className="text-sm font-medium">{log.userEmail}</p>
+                                <p className={cn("text-sm font-medium", !log.userEmail && "text-orange-600 font-bold italic")}>
+                                    {log.userEmail || `Guest_${log.sessionId.slice(0, 6)}`}
+                                </p>
                                 <p className="text-[10px] text-muted-foreground tabular-nums">{log.ipAddress}</p>
                               </div>
                             </div>

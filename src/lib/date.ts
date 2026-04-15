@@ -1,7 +1,13 @@
 export const DATE_MIN = "2000-01-01";
 export const DATE_MAX = "2100-12-31";
 
-export const getTodayStr = () => new Date().toISOString().split("T")[0];
+export const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export const isValidDate = (dateString: string | undefined | null) => {
   if (!dateString) return true; // Allow empty if not required
