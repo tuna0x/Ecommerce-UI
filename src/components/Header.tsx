@@ -168,6 +168,12 @@ const Header: React.FC = () => {
           <div className="flex items-center gap-1 py-2">
             <CategoryDropdown />
             <Link
+              to="/category/all"
+              className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+            >
+              Cửa hàng
+            </Link>
+            <Link
               to="/flash-sale"
               className="flex items-center px-4 py-2.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
             >
@@ -237,6 +243,7 @@ const Header: React.FC = () => {
             <div className="border-t border-border pt-4 pb-4 px-4 space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-2 mb-3">Khám phá</p>
               {[
+                { to: "/category/all", label: "Tất cả sản phẩm", icon: ShoppingBag, color: "text-primary" },
                 { to: "/flash-sale", label: "Flash Sale", icon: Flame, color: "text-orange-500" },
                 { to: "/orders", label: "Đơn hàng của tôi", icon: Package, color: "text-blue-500" },
                 { to: "/blog", label: "Blog làm đẹp", icon: BookOpen, color: "text-emerald-500" },
