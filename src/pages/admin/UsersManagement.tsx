@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, Gift, X, UserX } from "lucide-react";
+import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -459,292 +459,425 @@ const UsersManagement: React.FC = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPendingRoleChange(null)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-primary hover:bg-primary/90"
-              onClick={confirmRoleChange}
-            >
-              Xác nhận thay đổi
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmRoleChange}>Xác nhận</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-
-
       {/* Customer 360 View Dialog */}
       <Dialog open={!!analyticsUser} onOpenChange={() => { setAnalyticsUser(null); setAnalyticsData(null); }}>
-        <DialogContent className="max-w-4xl h-[750px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
-          <DialogHeader className="p-6 pb-2 shrink-0">
-            <div className="flex items-center gap-4">
-               <Avatar className="w-16 h-16 border-2 border-primary/20">
-                <AvatarImage src={analyticsUser?.image} />
-                <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">
-                  {analyticsUser?.name?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <DialogTitle className="text-2xl mb-1">{analyticsUser?.name}</DialogTitle>
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Badge variant="outline" className="bg-muted/50">{analyticsUser?.email}</Badge>
+        <DialogContent className="max-w-4xl h-[780px] max-h-[92vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl">
+          {/* Enhanced Header with Gradient */}
+          <DialogHeader className="p-8 pb-6 shrink-0 bg-gradient-to-br from-primary/15 via-background to-background relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full -mr-32 -mt-32 blur-3xl" />
+            
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
+               <div className="relative group">
+                <Avatar className="w-20 h-20 border-4 border-background shadow-xl ring-2 ring-primary/20 transition-transform duration-300 group-hover:scale-105">
+                  <AvatarImage src={analyticsUser?.image} />
+                  <AvatarFallback className="text-3xl font-bold bg-primary/10 text-primary">
+                    {analyticsUser?.name?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                {analyticsUser?.active && (
+                  <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-background rounded-full shadow-sm" title="Active" />
+                )}
+               </div>
+
+              <div className="flex-1 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                  <DialogTitle className="text-3xl font-black tracking-tight">{analyticsUser?.name}</DialogTitle>
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                    {analyticsUser?.verified ? (
+                      <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200 gap-1 font-bold h-6">
+                        <ShieldCheck className="w-3 h-3" /> Đã xác thực
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-200 gap-1 font-bold h-6">
+                         Xác thực ngay
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap justify-center sm:justify-start gap-2 items-center">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background/80 backdrop-blur-md border text-sm font-medium text-muted-foreground shadow-sm">
+                    <Mail className="w-3.5 h-3.5" /> {analyticsUser?.email}
+                  </div>
                   {analyticsData?.autoTags?.map(tag => (
                     <Badge key={tag} className={cn(
-                      "text-[10px] font-bold uppercase",
-                      tag === 'VIP' ? "bg-amber-500" : 
-                      tag === 'Nguy cơ' ? "bg-red-500" : 
-                      tag === 'Mới' ? "bg-blue-500" : "bg-green-500"
+                      "text-[10px] font-bold uppercase tracking-wider px-2",
+                      tag === 'VIP' ? "bg-amber-500 text-white shadow-amber-500/20" : 
+                      tag === 'Nguy cơ' ? "bg-red-500 text-white shadow-red-500/20" : 
+                      tag === 'Mới' ? "bg-blue-500 text-white shadow-blue-500/20" : "bg-primary text-white"
                     )}>{tag}</Badge>
                   ))}
                 </div>
               </div>
-              <div className="text-right hidden sm:block">
-                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Tham gia từ</p>
-                <p className="font-semibold">{formatDate(analyticsUser?.createdAt)}</p>
+
+              <div className="text-center sm:text-right pt-2">
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] mb-1">Thành viên từ</p>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-primary/5 border border-primary/10">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  <p className="text-sm font-bold text-primary">{formatDate(analyticsUser?.createdAt)}</p>
+                </div>
               </div>
             </div>
           </DialogHeader>
 
           {isAnalyticsLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-20 space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="text-muted-foreground animate-pulse font-medium">Đang tổng hợp dữ liệu 360°...</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-20 space-y-6">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-primary/20 animate-spin border-t-primary" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                   <Users className="w-6 h-6 text-primary animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-xl font-bold">Đang tổng hợp dữ liệu 360°</p>
+                <p className="text-sm text-muted-foreground max-w-[280px]">Vui lòng chờ trong giây lát khi chúng tôi thống kê hành vi và lịch sử của khách hàng...</p>
+              </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col">
               <Tabs defaultValue="overview" className="h-full flex flex-col">
-                <div className="px-6 border-b shrink-0">
-                  <TabsList className="w-full justify-start h-auto p-0 bg-transparent gap-6">
-                    <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold">Tổng quan</TabsTrigger>
-                    <TabsTrigger value="activity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold">Dòng thời gian</TabsTrigger>
-                    <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold">Bảo mật</TabsTrigger>
-                    <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-3 font-semibold text-orange-500">Ghi chú Admin</TabsTrigger>
+                <div className="px-8 bg-background border-b z-20">
+                  <TabsList className="w-full sm:w-auto h-14 bg-transparent gap-2 p-0 h-auto">
+                    <TabsTrigger value="overview" className="h-10 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all font-bold tracking-tight">
+                       Tổng quan
+                    </TabsTrigger>
+                    <TabsTrigger value="activity" className="h-10 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all font-bold tracking-tight">
+                       Hành vi
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="h-10 px-6 data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all font-bold tracking-tight">
+                       Bảo mật
+                    </TabsTrigger>
+                    <TabsTrigger value="notes" className="h-10 px-6 data-[state=active]:bg-orange-500/10 data-[state=active]:text-orange-600 rounded-none border-b-2 border-transparent data-[state=active]:border-orange-500 transition-all font-bold tracking-tight">
+                       Ghi chú Admin
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <ScrollArea className="flex-1 overflow-y-auto">
-                  <div className="p-6">
-                    <TabsContent value="overview" className="m-0 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card className="bg-primary/5 border-none">
-                          <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <TrendingUp className="w-8 h-8 text-primary" />
-                              <Badge className="bg-primary">Giá trị trọn đời (LTV)</Badge>
+                <ScrollArea className="flex-1 overflow-y-auto bg-muted/10">
+                  <div className="p-8">
+                    <TabsContent value="overview" className="m-0 space-y-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <Card className="border-none shadow-sm overflow-hidden group">
+                           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <CardContent className="pt-8 pb-6 relative z-10">
+                            <div className="flex items-center justify-between mb-6">
+                              <div className="p-3 bg-primary/10 rounded-2xl">
+                                <TrendingUp className="w-8 h-8 text-primary" />
+                              </div>
+                              <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">LTV</div>
                             </div>
-                            <div className="text-3xl font-bold text-primary">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(analyticsData?.lifetimeValue || 0)}
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Giá trị trọn đời</p>
+                              <div className="text-3xl font-black text-primary tracking-tighter">
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(analyticsData?.lifetimeValue || 0)}
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2">Dựa trên tổng giá trị đơn hàng đã hoàn thành</p>
                           </CardContent>
                         </Card>
 
-                        <Card className="bg-blue-50 dark:bg-blue-950/20 border-none">
-                          <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-4">
-                              <Calendar className="w-8 h-8 text-blue-500" />
-                              <Badge variant="outline" className="text-blue-500 border-blue-500">Tần suất mua</Badge>
+                        <Card className="border-none shadow-sm overflow-hidden group">
+                           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <CardContent className="pt-8 pb-6 relative z-10">
+                            <div className="flex items-center justify-between mb-6">
+                              <div className="p-3 bg-blue-500/10 rounded-2xl">
+                                <ShoppingBag className="w-8 h-8 text-blue-500" />
+                              </div>
+                              <div className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest">Orders</div>
                             </div>
-                            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                              {analyticsData?.totalOrders || 0}
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tần suất mua hàng</p>
+                              <div className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">
+                                {analyticsData?.totalOrders || 0} <span className="text-sm font-bold text-muted-foreground ml-1 uppercase">đơn hàng</span>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-2 text-blue-700/60 dark:text-blue-300/60">Tổng số đơn hàng đã đặt trong hệ thống</p>
                           </CardContent>
                         </Card>
 
-                        <Card className="md:col-span-2 lg:col-span-1 border-dashed">
-                          <CardHeader className="p-0 pb-2 flex flex-row items-center justify-between mb-2">
-                             <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Phân bổ đơn hàng</CardTitle>
-                          </CardHeader>
-                          <div className="h-[120px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={Object.entries(analyticsData?.orderStatusDistribution || {}).map(([name, value]) => ({ name, value }))}
-                                  innerRadius={30}
-                                  outerRadius={50}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                                >
-                                  {Object.entries(analyticsData?.orderStatusDistribution || {}).map((_, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                  ))}
-                                </Pie>
-                                <RechartsTooltip />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          </div>
+                        <Card className="border-none shadow-sm overflow-hidden group md:col-span-2 lg:col-span-1">
+                          <CardContent className="pt-8 pb-6 relative z-10">
+                            <div className="flex items-center justify-between mb-4">
+                               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Trạng thái đơn hàng</p>
+                               <div className="p-2 bg-muted rounded-lg">
+                                 <ChartBar className="w-4 h-4 text-muted-foreground" />
+                               </div>
+                            </div>
+                            <div className="h-[120px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={Object.entries(analyticsData?.orderStatusDistribution || {}).map(([name, value]) => ({ name, value }))}
+                                    innerRadius={35}
+                                    outerRadius={55}
+                                    paddingAngle={8}
+                                    dataKey="value"
+                                    stroke="none"
+                                  >
+                                    {Object.entries(analyticsData?.orderStatusDistribution || {}).map((_, index) => (
+                                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="focus:outline-none" />
+                                    ))}
+                                  </Pie>
+                                  <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </CardContent>
                         </Card>
                       </div>
 
-                      <div className="space-y-4">
-                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                            <ShieldCheck className="w-4 h-4" /> Trạng thái tài khoản
-                         </h3>
-                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="p-3 rounded-lg border bg-card">
-                               <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Email</p>
-                               <div className="flex items-center gap-2">
+                      <div className="space-y-6">
+                         <div className="flex items-center gap-3">
+                            <div className="h-px bg-border flex-1" />
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+                               <ShieldCheck className="w-3.5 h-3.5" /> Chi tiết tài khoản
+                            </h3>
+                            <div className="h-px bg-border flex-1" />
+                         </div>
+
+                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="p-4 shadow-sm border-none bg-background group cursor-pointer hover:ring-1 hover:ring-primary/20 transition-all">
+                               <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mb-2 opacity-60">Xác thực Email</p>
+                               <div className="flex items-center justify-between">
                                   {analyticsUser?.verified ? (
-                                    <Badge className="bg-green-500">Đã xác thực</Badge>
+                                    <div className="flex items-center gap-1.5 text-green-600">
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      <span className="text-sm font-black text-xs">Verified</span>
+                                    </div>
                                   ) : (
-                                    <Badge variant="destructive">Chưa xác thực</Badge>
+                                    <div className="flex items-center gap-1.5 text-red-600 animate-pulse">
+                                      <AlertCircle className="w-4 h-4" />
+                                      <span className="text-sm font-black text-xs">Unverified</span>
+                                    </div>
                                   )}
+                                  
                                   <AccessControl module="USERS" action="TOGGLE_STATUS">
                                      <Button 
-                                       variant="ghost" 
+                                       variant="outline" 
                                        size="sm" 
-                                       className="h-6 px-2 text-[10px]"
-                                       onClick={() => analyticsUser && toggleUserVerification(analyticsUser)}
+                                       className="h-7 text-[10px] font-bold px-3 rounded-full hover:bg-primary/10 transition-colors"
+                                       onClick={(e) => {
+                                          e.stopPropagation();
+                                          analyticsUser && toggleUserVerification(analyticsUser);
+                                       }}
                                      >
                                        {analyticsUser?.verified ? "Hủy xác thực" : "Xác thực ngay"}
                                      </Button>
                                   </AccessControl>
                                </div>
-                            </div>
-                            <div className="p-3 rounded-lg border bg-card">
-                               <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Hoạt động</p>
+                            </Card>
+
+                            <Card className="p-4 shadow-sm border-none bg-background group cursor-pointer hover:ring-1 hover:ring-primary/20 transition-all">
+                               <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mb-2 opacity-60">Hoạt động</p>
                                <div className="flex items-center gap-2">
-                                  {analyticsUser?.active ? (
-                                    <Badge className="bg-green-500">Active</Badge>
-                                  ) : (
-                                    <Badge variant="destructive">Locked</Badge>
-                                  )}
+                                 {analyticsUser?.active ? (
+                                   <Badge className="bg-green-500 font-bold h-6">Active</Badge>
+                                 ) : (
+                                   <Badge variant="destructive" className="font-bold h-6">Locked</Badge>
+                                 )}
                                </div>
-                            </div>
-                            <div className="p-3 rounded-lg border bg-card col-span-2">
-                               <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Đăng nhập cuối</p>
-                               <p className="text-sm font-semibold">{analyticsData?.lastLoginAt ? formatDate(analyticsData.lastLoginAt) : 'Chưa có dữ liệu'}</p>
-                            </div>
-                         </div>
-                      </div>
+                            </Card>
+
+                             <div className="p-3 rounded-lg border bg-card col-span-2">
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Đăng nhập cuối</p>
+                                <p className="text-sm font-semibold">{analyticsData?.lastLoginAt ? formatDate(analyticsData.lastLoginAt) : 'Chưa có dữ liệu'}</p>
+                             </div>
+                          </div>
+                       </div>
                     </TabsContent>
 
                     <TabsContent value="activity" className="m-0">
-                      <div className="relative pl-8 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                      <div className="relative pl-10 space-y-10 before:absolute before:left-[19px] before:top-4 before:bottom-4 before:w-1 before:bg-gradient-to-b before:from-primary/40 before:via-primary/20 before:to-transparent before:rounded-full">
                         {analyticsData?.recentActivities && analyticsData.recentActivities.length > 0 ? (
                            analyticsData.recentActivities.map((activity, idx) => (
-                            <div key={idx} className="relative group">
-                              <div className="absolute -left-[30px] top-1 h-5 w-5 rounded-full border-4 border-background bg-primary z-10 group-hover:scale-125 transition-transform" />
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
-                                <span className={cn(
-                                    "px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-block w-fit",
-                                    activity.action.includes('PURCHASE') ? "bg-green-100 text-green-700" :
-                                    activity.action.includes('VIEW') ? "bg-blue-100 text-blue-700" :
-                                    "bg-muted text-muted-foreground"
-                                )}>
-                                  {activity.action}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground font-medium">
-                                  {new Date(activity.timestamp).toLocaleString('vi-VN')}
-                                </span>
-                              </div>
-                              <div className="mt-1">
-                                {(() => {
-                                  try {
-                                    const meta = JSON.parse(activity.metadata);
-                                    if (activity.action === 'TIME_ON_PAGE') {
-                                      const seconds = Math.floor(meta.durationMs / 1000);
-                                      const durationText = seconds >= 60 
-                                        ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
-                                        : `${(meta.durationMs / 1000).toFixed(1)} giây`;
-                                      return (
-                                        <div className="text-sm space-y-0.5">
-                                          <p className="font-semibold text-foreground flex items-center gap-2">
-                                            <Clock className="w-3 h-3 text-blue-500" />
-                                            Ở lại trang: <span className="text-blue-600">{durationText}</span>
-                                          </p>
-                                          <p className="text-xs text-muted-foreground italic">Đường dẫn: {meta.path}</p>
-                                        </div>
-                                      );
-                                    }
-                                    if (activity.action === 'PURCHASE') {
-                                      return (
-                                        <div className="text-sm space-y-0.5">
-                                          <p className="font-semibold text-foreground flex items-center gap-2">
-                                            <Gift className="w-3 h-3 text-green-500" />
-                                            Mua đơn hàng: <span className="text-green-600">#{meta.orderId}</span>
-                                          </p>
-                                          <p className="text-[11px] text-muted-foreground flex gap-2">
-                                            <span>PTTT: <b>{meta.method}</b></span>
-                                            {meta.transactionId && <span>Mã GD: <b>{meta.transactionId}</b></span>}
-                                          </p>
-                                        </div>
-                                      );
-                                    }
-                                    if (activity.action === 'BEGIN_CHECKOUT') {
-                                      return (
-                                        <div className="text-sm">
-                                          <p className="font-semibold text-foreground flex items-center gap-2">
-                                            <TrendingUp className="w-3 h-3 text-orange-500" />
-                                            Bắt đầu thanh toán: <span className="text-orange-600">{new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span>
-                                          </p>
-                                          <p className="text-[11px] text-muted-foreground">Số lượng: {meta.itemCount} sản phẩm</p>
-                                        </div>
-                                      );
-                                    }
-                                    return <p className="text-sm font-semibold text-foreground">{activity.metadata}</p>;
-                                  } catch (e) {
-                                    return <p className="text-sm font-semibold text-foreground">{activity.metadata}</p>;
-                                  }
-                                })()}
-                              </div>
-                              <p className="text-xs text-muted-foreground truncate hover:text-primary transition-colors cursor-default">
-                                {activity.pageUrl}
-                              </p>
+                            <div key={idx} className="relative group animate-in fade-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                              <div className="absolute -left-[38px] top-1 h-5 w-5 rounded-full border-4 border-background bg-primary shadow-[0_0_10px_rgba(var(--primary),0.5)] z-10 group-hover:scale-125 transition-all duration-300" />
+                              
+                              <Card className="border-none shadow-sm hover:shadow-md transition-shadow group-hover:bg-background/80">
+                                <CardContent className="p-5">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn(
+                                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm ring-1 ring-inset",
+                                          activity.action.includes('PURCHASE') ? "bg-green-500/10 text-green-600 ring-green-500/20" :
+                                          activity.action.includes('VIEW') ? "bg-blue-500/10 text-blue-600 ring-blue-500/20" :
+                                          "bg-muted/50 text-muted-foreground ring-border"
+                                      )}>
+                                        {activity.action.replace('_', ' ')}
+                                      </span>
+                                      <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold">
+                                         <Clock className="w-3 h-3" />
+                                         {new Date(activity.timestamp).toLocaleString('vi-VN')}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="text-[10px] font-medium text-muted-foreground bg-muted/30 px-2 py-0.5 rounded flex items-center gap-1">
+                                      <Globe className="w-3 h-3" /> {activity.pageUrl.length > 30 ? activity.pageUrl.substring(0, 30) + '...' : activity.pageUrl}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    {(() => {
+                                      try {
+                                        const meta = JSON.parse(activity.metadata);
+                                        if (activity.action === 'TIME_ON_PAGE') {
+                                          const seconds = Math.floor(meta.durationMs / 1000);
+                                          const durationText = seconds >= 60 
+                                            ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+                                            : `${(meta.durationMs / 1000).toFixed(1)} giây`;
+                                          return (
+                                            <div className="flex items-center gap-4">
+                                              <div className="p-3 bg-blue-500/10 rounded-xl">
+                                                <Timer className="w-5 h-5 text-blue-600" />
+                                              </div>
+                                              <div>
+                                                <p className="text-sm font-bold text-foreground">Ở lại trang: <span className="text-blue-600 font-black">{durationText}</span></p>
+                                                <p className="text-[11px] text-muted-foreground mt-0.5 italic">{meta.path}</p>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        if (activity.action === 'PURCHASE') {
+                                          return (
+                                            <div className="flex items-center gap-4">
+                                              <div className="p-3 bg-green-500/10 rounded-xl">
+                                                <ShoppingBag className="w-5 h-5 text-green-600" />
+                                              </div>
+                                              <div>
+                                                <p className="text-sm font-bold text-foreground">Giao dịch hoàn tất: <span className="text-green-600 font-black">#{meta.orderId}</span></p>
+                                                <div className="flex gap-3 mt-1">
+                                                   <span className="text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded uppercase">PT: {meta.method}</span>
+                                                   {meta.transactionId && <span className="text-[10px] font-bold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded">Mã: {meta.transactionId}</span>}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                        if (activity.action === 'BEGIN_CHECKOUT') {
+                                          return (
+                                              <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-amber-500/10 rounded-xl">
+                                                  <CreditCard className="w-5 h-5 text-amber-600" />
+                                                </div>
+                                                <div>
+                                                  <p className="text-sm font-bold text-foreground">Bắt đầu thanh toán: <span className="text-amber-600 font-black">{new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span></p>
+                                                  <p className="text-[11px] text-muted-foreground mt-0.5 font-bold">{meta.itemCount} sản phẩm trong giỏ hàng</p>
+                                                </div>
+                                              </div>
+                                          );
+                                        }
+                                        return <p className="text-sm font-bold bg-muted/30 p-3 rounded-lg border-l-4 border-primary/40">{activity.metadata}</p>;
+                                      } catch (e) {
+                                        return <p className="text-sm font-bold bg-muted/30 p-3 rounded-lg border-l-4 border-primary/40">{activity.metadata}</p>;
+                                      }
+                                    })()}
+                                  </div>
+                                </CardContent>
+                              </Card>
                             </div>
                           ))
                         ) : (
-                          <div className="py-20 text-center space-y-2">
-                            <Activity className="w-12 h-12 text-muted/20 mx-auto" />
-                            <p className="text-muted-foreground italic">Chưa có lịch sử hoạt động ghi nhận</p>
+                          <div className="py-24 text-center space-y-4">
+                            <div className="relative mx-auto w-20 h-20">
+                               <Activity className="absolute inset-0 w-full h-full text-muted/10 animate-ping duration-[3s]" />
+                               <Activity className="relative w-full h-full text-muted/20" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-lg font-bold text-muted-foreground/60">Quét dữ liệu trống</p>
+                              <p className="text-xs text-muted-foreground italic">Khách hàng này chưa có tương tác trực tiếp nào được ghi lại</p>
+                            </div>
                           </div>
                         )}
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="security" className="m-0 space-y-6">
-                        <div className="space-y-4">
-                           <Card>
-                             <CardHeader className="pb-2">
-                               <CardTitle className="text-base flex items-center gap-2">
-                                  <ShieldCheck className="w-5 h-5 text-green-500" /> Thông tin bảo mật
+                    <TabsContent value="security" className="m-0">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <Card className="border-none shadow-sm overflow-hidden">
+                             <div className="bg-primary pt-1" />
+                             <CardHeader className="pb-4">
+                               <CardTitle className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
+                                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                                    <ShieldCheck className="w-5 h-5 text-primary" />
+                                  </div> 
+                                  Bảo mật tài khoản
                                </CardTitle>
                              </CardHeader>
-                             <CardContent className="space-y-4">
-                               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                                  <span className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="w-4 h-4" /> Email liên kết</span>
-                                  <span className="text-sm font-semibold">{analyticsUser?.email}</span>
+                             <CardContent className="space-y-1">
+                               <div className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                                  <span className="text-sm text-muted-foreground flex items-center gap-2 font-bold"><Mail className="w-4 h-4 text-primary/60" /> Email hệ thống</span>
+                                  <span className="text-sm font-black text-foreground underline decoration-primary/30 decoration-2 underline-offset-4">{analyticsUser?.email}</span>
                                </div>
-                               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                                  <span className="text-sm text-muted-foreground flex items-center gap-2"><MapPin className="w-4 h-4" /> IP đăng nhập cuối</span>
-                                  <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{analyticsData?.lastIpAddress || 'N/A'}</span>
+                               <div className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                                  <span className="text-sm text-muted-foreground flex items-center gap-2 font-bold"><MapPin className="w-4 h-4 text-primary/60" /> IP cuối</span>
+                                  <span className="text-xs font-black font-mono bg-primary/5 text-primary px-3 py-1 rounded-full border border-primary/10 shadow-sm">{analyticsData?.lastIpAddress || 'N/A'}</span>
                                </div>
-                               <div className="flex justify-between items-center py-2 border-b last:border-0">
-                                  <span className="text-sm text-muted-foreground flex items-center gap-2"><History className="w-4 h-4" /> Lần cuối cập nhật profile</span>
-                                  <span className="text-sm font-semibold">{formatDate(analyticsUser?.updatedAt)}</span>
+                               <div className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                                  <span className="text-sm text-muted-foreground flex items-center gap-2 font-bold"><History className="w-4 h-4 text-primary/60" /> Cập nhật Profile</span>
+                                  <span className="text-sm font-black text-foreground">{formatDate(analyticsUser?.updatedAt)}</span>
                                </div>
                              </CardContent>
+                           </Card>
+
+                           <Card className="border-none shadow-sm flex flex-col justify-center items-center p-8 bg-gradient-to-br from-background to-muted/30 relative overflow-hidden group">
+                              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-primary/10 transition-all duration-700" />
+                              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6 relative z-10">
+                                 <Fingerprint className="w-10 h-10 text-primary animate-pulse" />
+                              </div>
+                              <div className="text-center relative z-10">
+                                 <h4 className="text-lg font-black tracking-tight mb-2">Độ tin cậy tài khoản</h4>
+                                 <div className="flex gap-1 justify-center mb-4">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                      <div key={star} className={cn("w-6 h-1.5 rounded-full", star <= 4 ? "bg-primary" : "bg-muted")} />
+                                    ))}
+                                 </div>
+                                 <p className="text-xs text-muted-foreground px-4 italic leading-relaxed">Dựa trên lịch sử mua hàng, IP ổn định và trạng thái xác thực Email.</p>
+                              </div>
                            </Card>
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="notes" className="m-0 space-y-4">
-                        <div className="space-y-4">
-                          <Card className="border-orange-200 bg-orange-50/30">
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-orange-700 text-base">Ghi chú bí mật của Admin</CardTitle>
-                              <CardDescription className="text-orange-600/70">Những thông tin này chỉ Admin mới có thể nhìn thấy.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
+                    <TabsContent value="notes" className="m-0">
+                        <Card className="border-none shadow-xl bg-background overflow-hidden">
+                          <div className="bg-orange-500 h-1.5 w-full" />
+                          <CardHeader className="pb-4">
+                             <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                  <CardTitle className="text-xl font-black tracking-tight text-orange-700 uppercase">Ghi chú chiến lược</CardTitle>
+                                  <CardDescription className="text-orange-600/70 font-medium italic">Chỉ quản trị viên cấp cao mới có quyền truy cập vùng dữ liệu này.</CardDescription>
+                                </div>
+                                <div className="p-3 bg-orange-500/10 rounded-2xl">
+                                   <FileText className="w-6 h-6 text-orange-600" />
+                                </div>
+                             </div>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            <div className="relative group">
                               <Textarea
                                 value={adminNotes}
                                 onChange={(e) => setAdminNotes(e.target.value)}
-                                placeholder="Ví dụ: Khách này hay mua sỉ, cần ưu tiên chăm sóc..."
-                                className="min-h-[150px] bg-background border-orange-200 focus-visible:ring-orange-500"
+                                placeholder="Nhập những thông tin quan trọng về thói quen, ưu đãi hoặc cảnh báo dành riêng cho khách hàng này..."
+                                className="min-h-[200px] bg-muted/5 border-none focus-visible:ring-1 focus-visible:ring-orange-500/30 text-base font-medium resize-none p-6 leading-relaxed shadow-inner rounded-2xl"
                               />
-                              <Button onClick={saveAdminNotes} className="w-full bg-orange-600 hover:bg-orange-700">Lưu ghi chú</Button>
-                            </CardContent>
-                          </Card>
-                        </div>
+                              <div className="absolute right-4 bottom-4 opacity-0 group-focus-within:opacity-100 transition-opacity">
+                                <p className="text-[10px] text-orange-600 font-black uppercase tracking-widest">Đang soạn thảo...</p>
+                              </div>
+                            </div>
+                            
+                            <Button 
+                              onClick={saveAdminNotes} 
+                              className="w-full h-12 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-700 hover:to-orange-600 text-white font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 rounded-xl transition-all hover:scale-[1.01] active:scale-[0.99]"
+                            >
+                              <Save className="w-5 h-5 mr-3" /> Xác nhận lưu ghi chú
+                            </Button>
+                          </CardContent>
+                        </Card>
                     </TabsContent>
                   </div>
                 </ScrollArea>

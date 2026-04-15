@@ -18,6 +18,8 @@ import PaginationControl from "../components/PaginationControl";
 import { Loader2, ChevronRight, Filter, SlidersHorizontal, X } from "lucide-react";
 import { BannerService } from "../service/bannerService";
 import type { IBanner } from "../types/banner.type";
+import { formatNumberWithDots, parseNumberFromDots } from "../lib/numberUtils";
+import { cn } from "../lib/utils";
 import {
   Select,
   SelectContent,
@@ -264,36 +266,78 @@ const Category = () => {
     <div className="space-y-6">
       <div>
         <h3 className="font-semibold mb-3">Khoảng giá</h3>
-        <div className="flex items-center gap-2 mb-3">
+        
+        {/* Quick Filters */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { label: "Dưới 500k", range: [0, 500000] },
+            { label: "500k - 1tr", range: [500000, 1000000] },
+            { label: "1tr - 2tr", range: [1000000, 2000000] },
+            { label: "Trên 2tr", range: [2000000, 5000000] },
+          ].map((preset) => (
+            <button
+              key={preset.label}
+              onClick={() => {
+                setPriceRange(preset.range);
+                setDebouncedPriceRange(preset.range);
+              }}
+              className={cn(
+                "px-2 py-1 text-[10px] font-medium rounded-full border transition-all",
+                priceRange[0] === preset.range[0] && priceRange[1] === preset.range[1]
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+              )}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">Từ</label>
-            <Input
-              type="number"
-              min="0"
-              value={priceRange[0]}
-              onChange={(e) => setPriceRange([Math.max(0, Number(e.target.value)), priceRange[1]])}
-              className="h-8 text-xs"
-            />
+            <label className="text-[10px] text-muted-foreground mb-1 block uppercase tracking-wider font-semibold">Từ</label>
+            <div className="relative">
+              <Input
+                type="text"
+                value={formatNumberWithDots(priceRange[0])}
+                onChange={(e) => {
+                  const val = parseNumberFromDots(e.target.value);
+                  setPriceRange([val, priceRange[1]]);
+                }}
+                className="h-9 text-xs font-bold pl-2"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold">₫</span>
+            </div>
           </div>
           <span className="text-muted-foreground mt-5">—</span>
           <div className="flex-1">
-            <label className="text-xs text-muted-foreground mb-1 block">Đến</label>
-            <Input
-              type="number"
-              min="0"
-              value={priceRange[1]}
-              onChange={(e) => setPriceRange([priceRange[0], Math.max(priceRange[0], Number(e.target.value))])}
-              className="h-8 text-xs"
-            />
+            <label className="text-[10px] text-muted-foreground mb-1 block uppercase tracking-wider font-semibold">Đến</label>
+            <div className="relative">
+              <Input
+                type="text"
+                value={formatNumberWithDots(priceRange[1])}
+                onChange={(e) => {
+                  const val = parseNumberFromDots(e.target.value);
+                  setPriceRange([priceRange[0], val]);
+                }}
+                className="h-9 text-xs font-bold pl-2"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground font-bold">₫</span>
+            </div>
           </div>
         </div>
+        
         <Slider
           value={priceRange}
           onValueChange={setPriceRange}
           max={5000000}
-          step={10000}
+          step={50000}
           className="mb-2"
         />
+        <div className="flex justify-between mt-1 px-1">
+          <span className="text-[9px] text-muted-foreground">0₫</span>
+          <span className="text-[9px] text-muted-foreground">5.000.000₫</span>
+        </div>
       </div>
 
       <div>
@@ -464,10 +508,12 @@ const Category = () => {
             {/* Price Chip */}
             {(priceRange[0] > 0 || priceRange[1] < 5000000) && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
-                <span>Giá: {priceRange[0].toLocaleString()}đ - {priceRange[1].toLocaleString()}đ</span>
-                <button onClick={() => {
-                  setPriceRange([0, 5000000]);
-                  setDebouncedPriceRange([0, 5000000]);
+                <span className="font-bold">Giá: {priceRange[0].toLocaleString('vi-VN')}₫ - {priceRange[1].toLocaleString('vi-VN')}₫</span>
+                <button 
+                  className="hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                  onClick={() => {
+                    setPriceRange([0, 5000000]);
+                    setDebouncedPriceRange([0, 5000000]);
                 }}><X className="w-3.5 h-3.5" /></button>
               </div>
             )}

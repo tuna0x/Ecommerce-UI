@@ -97,7 +97,7 @@ const Notifications: React.FC = () => {
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="w-full justify-start overflow-x-auto bg-secondary/50 h-auto p-1 rounded-xl mb-4 flex-nowrap">
-                        {[
+                        { [ 
                             { value: 'all', label: 'Tất cả' },
                             { value: 'unread', label: 'Chưa đọc' },
                             { value: 'order', label: 'Đơn hàng' },
@@ -108,11 +108,15 @@ const Notifications: React.FC = () => {
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
-                                className="text-xs sm:text-sm px-3 py-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm whitespace-nowrap"
+                                className="text-xs sm:text-sm px-4 py-2 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg whitespace-nowrap transition-all duration-300"
                             >
                                 {tab.label}
                                 {tabCounts[tab.value] > 0 && (
-                                    <span className="ml-1.5 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-semibold">
+                                    <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${
+                                        activeTab === tab.value 
+                                        ? 'bg-primary-foreground text-primary shadow-sm' 
+                                        : 'bg-primary/10 text-primary'
+                                    }`}>
                                         {tabCounts[tab.value]}
                                     </span>
                                 )}

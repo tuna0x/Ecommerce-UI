@@ -152,6 +152,16 @@ const AddressManager: React.FC = () => {
             return;
         }
 
+        const phoneRegex = /^(0[35789])[0-9]{8}$/;
+        if (!phoneRegex.test(form.phone.trim())) {
+            toast({ 
+                title: 'Lỗi', 
+                description: 'Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 chữ số).', 
+                variant: 'destructive' 
+            });
+            return;
+        }
+
         try {
             const payload = {
                 receiverName: form.fullName,

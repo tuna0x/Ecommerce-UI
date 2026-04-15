@@ -386,6 +386,21 @@ const Checkout: React.FC = () => {
         toast.error('Vui lòng điền đầy đủ thông tin giao hàng');
         return;
       }
+      
+      const phoneRegex = /^(0[35789])[0-9]{8}$/;
+      if (!phoneRegex.test(formData.phone)) {
+        toast.error('Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 chữ số)');
+        return;
+      }
+
+      if (formData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+          toast.error('Định dạng email không hợp lệ');
+          return;
+        }
+      }
+
       if (!isAddressConfirmed) {
         toast.error('Vui lòng bấm "Xác nhận địa chỉ" để tính phí vận chuyển trước khi đặt hàng');
         return;

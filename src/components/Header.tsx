@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { Link, useNavigate } from 'react-router-dom';
+import { NavLink } from './NavLink';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -167,48 +168,55 @@ const Header: React.FC = () => {
         <div className="container mx-auto">
           <div className="flex items-center gap-1 py-2">
             <CategoryDropdown />
-            <Link
+            <NavLink
               to="/category/all"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               Cửa hàng
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/flash-sale"
               className="flex items-center px-4 py-2.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+              activeClassName="bg-primary/10 rounded-lg"
             >
               🔥 Flash Sale
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/brands"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               Thương hiệu
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/blog"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               Blog
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/about"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               Về chúng tôi
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/contact"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               Liên hệ
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               to="/faq"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
+              activeClassName="text-primary bg-primary/10 rounded-lg"
             >
               FAQ
-            </Link>
+            </NavLink>
           </div>
         </div>
       </nav>
@@ -251,17 +259,18 @@ const Header: React.FC = () => {
                 { to: "/contact", label: "Liên hệ", icon: Phone, color: "text-teal-500" },
                 { to: "/faq", label: "FAQ - Hỏi đáp", icon: HelpCircle, color: "text-indigo-500" },
               ].map(({ to, label, icon: Icon, color }) => (
-                <Link
+                <NavLink
                   key={to}
                   to={to}
                   className="flex items-center gap-3 px-2 py-3 text-sm font-semibold hover:bg-primary/5 rounded-xl transition-all"
+                  activeClassName="bg-primary/10 text-primary border-r-4 border-primary"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   <div className={`w-8 h-8 rounded-lg bg-secondary flex items-center justify-center ${color}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <span>{label}</span>
-                </Link>
+                </NavLink>
               ))}
             </div>
           </motion.div>
