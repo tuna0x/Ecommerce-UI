@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Zap } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import MobileNavBar from '../components/MobileNavBar';
+
 import ProductCard from '../components/ProductCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ProductService } from '../service/productService';
@@ -57,7 +55,6 @@ const FlashSalePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background pb-20 md:pb-0">
-            <Header />
             <main>
                 {/* Banner */}
                 <section className="bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 py-8 md:py-12">
@@ -132,8 +129,6 @@ const FlashSalePage: React.FC = () => {
                     )}
                 </section>
             </main>
-            <Footer />
-            <MobileNavBar />
         </div>
     );
 };

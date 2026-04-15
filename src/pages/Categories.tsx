@@ -1,9 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCategories } from '../hooks/useCategories';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import MobileNavBar from '../components/MobileNavBar';
+
 import { Card, CardContent } from '../components/ui/card';
 import { Loader2, ChevronRight, LayoutGrid, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -27,9 +25,6 @@ const Categories: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <div className="hidden md:block">
-                <Header />
-            </div>
 
             {/* Mobile Header */}
             <header className="md:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-border/50 px-4 py-4">
@@ -104,10 +99,6 @@ const Categories: React.FC = () => {
                 )}
             </main>
 
-            <div className="hidden md:block">
-                <Footer />
-            </div>
-            <MobileNavBar />
         </div>
     );
 };

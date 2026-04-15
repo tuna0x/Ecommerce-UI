@@ -1,9 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Highlight from '@tiptap/extension-highlight';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
+import CharacterCount from '@tiptap/extension-character-count';
+import Typography from '@tiptap/extension-typography';
+import Focus from '@tiptap/extension-focus';
+
 import { 
     Bold, 
     Italic, 
@@ -12,18 +25,25 @@ import {
     ImageIcon, 
     Heading1,
     Heading2,
-    Heading3,
     Undo,
     Redo,
     Strikethrough,
     Link as LinkIcon,
-    Code,
     Quote,
-    Type,
-    Eraser
+    Eraser,
+    Underline as UnderlineIcon,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    Highlighter,
+    CheckSquare,
+    Table as TableIcon,
+    Type as TypeIcon
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Input } from '../ui/input';
 
 interface RichEditorProps {
     value: string;
@@ -38,23 +58,47 @@ const RichEditor: React.FC<RichEditorProps> = ({
     placeholder = 'Nhập nội dung...', 
     className 
 }) => {
+    const [linkUrl, setLinkUrl] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+
     const editor = useEditor({
         extensions: [
             StarterKit,
+            Underline,
+            Typography,
+            Focus.configure({
+                className: 'has-focus',
+                mode: 'all',
+            }),
+            TextAlign.configure({
+                types: ['heading', 'paragraph'],
+            }),
+            Highlight.configure({ multicolor: true }),
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
-                    class: 'text-primary underline cursor-pointer',
+                    class: 'text-primary underline cursor-pointer font-medium transition-all hover:text-primary/80',
                 },
             }),
             Image.configure({
                 HTMLAttributes: {
-                    class: 'rounded-2xl shadow-lg my-6 max-w-full mx-auto',
+                    class: 'rounded-2xl shadow-lg my-6 max-w-full mx-auto transition-transform hover:scale-[1.01]',
                 },
             }),
             Placeholder.configure({
                 placeholder,
             }),
+            TaskList,
+            TaskItem.configure({
+                nested: true,
+            }),
+            Table.configure({
+                resizable: true,
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
+            CharacterCount,
         ],
         content: value,
         onUpdate: ({ editor }) => {
@@ -63,7 +107,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
         editorProps: {
             attributes: {
                 class: cn(
-                    "min-h-[300px] p-6 focus:outline-none prose prose-pink max-w-none dark:prose-invert prose-img:rounded-2xl prose-img:shadow-xl prose-img:mx-auto prose-headings:font-bold prose-p:leading-relaxed",
+                    "min-h-[350px] p-8 focus:outline-none prose prose-pink max-w-none dark:prose-invert prose-img:rounded-3xl prose-img:shadow-2xl prose-img:mx-auto prose-headings:font-black prose-p:leading-relaxed prose-table:border-collapse prose-table:border prose-table:border-border",
                 ),
             },
         },
@@ -81,183 +125,238 @@ const RichEditor: React.FC<RichEditorProps> = ({
     }
 
     const setLink = () => {
-        const previousUrl = editor.getAttributes('link').href;
-        const url = window.prompt('Nhập URL liên kết:', previousUrl);
-
-        if (url === null) {
-            return;
-        }
-
-        if (url === '') {
+        if (linkUrl === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
             return;
         }
-
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+        editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
+        setLinkUrl('');
     };
 
     const addImage = () => {
-        const url = window.prompt('Nhập URL hình ảnh:');
-        if (url) {
-            editor.chain().focus().setImage({ src: url }).run();
+        if (imageUrl) {
+            editor.chain().focus().setImage({ src: imageUrl }).run();
+            setImageUrl('');
         }
     };
 
     return (
         <div className={cn(
-            "border rounded-2xl bg-background transition-all duration-300 overflow-hidden shadow-sm group",
-            editor.isFocused ? "ring-2 ring-primary/20 border-primary shadow-md" : "border-input",
+            "border rounded-3xl bg-background transition-all duration-500 overflow-hidden shadow-sm group relative",
+            editor.isFocused ? "ring-4 ring-primary/10 border-primary/50 shadow-xl" : "border-input hover:border-border",
             className
         )}>
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-2 bg-muted/20 border-b border-border sticky top-0 z-10 backdrop-blur-sm">
-                <div className="flex items-center gap-1 mr-2 px-1">
+            {/* Main Toolbar */}
+            <div className="flex flex-wrap items-center gap-1 p-3 bg-muted/10 border-b border-border sticky top-0 z-20 backdrop-blur-md">
+                {/* History */}
+                <div className="flex items-center gap-1">
+                    <EditorButton icon={Undo} onClick={() => editor.chain().focus().undo().run()} title="Hoàn tác" />
+                    <EditorButton icon={Redo} onClick={() => editor.chain().focus().redo().run()} title="Làm lại" />
+                </div>
+
+                <Separator />
+
+                {/* Headings */}
+                <div className="flex items-center gap-1">
                     <EditorButton 
                         icon={Heading1} 
                         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} 
                         active={editor.isActive('heading', { level: 1 })}
-                        title="Tiêu đề 1" 
                     />
                     <EditorButton 
                         icon={Heading2} 
                         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
                         active={editor.isActive('heading', { level: 2 })}
-                        title="Tiêu đề 2" 
                     />
-                    <EditorButton 
-                        icon={Heading3} 
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} 
-                        active={editor.isActive('heading', { level: 3 })}
-                        title="Tiêu đề 3" 
-                    />
-                    <EditorButton 
-                        icon={Type} 
+                     <EditorButton 
+                        icon={TypeIcon} 
                         onClick={() => editor.chain().focus().setParagraph().run()} 
                         active={editor.isActive('paragraph')}
-                        title="Văn bản thường" 
                     />
                 </div>
 
-                <div className="w-px h-6 bg-border mx-1 opacity-50" />
+                <Separator />
 
-                <div className="flex items-center gap-1 px-1">
+                {/* Basic Formatting */}
+                <div className="flex items-center gap-1">
                     <EditorButton 
                         icon={Bold} 
                         onClick={() => editor.chain().focus().toggleBold().run()} 
                         active={editor.isActive('bold')}
-                        title="In đậm" 
                     />
                     <EditorButton 
                         icon={Italic} 
                         onClick={() => editor.chain().focus().toggleItalic().run()} 
                         active={editor.isActive('italic')}
-                        title="In nghiêng" 
+                    />
+                    <EditorButton 
+                        icon={UnderlineIcon} 
+                        onClick={() => editor.chain().focus().toggleUnderline().run()} 
+                        active={editor.isActive('underline')}
                     />
                     <EditorButton 
                         icon={Strikethrough} 
                         onClick={() => editor.chain().focus().toggleStrike().run()} 
                         active={editor.isActive('strike')}
-                        title="Gạch ngang" 
-                    />
-                    <EditorButton 
-                        icon={Code} 
-                        onClick={() => editor.chain().focus().toggleCode().run()} 
-                        active={editor.isActive('code')}
-                        title="Mã code" 
                     />
                 </div>
 
-                <div className="w-px h-6 bg-border mx-1 opacity-50" />
+                <Separator />
 
-                <div className="flex items-center gap-1 px-1">
+                {/* Alignment */}
+                <div className="flex items-center gap-1">
+                    <EditorButton 
+                        icon={AlignLeft} 
+                        onClick={() => editor.chain().focus().setTextAlign('left').run()} 
+                        active={editor.isActive({ textAlign: 'left' })}
+                    />
+                    <EditorButton 
+                        icon={AlignCenter} 
+                        onClick={() => editor.chain().focus().setTextAlign('center').run()} 
+                        active={editor.isActive({ textAlign: 'center' })}
+                    />
+                    <EditorButton 
+                        icon={AlignRight} 
+                        onClick={() => editor.chain().focus().setTextAlign('right').run()} 
+                        active={editor.isActive({ textAlign: 'right' })}
+                    />
+                </div>
+
+                <Separator />
+
+                {/* Lists & Blocks */}
+                <div className="flex items-center gap-1">
                     <EditorButton 
                         icon={List} 
                         onClick={() => editor.chain().focus().toggleBulletList().run()} 
                         active={editor.isActive('bulletList')}
-                        title="Danh sách" 
                     />
                     <EditorButton 
                         icon={ListOrdered} 
                         onClick={() => editor.chain().focus().toggleOrderedList().run()} 
                         active={editor.isActive('orderedList')}
-                        title="Danh sách số" 
+                    />
+                    <EditorButton 
+                        icon={CheckSquare} 
+                        onClick={() => editor.chain().focus().toggleTaskList().run()} 
+                        active={editor.isActive('taskList')}
                     />
                     <EditorButton 
                         icon={Quote} 
                         onClick={() => editor.chain().focus().toggleBlockquote().run()} 
                         active={editor.isActive('blockquote')}
-                        title="Trích dẫn" 
                     />
                 </div>
 
-                <div className="w-px h-6 bg-border mx-1 opacity-50" />
+                <Separator />
 
-                <div className="flex items-center gap-1 px-1">
+                {/* Insert */}
+                <div className="flex items-center gap-1">
+                     <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-primary/10 hover:text-primary">
+                                <LinkIcon className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-3 flex gap-2 shadow-2xl border-primary/20">
+                            <Input 
+                                placeholder="Dán link liên kết..." 
+                                value={linkUrl} 
+                                onChange={(e) => setLinkUrl(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && setLink()}
+                                className="h-9 focus-visible:ring-primary/30"
+                            />
+                            <Button size="sm" onClick={setLink}>Gắn</Button>
+                        </PopoverContent>
+                    </Popover>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 rounded-xl hover:bg-primary/10 hover:text-primary">
+                                <ImageIcon className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-3 flex gap-2 shadow-2xl border-primary/20">
+                            <Input 
+                                placeholder="Dán URL hình ảnh..." 
+                                value={imageUrl} 
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addImage()}
+                                className="h-9 focus-visible:ring-primary/30"
+                            />
+                            <Button size="sm" onClick={addImage}>Chèn</Button>
+                        </PopoverContent>
+                    </Popover>
+
                     <EditorButton 
-                        icon={LinkIcon} 
-                        onClick={setLink} 
-                        active={editor.isActive('link')}
-                        title="Gắn link" 
+                        icon={TableIcon} 
+                        onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} 
                     />
                     <EditorButton 
-                        icon={ImageIcon} 
-                        onClick={addImage} 
-                        title="Chèn ảnh" 
-                    />
-                     <EditorButton 
-                        icon={Eraser} 
-                        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} 
-                        title="Xóa định dạng" 
+                        icon={Highlighter} 
+                        onClick={() => editor.chain().focus().toggleHighlight().run()} 
+                        active={editor.isActive('highlight')}
                     />
                 </div>
 
                 <div className="flex-1" />
                 
-                <div className="flex items-center gap-1 px-1">
-                    <EditorButton icon={Undo} onClick={() => editor.chain().focus().undo().run()} title="Hoàn tác" />
-                    <EditorButton icon={Redo} onClick={() => editor.chain().focus().redo().run()} title="Làm lại" />
-                </div>
+                <EditorButton 
+                    icon={Eraser} 
+                    onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} 
+                    title="Xóa định dạng" 
+                />
             </div>
 
             {/* Editable Area */}
-            <div className="relative cursor-text">
+            <div className="relative cursor-text min-h-[350px]">
                 <EditorContent editor={editor} />
                 {editor.isEmpty && (
-                     <div className="absolute top-6 left-6 text-muted-foreground/40 pointer-events-none select-none italic text-sm">
+                     <div className="absolute top-8 left-8 text-muted-foreground/30 pointer-events-none select-none italic text-base">
                         {placeholder}
                     </div>
                 )}
             </div>
 
             {/* Footer / Status */}
-            <div className="px-4 py-1.5 bg-muted/10 border-t border-border flex items-center justify-between">
-                <div className="text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">
-                    Rich Editor Pro
+            <div className="px-5 py-2.5 bg-muted/5 border-t border-border flex items-center justify-between">
+                <div className="text-[10px] text-muted-foreground/40 uppercase tracking-widest font-black flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    Rich Editor Pro Experience
                 </div>
-                <div className="text-[10px] text-muted-foreground font-medium">
-                    {editor.storage.characterCount?.characters?.() || 0} ký tự
+                <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-semibold">
+                    <div className="flex items-center gap-1.5">
+                        <span className="opacity-50 uppercase text-[9px]">Words:</span>
+                        {editor.storage.characterCount?.words?.() || 0}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                         <span className="opacity-50 uppercase text-[9px]">Chars:</span>
+                        {editor.storage.characterCount?.characters?.() || 0}
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
+const Separator = () => <div className="w-px h-6 bg-border mx-1 opacity-60" />;
+
 interface EditorButtonProps {
     icon: React.ElementType;
     onClick: () => void;
-    title: string;
+    title?: string;
     active?: boolean;
 }
 
 const EditorButton: React.FC<EditorButtonProps> = ({ icon: Icon, onClick, title, active }) => (
     <Button
         type="button"
-        variant={active ? "secondary" : "ghost"}
+        variant="ghost"
         size="sm"
         className={cn(
-            "h-8 w-8 p-0 rounded-md transition-all duration-200",
+            "h-9 w-9 p-0 rounded-xl transition-all duration-300",
             active 
-                ? "bg-primary text-primary-foreground shadow-sm scale-105" 
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105 active:scale-95" 
                 : "hover:bg-primary/10 text-muted-foreground hover:text-primary"
         )}
         onClick={(e) => {

@@ -8,9 +8,7 @@ import TypingIndicator from '../components/chat/TypingIndicator';
 import { useChat } from '../context/ChatContext';
 import { useAuth } from '../context/AuthContext';
 import { sendMessage as sendChatAPI } from '../service/chatService';
-import TopBar from '../components/TopBar';
-import Header from '../components/Header';
-import MobileNavBar from '../components/MobileNavBar';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 
@@ -135,11 +133,7 @@ const Chat: React.FC = () => {
     };
 
     return (
-        <div className="h-[100dvh] flex flex-col bg-background overflow-hidden font-sans">
-            <div className="hidden md:block">
-                <TopBar />
-                <Header />
-            </div>
+        <div className="flex flex-col bg-background overflow-hidden font-sans" style={{ height: 'calc(100dvh - 140px)' }}>
 
             <div className="flex-1 min-h-0 max-w-3xl mx-auto w-full flex flex-col border-x border-border bg-white shadow-2xl relative">
                 {/* Duo Mode Header */}
@@ -325,7 +319,6 @@ const Chat: React.FC = () => {
                 </div>
             </div>
 
-            <MobileNavBar />
         </div>
     );
 };
