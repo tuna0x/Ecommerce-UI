@@ -12,6 +12,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { QuickViewProvider } from "./context/QuickViewContext";
 import { SocketProvider } from "./context/SocketContext";
 
+import ScrollToTop from "./components/ScrollToTop";
 import AnimatedRoutes from "./routes/AnimatedRoutes";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <Router>
+          <ScrollToTop />
           <AuthProvider>
             <PermissionProvider>
               <SocketProvider>

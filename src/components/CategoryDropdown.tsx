@@ -191,7 +191,7 @@ const CategoryDropdown: React.FC = () => {
                                 {/* Bottom suggestion/footer */}
                                 <div className="mt-auto pt-6 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground italic relative z-10">
                                     <p>✨ Khám phá xu hướng làm đẹp mới nhất cùng Bông Cosmetic</p>
-                                    <Link to="/flash-sale" className="not-italic font-bold text-primary hover:underline">Xem tất cả sản phẩm →</Link>
+                                    <Link to="/category/all" className="not-italic font-bold text-primary hover:underline">Xem tất cả sản phẩm →</Link>
                                 </div>
                             </div>
                         </div>

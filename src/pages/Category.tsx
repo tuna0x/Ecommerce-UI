@@ -86,6 +86,9 @@ const Category = () => {
   const [debouncedPriceRange, setDebouncedPriceRange] = useState(priceRange);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showAllBrands, setShowAllBrands] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [sortBy, setSortBy] = useState("createdAt,desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -140,6 +143,11 @@ const Category = () => {
         filters.push(`(${skinFilters})`);
       }
 
+      if (slug === "all" && selectedCategories.length > 0) {
+        const catFilters = selectedCategories.map(c => `category.name:'${c}'`).join(" or ");
+        filters.push(`(${catFilters})`);
+      }
+
       filters.push(`price>=${debouncedPriceRange[0]}`);
       filters.push(`price<=${debouncedPriceRange[1]}`);
 
@@ -162,7 +170,7 @@ const Category = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, selectedSkinTypes, debouncedPriceRange, sortBy, slug]);
+  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, selectedSkinTypes, selectedCategories, debouncedPriceRange, sortBy, slug]);
 
   const fetchCategoryBanners = useCallback(async () => {
     try {
@@ -216,17 +224,41 @@ const Category = () => {
     );
   };
 
+  const toggleCategory = (categoryName: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryName) ? prev.filter((c) => c !== categoryName) : [...prev, categoryName],
+    );
+  };
+
   const clearFilters = () => {
     setPriceRange([0, 5000000]);
+    setDebouncedPriceRange([0, 5000000]);
     setSelectedBrands([]);
     setSelectedSkinTypes([]);
+    setSelectedCategories([]);
+    setSortBy("createdAt,desc");
+    setCurrentPage(0);
   };
 
   const hasActiveFilters =
     selectedBrands.length > 0 ||
     selectedSkinTypes.length > 0 ||
+    selectedCategories.length > 0 ||
     priceRange[0] > 0 ||
     priceRange[1] < 5000000;
+
+  const isSortChanged = sortBy !== "createdAt,desc";
+  const hasAnyActiveFilter = hasActiveFilters || isSortChanged;
+
+  const sortOptions = [
+    { value: "createdAt,desc", label: "Mới nhất" },
+    { value: "price,asc", label: "Giá thấp đến cao" },
+    { value: "price,desc", label: "Giá cao đến thấp" },
+    { value: "name,asc", label: "Tên A-Z" },
+    { value: "soldCount,desc", label: "Bán chạy nhất" },
+  ];
+
+  const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label;
 
   const filterContent = (
     <div className="space-y-6">
@@ -267,7 +299,7 @@ const Category = () => {
       <div>
         <h3 className="font-semibold mb-3">Thương hiệu</h3>
         <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-          {brandsList.map((brand) => (
+          {(showAllBrands ? brandsList : brandsList.slice(0, 5)).map((brand) => (
             <label key={brand.id} className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
                 checked={selectedBrands.includes(brand.name)}
@@ -277,6 +309,14 @@ const Category = () => {
             </label>
           ))}
         </div>
+        {brandsList.length > 5 && (
+          <button
+            onClick={() => setShowAllBrands(!showAllBrands)}
+            className="text-xs font-medium text-primary hover:underline mt-2"
+          >
+            {showAllBrands ? "Rút gọn" : `Xem thêm (${brandsList.length - 5})`}
+          </button>
+        )}
       </div>
 
       <div>
@@ -293,6 +333,31 @@ const Category = () => {
           ))}
         </div>
       </div>
+
+      {slug === "all" && categories.length > 0 && (
+        <div>
+          <h3 className="font-semibold mb-3">Danh mục</h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+            {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => (
+              <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
+                <Checkbox
+                  checked={selectedCategories.includes(cat.name)}
+                  onCheckedChange={() => toggleCategory(cat.name)}
+                />
+                <span className="text-sm group-hover:text-primary transition-colors">{cat.name}</span>
+              </label>
+            ))}
+          </div>
+          {categories.length > 5 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="text-xs font-medium text-primary hover:underline mt-2"
+            >
+              {showAllCategories ? "Rút gọn" : `Xem thêm (${categories.length - 5})`}
+            </button>
+          )}
+        </div>
+      )}
 
       {hasActiveFilters && (
         <Button variant="outline" className="w-full" onClick={clearFilters}>
@@ -391,6 +456,64 @@ const Category = () => {
             </Select>
           </div>
         </div>
+
+        {hasAnyActiveFilter && (
+          <div className="flex flex-wrap items-center gap-2 mb-6 animate-in fade-in slide-in-from-left-4 duration-300">
+            <span className="text-sm font-medium text-muted-foreground mr-1">Bộ lọc đang chọn:</span>
+            
+            {/* Price Chip */}
+            {(priceRange[0] > 0 || priceRange[1] < 5000000) && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>Giá: {priceRange[0].toLocaleString()}đ - {priceRange[1].toLocaleString()}đ</span>
+                <button onClick={() => {
+                  setPriceRange([0, 5000000]);
+                  setDebouncedPriceRange([0, 5000000]);
+                }}><X className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
+
+            {/* Brand Chips */}
+            {selectedBrands.map(brand => (
+              <div key={brand} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>{brand}</span>
+                <button onClick={() => toggleBrand(brand)}><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
+
+            {/* Skin Type Chips */}
+            {selectedSkinTypes.map(type => (
+              <div key={type} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>{type}</span>
+                <button onClick={() => toggleSkinType(type)}><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
+
+            {/* Category Chips */}
+            {selectedCategories.map(cat => (
+              <div key={cat} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>{cat}</span>
+                <button onClick={() => toggleCategory(cat)}><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
+
+            {/* Sort Chip */}
+            {isSortChanged && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-600 rounded-full text-xs font-medium border border-blue-500/20 hover:bg-blue-500/20 transition-colors">
+                <span>Sắp xếp: {currentSortLabel}</span>
+                <button onClick={() => setSortBy("createdAt,desc")}><X className="w-3.5 h-3.5" /></button>
+              </div>
+            )}
+
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearFilters}
+              className="text-xs font-bold text-muted-foreground hover:text-destructive h-8 px-2"
+            >
+              Xóa tất cả
+            </Button>
+          </div>
+        )}
 
         <div className="flex gap-6">
           <aside className="hidden md:block w-64 flex-shrink-0">
