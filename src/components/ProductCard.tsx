@@ -1,11 +1,12 @@
 import React from 'react';
-import { Star, Eye } from 'lucide-react';
+import { Star, Eye, Heart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { IProduct } from '../types/product.type';
 import { useQuickView } from '../context/QuickViewContext';
 import { logActivity } from '../service/trackingService';
 import { PremiumImage } from './ui/PremiumImage';
+import { useWishlist } from '../hooks/useWishlist';
 
 interface ProductCardProps {
   product: IProduct;
@@ -16,6 +17,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { openQuickView } = useQuickView();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { isInWishlist, toggleWishlist, isToggling } = useWishlist();
+
+  const isWishlisted = isInWishlist(product.id);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price);
@@ -36,6 +40,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       navigate('/login');
     } else {
       openQuickView(product);
+    }
+  };
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else {
+      toggleWishlist(product.id, isWishlisted);
     }
   };
 
@@ -81,12 +95,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </span>
           )}
 
-          {/* Quick View Button */}
           <button
             onClick={handleQuickView}
-            className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary hover:text-primary-foreground shadow-sm"
+            className="absolute bottom-2 right-12 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary hover:text-primary-foreground shadow-sm"
           >
             <Eye className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Wishlist Button */}
+          <button
+            onClick={handleToggleWishlist}
+            disabled={isToggling}
+            className={`absolute bottom-2 right-2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 shadow-sm ${
+              isWishlisted ? 'text-rose-500 opacity-100 translate-y-0' : 'hover:bg-primary hover:text-primary-foreground'
+            }`}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
           </button>
         </div>
 

@@ -33,6 +33,7 @@ import { ImageMagnifier } from "../components/ImageMagnifier";
 import { useInView } from "react-intersection-observer";
 import { PremiumImage } from "../components/ui/PremiumImage";
 import SEO from "../components/ui/SEO";
+import { useWishlist } from "../hooks/useWishlist";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,7 @@ const ProductDetail: React.FC = () => {
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { isInWishlist, toggleWishlist, isToggling } = useWishlist();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -441,12 +443,24 @@ const ProductDetail: React.FC = () => {
                   if (!isAuthenticated) {
                     navigate('/login');
                   } else {
-                    import('sonner').then(({ toast }) => toast.info("Đã thêm vào danh sách yêu thích!"));
+                    toggleWishlist(product.id, isInWishlist(product.id));
                   }
                 }}
-                className="p-3 sm:p-4 border border-border rounded-lg hover:bg-secondary transition-colors"
+                disabled={isToggling}
+                className={cn(
+                  "p-3 sm:p-4 border border-border rounded-lg transition-all duration-300",
+                  isInWishlist(product.id)
+                    ? "bg-red-50 border-red-200 text-red-500"
+                    : "hover:bg-secondary text-foreground"
+                )}
               >
-                <Heart className="w-4 h-4 sm:w-5 sm:h-5" />
+                <Heart 
+                  className={cn(
+                    "w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300",
+                    isToggling && "scale-75 opacity-50",
+                    isInWishlist(product.id) && "fill-current scale-110"
+                  )} 
+                />
               </button>
               <button
                 onClick={() => {

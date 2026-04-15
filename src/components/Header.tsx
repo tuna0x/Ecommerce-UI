@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { Link, useNavigate } from 'react-router-dom';
 import { NavLink } from './NavLink';
+import { useWishlist } from '../hooks/useWishlist';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,7 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { data: categories = [] } = useCategories();
+  const { wishlistCount } = useWishlist();
 
   return (
     <header className="sticky top-0 z-40 bg-background border-b border-border">
@@ -107,6 +109,19 @@ const Header: React.FC = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link to="/wishlist" className="flex items-center justify-between cursor-pointer w-full">
+                      <div className="flex items-center">
+                        <Heart className="w-4 h-4 mr-2" />
+                        Danh sách yêu thích
+                      </div>
+                      {wishlistCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/orders" className="flex items-center cursor-pointer">
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       Đơn hàng
@@ -136,6 +151,7 @@ const Header: React.FC = () => {
             <Link to="/chat" className="relative p-2 hover:bg-secondary rounded-lg transition-colors group">
               <MessageCircle className="w-5 h-5 group-hover:text-primary transition-colors" />
             </Link>
+
 
             {/* Cart */}
             <button
@@ -252,24 +268,38 @@ const Header: React.FC = () => {
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-2 mb-3">Khám phá</p>
               {[
                 { to: "/category/all", label: "Tất cả sản phẩm", icon: ShoppingBag, color: "text-primary" },
+                { 
+                  to: "/wishlist", 
+                  label: "Yêu thích", 
+                  icon: Heart, 
+                  color: "text-rose-500",
+                  badge: wishlistCount > 0 ? wishlistCount : null 
+                },
                 { to: "/flash-sale", label: "Flash Sale", icon: Flame, color: "text-orange-500" },
                 { to: "/orders", label: "Đơn hàng của tôi", icon: Package, color: "text-blue-500" },
                 { to: "/blog", label: "Blog làm đẹp", icon: BookOpen, color: "text-emerald-500" },
                 { to: "/about", label: "Về chúng tôi", icon: Info, color: "text-primary" },
                 { to: "/contact", label: "Liên hệ", icon: Phone, color: "text-teal-500" },
                 { to: "/faq", label: "FAQ - Hỏi đáp", icon: HelpCircle, color: "text-indigo-500" },
-              ].map(({ to, label, icon: Icon, color }) => (
+              ].map(({ to, label, icon: Icon, color, badge }) => (
                 <NavLink
                   key={to}
                   to={to}
-                  className="flex items-center gap-3 px-2 py-3 text-sm font-semibold hover:bg-primary/5 rounded-xl transition-all"
+                  className="flex items-center justify-between px-2 py-3 text-sm font-semibold hover:bg-primary/5 rounded-xl transition-all"
                   activeClassName="bg-primary/10 text-primary border-r-4 border-primary"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <div className={`w-8 h-8 rounded-lg bg-secondary flex items-center justify-center ${color}`}>
-                    <Icon className="w-4 h-4" />
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg bg-secondary flex items-center justify-center ${color}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span>{label}</span>
                   </div>
-                  <span>{label}</span>
+                  {badge && (
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {badge}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>
