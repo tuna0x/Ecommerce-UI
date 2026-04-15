@@ -190,8 +190,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
                       className={cn(
                         'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 text-sm group relative',
                         isActive(item.url)
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          ? 'bg-primary text-primary-foreground shadow-md scale-[1.02] font-semibold'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground hover:scale-[1.02]'
                       )}
                     >
                       <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />

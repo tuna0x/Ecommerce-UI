@@ -25,6 +25,7 @@ interface CartContextType {
     selectAllItems: (selected: boolean) => void;
     clearCart: () => void;
     clearSelectedItems: () => void;
+    removeSelectedItems: () => Promise<void>;
     cartCount: number;
     cartTotal: number;
     selectedTotal: number;
@@ -265,6 +266,51 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         setCartItems((prev) => prev.filter((item) => !item.selected));
     };
 
+    const removeSelectedItems = async () => {
+        const itemsToRemove = cartItems.filter(item => item.selected);
+        if (itemsToRemove.length === 0) return;
+
+        // Log activity
+        itemsToRemove.forEach(item => {
+            logActivity('REMOVE_CART', {
+                productId: item.id,
+                productName: item.name,
+                quantity: item.quantity
+            });
+        });
+
+        // Optimistic UI update
+        setCartItems(prev => prev.filter(item => !item.selected));
+
+        if (isAuthenticated) {
+            try {
+                setIsLoading(true);
+                // Remove all selected items from backend
+                const dbIdsToRemove = itemsToRemove
+                    .filter(item => item.dbItemId !== undefined)
+                    .map(item => item.dbItemId!);
+
+                await Promise.all(dbIdsToRemove.map(id => removeCartItemApi(id)));
+
+                // Refresh from backend
+                const res = await getCartApi();
+                if (res.data?.data?.item) {
+                    setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                }
+                toast.success(`Đã xóa ${itemsToRemove.length} sản phẩm khỏi giỏ hàng`);
+            } catch (err) {
+                console.error("API removeSelectedItems failed", err);
+                toast.error((err as any)?.response?.data?.message || "Xóa sản phẩm thất bại.");
+                // Revert on failure
+                setCartItems(prev => [...prev, ...itemsToRemove]);
+            } finally {
+                setIsLoading(false);
+            }
+        } else {
+            toast.success(`Đã xóa ${itemsToRemove.length} sản phẩm khỏi giỏ hàng`);
+        }
+    };
+
     const getPrice = (item: IProduct) => item.finalPrice || item.price || 0;
 
     const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -294,6 +340,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 selectAllItems,
                 clearCart,
                 clearSelectedItems,
+                removeSelectedItems,
                 cartCount,
                 cartTotal,
                 selectedTotal,

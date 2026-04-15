@@ -252,10 +252,7 @@ const Checkout: React.FC = () => {
   };
 
   const handleApplyCoupon = (coupon: Coupon) => {
-    if (selectedTotal < coupon.minOrderValue) {
-      toast.error(`Đơn hàng tối thiểu ${formatPrice(coupon.minOrderValue)}₫ để áp dụng mã này`);
-      return;
-    }
+      toast.error(`Đơn hàng tối thiểu ${formatPrice(coupon.minOrderValue)} để áp dụng mã này`);
     setAppliedCoupon(coupon);
     setCouponCode(coupon.code);
     const amount = calculateDiscount(coupon, selectedTotal);
@@ -363,7 +360,7 @@ const Checkout: React.FC = () => {
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
   };
 
   const hasFreeShipping = selectedTotal >= FREE_SHIPPING_THRESHOLD;
@@ -782,17 +779,22 @@ const Checkout: React.FC = () => {
                           {/* Attributes Display */}
                           {item.variantAttributes && item.variantAttributes.length > 0 && (
                             <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
-                              {item.variantAttributes.map((attr, i) => (
-                                <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                  {attr.name}: {attr.attributeValue}
-                                </span>
-                              ))}
+                              {item.variantAttributes.map((attr, i) => {
+                                const name = attr.name || (attr as any).attributeName;
+                                const value = attr.attributeValue || (attr as any).value || (attr as any).attributeValue;
+                                if (!name && !value) return null;
+                                return (
+                                  <span key={i} className="text-[10px] text-muted-foreground font-bold bg-secondary/50 px-2 py-0.5 rounded-md border border-border/30">
+                                    {name}: {value}
+                                  </span>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
-                        <p className="text-sm font-semibold whitespace-nowrap">
-                          {formatPrice(price * item.quantity)}₫
-                        </p>
+                          <p className="text-sm font-semibold whitespace-nowrap">
+                            {formatPrice(price * item.quantity)}
+                          </p>
                       </div>
                     );
                   })}
@@ -865,7 +867,7 @@ const Checkout: React.FC = () => {
                                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Mã: {vc.coupon.code}</p>
                                           {!isApplicable && (
                                             <p className="text-[10px] text-destructive mt-1 font-bold italic">
-                                              Thiếu {formatPrice(vc.coupon.minOrderValue - selectedTotal)}₫ để áp dụng
+                                              Thiếu {formatPrice(vc.coupon.minOrderValue - selectedTotal)} để áp dụng
                                             </p>
                                           )}
                                         </div>
@@ -907,7 +909,7 @@ const Checkout: React.FC = () => {
                                       </div>
                                       <div className="flex-1 min-w-0">
                                         <p className="font-bold text-sm line-clamp-1">{c.name}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Giảm {c.type === 'PERCENT' ? `${c.discountValue}%` : `${formatPrice(c.discountValue)}₫`}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Giảm {c.type === 'PERCENT' ? `${c.discountValue}%` : `${formatPrice(c.discountValue)}`}</p>
                                       </div>
                                       <Button 
                                         size="sm" 
@@ -937,7 +939,7 @@ const Checkout: React.FC = () => {
                         <Ticket className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-primary">-{formatPrice(discountAmount)}₫</p>
+                        <p className="text-sm font-bold text-primary">-{formatPrice(discountAmount)}</p>
                         <p className="text-[11px] text-muted-foreground line-clamp-1">Mã: {appliedCoupon.code}</p>
                       </div>
                       <button
@@ -974,7 +976,7 @@ const Checkout: React.FC = () => {
                 <div className="space-y-3 py-4 border-t border-border">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Tạm tính ({selectedCount} sản phẩm)</span>
-                    <span>{formatPrice(selectedTotal)}₫</span>
+                    <span>{formatPrice(selectedTotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Phí vận chuyển</span>
@@ -984,7 +986,7 @@ const Checkout: React.FC = () => {
                           <Loader2 className="w-3 h-3 animate-spin" />
                           Đang tính...
                         </span>
-                      ) : hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}₫`}
+                      ) : hasFreeShipping ? 'Miễn phí' : `${formatPrice(shippingFee)}`}
                     </span>
                   </div>
                   {discountAmount > 0 && (
@@ -993,7 +995,7 @@ const Checkout: React.FC = () => {
                         <Tag className="w-3 h-3" />
                         Giảm giá voucher
                       </span>
-                      <span>-{formatPrice(discountAmount)}₫</span>
+                      <span>-{formatPrice(discountAmount)}</span>
                     </div>
                   )}
                   {hasFreeShipping && (
@@ -1007,7 +1009,7 @@ const Checkout: React.FC = () => {
                 {/* Total */}
                 <div className="flex items-center justify-between py-4 border-t border-border">
                   <span className="text-lg font-bold">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary">{formatPrice(totalAmount)}₫</span>
+                  <span className="text-2xl font-bold text-primary">{formatPrice(totalAmount)}</span>
                 </div>
 
                 {/* Submit Button */}
@@ -1026,7 +1028,7 @@ const Checkout: React.FC = () => {
                       Đang xử lý...
                     </span>
                   ) : (
-                    `Đặt hàng • ${formatPrice(totalAmount)}₫`
+                    `Đặt hàng • ${formatPrice(totalAmount)}`
                   )}
                 </button>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight, Loader2 } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight, Loader2, Trash2 } from 'lucide-react';
 import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Checkbox } from '../components/ui/Checkbox';
@@ -12,6 +12,7 @@ const CartSidebar: React.FC = () => {
     updateQuantity,
     toggleSelectItem,
     selectAllItems,
+    removeSelectedItems,
     selectedTotal,
     selectedCount,
     cartCount,
@@ -22,7 +23,7 @@ const CartSidebar: React.FC = () => {
   const navigate = useNavigate();
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + '₫';
+    return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
   };
 
   const amountToFreeShip = FREE_SHIPPING_THRESHOLD - selectedTotal;
@@ -31,6 +32,21 @@ const CartSidebar: React.FC = () => {
 
   const allSelected = cartItems.length > 0 && cartItems.every((item) => item.selected);
   const someSelected = cartItems.some((item) => item.selected);
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const confirmTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-reset confirm state after 4s
+  React.useEffect(() => {
+    if (confirmingDelete) {
+      confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 4000);
+      return () => { if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current); };
+    }
+  }, [confirmingDelete]);
+
+  // Reset confirm state when selection changes
+  React.useEffect(() => {
+    setConfirmingDelete(false);
+  }, [someSelected]);
 
   const handleCheckout = () => {
     if (selectedCount > 0) {
@@ -80,7 +96,7 @@ const CartSidebar: React.FC = () => {
             {/* Select All & Free Shipping */}
             {cartItems.length > 0 && (
               <div className="px-6 py-3.5 border-b border-border/40 space-y-3">
-                {/* Select All */}
+                {/* Select All & Delete */}
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2.5 cursor-pointer">
                     <Checkbox
@@ -94,9 +110,61 @@ const CartSidebar: React.FC = () => {
                     </span>
                   </label>
                   {someSelected && (
-                    <span className="text-[11px] text-primary font-medium">
-                      Đã chọn {selectedCount}
-                    </span>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        {!confirmingDelete ? (
+                          <motion.div
+                            key="delete-trigger"
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-2"
+                          >
+                            <span className="text-[11px] text-primary font-medium">
+                              Đã chọn {selectedCount}
+                            </span>
+                            <button
+                              onClick={() => setConfirmingDelete(true)}
+                              disabled={isLoading}
+                              className="flex items-center gap-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 px-2 py-1 rounded-md transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Xóa
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="delete-confirm"
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-1.5"
+                          >
+                            <span className="text-[11px] text-destructive font-medium whitespace-nowrap">
+                              Xóa {cartItems.filter(i => i.selected).length} SP?
+                            </span>
+                            <button
+                              onClick={() => {
+                                setConfirmingDelete(false);
+                                removeSelectedItems();
+                              }}
+                              disabled={isLoading}
+                              className="text-[11px] font-semibold text-primary-foreground bg-destructive hover:bg-destructive/90 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
+                            >
+                              Xác nhận
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDelete(false)}
+                              className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary px-2 py-1 rounded-md transition-colors"
+                            >
+                              Hủy
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   )}
                 </div>
 
@@ -212,12 +280,23 @@ const CartSidebar: React.FC = () => {
 
                             {/* Attributes */}
                             {item.variantAttributes && item.variantAttributes.length > 0 && (
-                              <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1">
-                                {item.variantAttributes.map((attr, i) => (
-                                  <span key={i} className="text-[10px] text-muted-foreground/70 bg-secondary/30 px-1.5 py-0.5 rounded">
-                                    {attr.name}: {attr.attributeValue}
-                                  </span>
-                                ))}
+                              <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1.5">
+                                {item.variantAttributes.map((attr, i) => {
+                                  // Handle potential inconsistency in field names from API/localStorage
+                                  const name = attr.name || (attr as any).attributeName;
+                                  const value = attr.attributeValue || (attr as any).value || (attr as any).attributeValue;
+                                  
+                                  if (!name && !value) return null;
+
+                                  return (
+                                    <div key={i} className="flex items-center gap-1 text-[10px]">
+                                      <span className="text-muted-foreground font-medium">{name}:</span>
+                                      <span className="text-foreground font-bold bg-secondary/50 px-2 py-0.5 rounded-md shadow-sm border border-border/50">
+                                        {value}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
 
@@ -269,8 +348,8 @@ const CartSidebar: React.FC = () => {
                           </div>
 
                           {/* Subtotal */}
-                          <span className="font-bold text-sm text-foreground">
-                            {formatPrice(price * item.quantity)}₫
+                          <span className="font-bold text-sm text-primary">
+                            {formatPrice(price * item.quantity)}
                           </span>
                         </div>
                       </motion.div>
@@ -291,7 +370,7 @@ const CartSidebar: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Tạm tính</span>
-                    <span className="font-medium">{formatPrice(selectedTotal)}₫</span>
+                    <span className="font-medium">{formatPrice(selectedTotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Phí vận chuyển</span>

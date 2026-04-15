@@ -79,8 +79,9 @@ const Account = () => {
       }, selectedFile || undefined);
 
       if (res.data) {
-        setUser(res.data);
-        localStorage.setItem('user', JSON.stringify(res.data));
+        const updatedUser = { ...user, ...res.data };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
         setSelectedFile(null);
         setPreviewUrl(null);
         toast({
@@ -134,7 +135,7 @@ const Account = () => {
                       {user.name && user.name.length > 0 ? user.name.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <button 
+                  <button
                     onClick={handleAvatarClick}
                     className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 shadow-lg transition-transform hover:scale-110 active:scale-95"
                   >
@@ -181,10 +182,25 @@ const Account = () => {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="profile">
-                <TabsList className="w-full justify-start overflow-x-auto overflow-y-hidden flex-nowrap mb-6 bg-secondary/50 p-1 custom-scrollbar">
-                  <TabsTrigger value="profile" className="flex-shrink-0">Thông tin cá nhân</TabsTrigger>
-                  <TabsTrigger value="address" className="flex-shrink-0">Địa chỉ giao hàng</TabsTrigger>
-                  <TabsTrigger value="password" className="flex-shrink-0">Đổi mật khẩu</TabsTrigger>
+                <TabsList className="w-full justify-start overflow-x-auto overflow-y-hidden flex-nowrap mb-6 bg-muted/50 p-1.5 rounded-xl custom-scrollbar gap-1 border border-muted-foreground/5 shadow-inner">
+                  <TabsTrigger 
+                    value="profile" 
+                    className="flex-shrink-0 rounded-lg px-6 py-2.5 transition-all duration-300 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 font-bold"
+                  >
+                    Thông tin cá nhân
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="address" 
+                    className="flex-shrink-0 rounded-lg px-6 py-2.5 transition-all duration-300 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 font-bold"
+                  >
+                    Địa chỉ giao hàng
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="password" 
+                    className="flex-shrink-0 rounded-lg px-6 py-2.5 transition-all duration-300 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:scale-105 font-bold"
+                  >
+                    Đổi mật khẩu
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="profile">
@@ -213,6 +229,7 @@ const Account = () => {
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="pl-10"
+                            disabled
                           />
                         </div>
                       </div>
@@ -223,15 +240,19 @@ const Account = () => {
                           id="age"
                           type="number"
                           min="0"
+                          max="200"
                           value={formData.age}
-                          onChange={(e) => setFormData({ ...formData, age: Math.max(0, parseInt(e.target.value) || 0) })}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setFormData({ ...formData, age: Math.min(200, val) });
+                          }}
                         />
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="gender">Giới tính</Label>
-                        <Select 
-                          value={formData.gender} 
+                        <Select
+                          value={formData.gender}
                           onValueChange={(value) => setFormData({ ...formData, gender: value })}
                         >
                           <SelectTrigger>
@@ -246,7 +267,10 @@ const Account = () => {
                       </div>
                     </div>
 
-                    <Button type="submit" className="mt-4">
+                    <Button 
+                      type="submit" 
+                      className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95 px-8 font-bold"
+                    >
                       <Save className="w-4 h-4 mr-2" />
                       Lưu thay đổi
                     </Button>

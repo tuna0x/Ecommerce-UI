@@ -22,6 +22,7 @@ export const ProductService = {
       page,
       size,
       filter: filter || (search ? `name~'${search}'` : undefined),
+      search: search || undefined, // raw search term for unaccented backend search
       sort: sort,
       categoryId: categoryId,
     };

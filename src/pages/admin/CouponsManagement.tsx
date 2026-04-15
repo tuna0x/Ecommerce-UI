@@ -234,7 +234,10 @@ const CouponsManagement: React.FC = () => {
           <h1 className="text-2xl font-bold">Quản lý Mã giảm giá</h1>
           <p className="text-muted-foreground">Quản lý các mã coupon</p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button 
+          onClick={() => handleOpenDialog()}
+          className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Thêm mã giảm giá
         </Button>
@@ -379,7 +382,7 @@ const CouponsManagement: React.FC = () => {
                             <Switch
                               checked={coupon.isPublic}
                               onCheckedChange={() => handleTogglePublic(coupon.id, coupon.isPublic)}
-                              className="data-[state=checked]:bg-blue-500 scale-90"
+                              className="data-[state=checked]:bg-blue-500 shadow-sm"
                             />
                           </div>
                         </div>
@@ -389,7 +392,7 @@ const CouponsManagement: React.FC = () => {
                           <Switch
                             checked={coupon.status === "ACTIVE"}
                             onCheckedChange={() => handleToggleActive(coupon.id, coupon.status === "ACTIVE")}
-                            className="data-[state=checked]:bg-green-500 scale-90"
+                            className="data-[state=checked]:bg-green-500 shadow-sm"
                           />
                         </div>
                       </TableCell>
@@ -434,7 +437,7 @@ const CouponsManagement: React.FC = () => {
               {editingCoupon ? "Sửa mã giảm giá" : "Thêm mã giảm giá mới"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto p-4 pr-6">
+          <div className="space-y-6 max-h-[65vh] overflow-y-auto p-6 pb-24">
             <div className="space-y-2">
               <Label>Mã coupon *</Label>
               <div className="flex gap-2">
@@ -566,7 +569,7 @@ const CouponsManagement: React.FC = () => {
                     onCheckedChange={(checked) =>
                       setFormData({ ...formData, isPublic: checked })
                     }
-                    className="data-[state=checked]:bg-blue-500"
+                    className="data-[state=checked]:bg-blue-600 shadow-sm border-2 border-transparent focus-visible:ring-blue-500"
                   />
                 </div>
               </div>
@@ -597,22 +600,29 @@ const CouponsManagement: React.FC = () => {
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <Label>Trạng thái hoạt động</Label>
+            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-muted-foreground/10 shadow-inner">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-semibold">Trạng thái hoạt động</Label>
+                <p className="text-xs text-muted-foreground">Kích hoạt để người dùng có thể sử dụng mã</p>
+              </div>
               <Switch
                 checked={formData.status === "ACTIVE"}
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, status: checked ? "ACTIVE" : "DISABLED" })
                 }
-                className="data-[state=checked]:bg-green-500"
+                className="data-[state=checked]:bg-pink-600 shadow-md border-2 border-transparent scale-110"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50/80 gap-2 shrink-0 shadow-[0_-4px_10px_0_rgba(0,0,0,0.05)]">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl px-6 hover:bg-background hover:shadow-md transition-all">
               Hủy
             </Button>
-            <Button onClick={handleSave} disabled={isSubmitting}>
+            <Button 
+              onClick={handleSave} 
+              disabled={isSubmitting}
+              className="rounded-xl px-8 bg-pink-600 text-white hover:bg-pink-700 shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 font-bold"
+            >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingCoupon ? "Cập nhật" : "Thêm mới"}
             </Button>

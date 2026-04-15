@@ -1201,11 +1201,15 @@ const ProductsManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+          <DialogFooter className="px-6 py-4 border-t border-border bg-slate-50/80 gap-2 shrink-0 shadow-[0_-4px_10px_0_rgba(0,0,0,0.05)]">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="rounded-xl px-6 hover:bg-background hover:shadow-md transition-all">
               Hủy
             </Button>
-            <Button onClick={handleSave} disabled={isSubmitting}>
+            <Button 
+              onClick={handleSave} 
+              disabled={isSubmitting}
+              className="rounded-xl px-8 bg-pink-600 text-white hover:bg-pink-700 shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 font-bold"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
