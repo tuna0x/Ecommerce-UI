@@ -63,6 +63,7 @@ import type { IProduct } from "../../types/product.type";
 import { DATE_MIN, DATE_MAX, isValidDate, clampYear } from "../../lib/date";
 import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 import { cn } from "../../lib/utils";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const PromotionsManagement: React.FC = () => {
   const [promotions, setPromotions] = useState<IPromotion[]>([]);
@@ -298,14 +299,12 @@ const PromotionsManagement: React.FC = () => {
   };
 
   const handleDelete = useCallback(async (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa khuyến mãi này?")) {
-      try {
-        await PromotionService.delete(id);
-        toast.success("Đã xóa khuyến mãi");
-        fetchPromotions(meta.page);
-      } catch {
-        toast.error("Không thể xóa khuyến mãi");
-      }
+    try {
+      await PromotionService.delete(id);
+      toast.success("Đã xóa khuyến mãi");
+      fetchPromotions(meta.page);
+    } catch {
+      toast.error("Không thể xóa khuyến mãi");
     }
   }, [fetchPromotions, meta.page]);
 
@@ -450,14 +449,20 @@ const PromotionsManagement: React.FC = () => {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDelete(promotion.id)}
+                          <ConfirmModal
+                            title="Xác nhận xóa"
+                            description={`Bạn có chắc chắn muốn xóa khuyến mãi "${promotion.name}"?`}
+                            onConfirm={() => handleDelete(promotion.id)}
+                            variant="destructive"
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </ConfirmModal>
                         </div>
                       </TableCell>
                     </TableRow>

@@ -69,5 +69,9 @@ export const UserService = {
     const res = await axiosInstance.patch(`${BASE_URL}/${id}/admin-notes`, { notes });
     return res.data;
   },
+  changePassword: async (data: any): Promise<IApiResponse<void>> => {
+    const res = await axiosInstance.post(`/auth/change-password`, data);
+    return res.data;
+  },
 };
 

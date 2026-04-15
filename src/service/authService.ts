@@ -52,3 +52,19 @@ export const socialLoginApi = async (idToken: string) => {
   );
   return response.data;
 };
+
+export const forgotPasswordApi = async (email: string) => {
+  const response = await axiosInstance.post<IApiResponse<void>>(
+    "/auth/forgot-password",
+    { email },
+  );
+  return response.data;
+};
+
+export const resetPasswordApi = async (data: any) => {
+  const response = await axiosInstance.post<IApiResponse<void>>(
+    "/auth/reset-password",
+    data,
+  );
+  return response.data;
+};

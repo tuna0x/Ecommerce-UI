@@ -38,6 +38,7 @@ import {
 import type { ICategory } from "../../types/category.type";
 import { categoryService } from "../../service/categoryService";
 import PaginationControl from "../../components/PaginationControl";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const AttributesManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -136,14 +137,12 @@ const AttributesManagement: React.FC = () => {
   }, []);
 
   const handleDeleteAttr = useCallback(async (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa thuộc tính này?")) {
-      try {
-        await attributeService.remove(Number(id));
-        toast.success("Đã xóa thuộc tính");
-        fetchAttributes();
-      } catch {
-        toast.error("Không thể xóa thuộc tính");
-      }
+    try {
+      await attributeService.remove(Number(id));
+      toast.success("Đã xóa thuộc tính");
+      fetchAttributes();
+    } catch {
+      toast.error("Không thể xóa thuộc tính");
     }
   }, [fetchAttributes]);
 
@@ -218,14 +217,12 @@ const AttributesManagement: React.FC = () => {
   }, [selectedAttribute?.id]);
 
   const handleDeleteValue = useCallback(async (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa giá trị này?")) {
-      try {
-        await attributeValueService.remove(Number(id));
-        toast.success("Đã xóa giá trị");
-        if (selectedAttribute?.id) fetchAttributeValues(selectedAttribute.id);
-      } catch {
-        toast.error("Không thể xóa giá trị");
-      }
+    try {
+      await attributeValueService.remove(Number(id));
+      toast.success("Đã xóa giá trị");
+      if (selectedAttribute?.id) fetchAttributeValues(selectedAttribute.id);
+    } catch {
+      toast.error("Không thể xóa giá trị");
     }
   }, [selectedAttribute?.id, fetchAttributeValues]);
 
@@ -387,17 +384,23 @@ const AttributesManagement: React.FC = () => {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteAttr(attr.id);
-                            }}
+                          <ConfirmModal
+                            title="Xác nhận xóa"
+                            description={`Bạn có chắc chắn muốn xóa thuộc tính "${attr.name}"?`}
+                            onConfirm={() => handleDeleteAttr(attr.id)}
+                            variant="destructive"
                           >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </ConfirmModal>
                           <ChevronRight className="h-4 w-4 text-muted-foreground self-center" />
                         </div>
                       </TableCell>
@@ -488,17 +491,21 @@ const AttributesManagement: React.FC = () => {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteValue(val.id.toString());
-                              }}
+                            <ConfirmModal
+                              title="Xác nhận xóa"
+                              description={`Xóa giá trị "${val.attributeValue}" của thuộc tính ${selectedAttribute.name}?`}
+                              onConfirm={() => handleDeleteValue(val.id.toString())}
+                              variant="destructive"
                             >
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </ConfirmModal>
                           </div>
                         </TableCell>
                       </TableRow>

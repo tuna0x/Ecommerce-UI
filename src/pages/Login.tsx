@@ -179,9 +179,9 @@ const Login: React.FC = () => {
                 <input type="checkbox" className="rounded border-border" />
                 <span className="text-muted-foreground">Ghi nhớ đăng nhập</span>
               </label>
-              <a href="#" className="text-primary hover:underline">
+              <Link to="/forgot-password" title="Quên mật khẩu" className="text-primary hover:underline">
                 Quên mật khẩu?
-              </a>
+              </Link>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

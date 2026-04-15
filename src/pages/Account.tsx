@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useToast } from '../hooks/use-toast';
-import { User, Mail, Camera, Save } from 'lucide-react';
+import { User, Mail, Camera, Save, Eye, EyeOff } from 'lucide-react';
 import { UserService } from '../service/userService';
 import AddressManager from '../components/AddressManagement';
+import ConfirmModal from '../components/ConfirmModal';
 
 const Account = () => {
   const { user, logout, setUser } = useAuth();
@@ -30,6 +31,11 @@ const Account = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -98,6 +104,28 @@ const Account = () => {
     }
   };
 
+  const submitPasswordChange = async () => {
+    try {
+      await UserService.changePassword({
+        currentPassword: passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      });
+
+      toast({
+        title: 'Thành công',
+        description: 'Mật khẩu của bạn đã được thay đổi.',
+      });
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setShowPasswords({ current: false, new: false, confirm: false });
+    } catch (error: any) {
+      toast({
+        title: 'Lỗi',
+        description: error.response?.data?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.newPassword !== passwords.confirmPassword) {
@@ -108,11 +136,7 @@ const Account = () => {
       });
       return;
     }
-    toast({
-      title: 'Đổi mật khẩu thành công',
-      description: 'Mật khẩu của bạn đã được thay đổi.',
-    });
-    setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    // The actual submission is handled by ConfirmModal onConfirm
   };
 
   if (!user) return null;
@@ -285,37 +309,73 @@ const Account = () => {
                   <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
-                      <Input
-                        id="currentPassword"
-                        type="password"
-                        value={passwords.currentPassword}
-                        onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          type={showPasswords.current ? "text" : "password"}
+                          value={passwords.currentPassword}
+                          onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">Mật khẩu mới</Label>
-                      <Input
-                        id="newPassword"
-                        type="password"
-                        value={passwords.newPassword}
-                        onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          type={showPasswords.new ? "text" : "password"}
+                          value={passwords.newPassword}
+                          onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
-                      <Input
-                        id="confirmPassword"
-                        type="password"
-                        value={passwords.confirmPassword}
-                        onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          type={showPasswords.confirm ? "text" : "password"}
+                          value={passwords.confirmPassword}
+                          onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
 
-                    <Button type="submit">
-                      Đổi mật khẩu
-                    </Button>
+                    <ConfirmModal
+                      title="Xác nhận đổi mật khẩu"
+                      description="Bạn có chắc chắn muốn thay đổi mật khẩu không? Hành động này sẽ cập nhật mật khẩu mới của bạn ngay lập tức."
+                      onConfirm={submitPasswordChange}
+                    >
+                      <Button type="button" disabled={!passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword}>
+                        Đổi mật khẩu
+                      </Button>
+                    </ConfirmModal>
                   </form>
                 </TabsContent>
               </Tabs>
