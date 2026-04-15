@@ -95,6 +95,13 @@ const Category = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
+    const brandParam = searchParams.get("brand");
+    if (brandParam) {
+      setSelectedBrands([brandParam]);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedPriceRange(priceRange);
     }, 500);
