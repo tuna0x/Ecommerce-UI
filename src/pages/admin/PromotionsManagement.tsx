@@ -61,6 +61,7 @@ import {
 } from "../../components/ui/tabs";
 import type { IProduct } from "../../types/product.type";
 import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
+import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 
 const PromotionsManagement: React.FC = () => {
   const [promotions, setPromotions] = useState<IPromotion[]>([]);
@@ -582,12 +583,13 @@ const PromotionsManagement: React.FC = () => {
                               : "Giá trị"}
                       </Label>
                       <Input
-                        type="number"
-                        value={formData.discountValue}
+                        type="text"
+                        value={formatNumberWithDots(formData.discountValue)}
                         onChange={(e) =>
-                          setFormData({ ...formData, discountValue: Number(e.target.value) })
+                          setFormData({ ...formData, discountValue: parseNumberFromDots(e.target.value) })
                         }
                         disabled={formData.type === "FREE_SHIPPING"}
+                        className="font-bold"
                       />
                     </div>
                   </div>
@@ -595,28 +597,30 @@ const PromotionsManagement: React.FC = () => {
                     <div className="space-y-2">
                       <Label>Đơn tối thiểu</Label>
                       <Input
-                        type="number"
-                        value={formData.minOrderValue}
+                        type="text"
+                        value={formatNumberWithDots(formData.minOrderValue)}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            minOrderValue: Number(e.target.value),
+                            minOrderValue: parseNumberFromDots(e.target.value),
                           })
                         }
+                        className="font-bold"
                         placeholder="0"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Giảm tối đa</Label>
                       <Input
-                        type="number"
-                        value={formData.maxDiscountValue}
+                        type="text"
+                        value={formatNumberWithDots(formData.maxDiscountValue)}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            maxDiscountValue: Number(e.target.value),
+                            maxDiscountValue: parseNumberFromDots(e.target.value),
                           })
                         }
+                        className="font-bold"
                         placeholder="Không giới hạn"
                       />
                     </div>
