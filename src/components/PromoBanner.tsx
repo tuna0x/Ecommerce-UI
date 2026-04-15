@@ -1,17 +1,28 @@
 import React, { useState } from 'react';
-import { Send, Gift } from 'lucide-react';
+import { Send, Gift, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ScrollReveal from './ScrollReveal';
 import { toast } from 'sonner';
+import { newsletterService } from '../service/newsletterService';
 
 const PromoBanner: React.FC = () => {
     const [email, setEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (email.trim()) {
-            toast.success('Đăng ký thành công! Cảm ơn bạn đã theo dõi.');
-            setEmail('');
+            setIsLoading(true);
+            try {
+                await newsletterService.subscribe(email);
+                toast.success('Đăng ký thành công! Sử dụng mã BONG20 để được giảm giá 20% cho đơn hàng đầu tiên của bạn.');
+                setEmail('');
+            } catch (error: any) {
+                console.error("Newsletter error:", error);
+                toast.error(error.response?.data?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại sau.');
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -54,12 +65,19 @@ const PromoBanner: React.FC = () => {
                                     />
                                     <motion.button
                                         type="submit"
+                                        disabled={isLoading}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-md"
+                                        className="px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-md disabled:opacity-70 min-w-[120px]"
                                     >
-                                        <Send className="w-4 h-4" />
-                                        <span className="hidden sm:inline">Đăng ký</span>
+                                        {isLoading ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Send className="w-4 h-4" />
+                                        )}
+                                        <span className="hidden sm:inline">
+                                            {isLoading ? 'Đang gửi...' : 'Đăng ký'}
+                                        </span>
                                     </motion.button>
                                 </form>
                                 <p className="text-[11px] text-muted-foreground/70">

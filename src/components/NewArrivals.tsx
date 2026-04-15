@@ -44,22 +44,20 @@ const NewArrivals: React.FC = () => {
         <section className="py-16 md:py-20 bg-secondary/30">
             <div className="container mx-auto max-w-7xl">
                 <ScrollReveal>
-                    <div className="flex items-end justify-between mb-10 md:mb-14">
-                        <div>
-                            <span className="inline-flex items-center gap-1.5 text-primary font-semibold text-[10px] tracking-[0.2em] uppercase mb-2">
-                                <Sparkles className="w-3.5 h-3.5" />
-                                Mới nhất
-                            </span>
-                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
-                                Hàng Mới Về
-                            </h2>
-                            <p className="text-muted-foreground text-sm mt-2 max-w-md leading-relaxed">
-                                Khám phá những sản phẩm mới nhất vừa cập bến, được chọn lọc kỹ lưỡng.
-                            </p>
-                        </div>
+                    <div className="text-center mb-10 md:mb-14 relative">
+                        <span className="inline-flex items-center gap-1.5 text-primary font-semibold text-[10px] tracking-[0.2em] uppercase mb-2">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            Mới nhất
+                        </span>
+                        <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
+                            Hàng Mới Về
+                        </h2>
+                        <p className="text-muted-foreground text-sm mt-2 max-w-md mx-auto leading-relaxed">
+                            Khám phá những sản phẩm mới nhất vừa cập bến, được chọn lọc kỹ lưỡng.
+                        </p>
 
                         {/* Navigation Arrows */}
-                        <div className="hidden md:flex items-center gap-2">
+                        <div className="hidden md:flex items-center gap-2 absolute right-0 bottom-0">
                             <button
                                 onClick={() => scroll('left')}
                                 className="w-10 h-10 rounded-full border border-border flex items-center justify-center hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300"
