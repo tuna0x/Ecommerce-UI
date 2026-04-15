@@ -2,10 +2,12 @@ import axiosInstance from "./axiosInstance";
 
 export interface InventoryLog {
     id: number;
+    inventory?: Inventory;
     quantityChange: number;
     type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'LOSS' | 'RESERVE' | 'RELEASE';
     note: string;
     createdAt: string;
+    createdBy?: string;
 }
 
 export interface Inventory {
@@ -41,6 +43,16 @@ export interface APIResponse<T> {
     message?: string;
 }
 
+export interface ResultPaginationDTO {
+    meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        pages: number;
+    };
+    result: InventoryLog[];
+}
+
 export const inventoryService = {
     getAllInventory: async () => {
         const res = await axiosInstance.get<APIResponse<Inventory[]>>("/inventory");
@@ -60,5 +72,19 @@ export const inventoryService = {
     getInventoryLogs: async (id: number) => {
         const res = await axiosInstance.get<APIResponse<InventoryLog[]>>(`/inventory/${id}/logs`);
         return res.data.data;
+    },
+
+    getInventoryLogsAll: async (page: number = 1, pageSize: number = 20, query: string = "") => {
+        const res = await axiosInstance.get<APIResponse<ResultPaginationDTO>>(
+            `/inventory/logs?current=${page}&pageSize=${pageSize}${query}`
+        );
+        return res.data.data;
+    },
+
+    exportInventoryLogs: async (query: string = "") => {
+        const res = await axiosInstance.get(`/inventory/logs/export?${query}`, {
+            responseType: 'blob'
+        });
+        return res.data;
     }
 };

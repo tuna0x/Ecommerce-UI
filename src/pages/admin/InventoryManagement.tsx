@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warehouse, Search, AlertTriangle, Package, Edit, ArrowUpDown, History, Settings, RefreshCcw, Loader2, Plus, Minus, Trash2 } from 'lucide-react';
+import { Warehouse, Search, AlertTriangle, Package, Edit, ArrowUpDown, History, Settings, RefreshCcw, Loader2, Plus, Minus, Trash2, Filter, FileBarChart2 } from 'lucide-react';
 import { formatNumberWithDots, parseNumberFromDots } from '../../lib/numberUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -13,8 +13,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { Textarea } from '../../components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { cn } from '../../lib/utils';
+import { DATE_MIN, getTodayStr, clampYear } from '../../lib/date';
 
 type StockFilter = 'all' | 'low' | 'out' | 'ok';
+
+const translateLogType = (type: string) => {
+    switch (type) {
+        case 'PURCHASE': return { label: 'Nhập hàng', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+        case 'SALE': return { label: 'Bán hàng', color: 'bg-green-100 text-green-700 border-green-200' };
+        case 'ADJUSTMENT': return { label: 'Điều chỉnh', color: 'bg-purple-100 text-purple-700 border-purple-200' };
+        case 'RETURN': return { label: 'Trả hàng', color: 'bg-orange-100 text-orange-700 border-orange-200' };
+        case 'DAMAGE': return { label: 'Hư hỏng', color: 'bg-red-100 text-red-700 border-red-200' };
+        case 'LOSS': return { label: 'Thất thoát', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+        case 'RESERVE': return { label: 'Giữ kho', color: 'bg-amber-100 text-amber-700 border-amber-200' };
+        case 'RELEASE': return { label: 'Giải phóng', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' };
+        default: return { label: type, color: 'bg-muted text-muted-foreground' };
+    }
+};
 
 const InventoryManagement: React.FC = () => {
     const [search, setSearch] = useState('');
@@ -37,6 +54,21 @@ const InventoryManagement: React.FC = () => {
     const [maxStock, setMaxStock] = useState(100);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Global History states
+    const [globalLogs, setGlobalLogs] = useState<InventoryLog[]>([]);
+    const [loadingGlobalLogs, setLoadingGlobalLogs] = useState(false);
+    const [logSearch, setLogSearch] = useState('');
+    const [logTypeFilter, setLogTypeFilter] = useState('all');
+    const [activeTab, setActiveTab] = useState('inventory');
+    const [logPage, setLogPage] = useState(1);
+    const [logTotal, setLogTotal] = useState(0);
+    const logPageSize = 20;
+    const [logStartDate, setLogStartDate] = useState('');
+    const [logEndDate, setLogEndDate] = useState('');
+    const [appliedStartDate, setAppliedStartDate] = useState("");
+    const [appliedEndDate, setAppliedEndDate] = useState("");
+    const [isExporting, setIsExporting] = useState(false);
+
     // Bulk adjust state
     const [bulkOpen, setBulkOpen] = useState(false);
     const [bulkSearch, setBulkSearch] = useState('');
@@ -54,6 +86,109 @@ const InventoryManagement: React.FC = () => {
         fetchInventory();
     }, []);
 
+    const fetchGlobalLogs = async () => {
+        setLoadingGlobalLogs(true);
+        try {
+            let query = "";
+            if (logSearch) {
+                // Assuming backend supports searching product name or SKU via specification
+                // The specification format depends on how spring-filter is configured.
+                // Usually it's ?filter=inventory.productVariant.product.name~'*search*'
+                query += `&filter=inventory.productVariant.product.name~'*${logSearch}*' or inventory.productVariant.sku~'*${logSearch}*' or note~'*${logSearch}*'`;
+            }
+            if (logTypeFilter !== 'all') {
+                query += `&filter=type:'${logTypeFilter}'`;
+            }
+            if (logStartDate && logStartDate < DATE_MIN) {
+                toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+                return;
+            }
+            if (logEndDate && logEndDate < DATE_MIN) {
+                toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+                return;
+            }
+            if (logStartDate && logEndDate && new Date(logStartDate) > new Date(logEndDate)) {
+                toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+                return;
+            }
+
+            if (appliedStartDate) {
+                query += `&filter=createdAt >= '${appliedStartDate}T00:00:00Z'`;
+            }
+            if (appliedEndDate) {
+                query += `&filter=createdAt <= '${appliedEndDate}T23:59:59Z'`;
+            }
+            
+            // Note: Spring Filter specification syntax might need adjustment based on project setup
+            // If the above '~' doesn't work, we'll simplify.
+            
+            const data = await inventoryService.getInventoryLogsAll(logPage, logPageSize, query);
+            setGlobalLogs(data?.result || []);
+            setLogTotal(data?.meta.total || 0);
+        } catch {
+            toast.error('Không thể tải nhật ký kho hàng');
+        } finally {
+            setLoadingGlobalLogs(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            fetchGlobalLogs();
+        }
+    }, [activeTab, logPage, logPageSize, appliedStartDate, appliedEndDate]); // Added applied filters
+
+    // Debounce search
+    useEffect(() => {
+        if (activeTab !== 'history') return;
+        const timer = setTimeout(() => {
+            if (logPage !== 1) setLogPage(1);
+            else fetchGlobalLogs();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [logSearch]);
+
+
+    const handleExport = async () => {
+        try {
+            setIsExporting(true);
+            let query = "";
+            if (logSearch) query += `&filter=inventory.productVariant.product.name~'*${logSearch}*' or inventory.productVariant.sku~'*${logSearch}*' or note~'*${logSearch}*'`;
+            if (logTypeFilter !== 'all') query += `&filter=type:'${logTypeFilter}'`;
+            if (appliedStartDate) query += `&filter=createdAt >= '${appliedStartDate}T00:00:00Z'`;
+            if (appliedEndDate) query += `&filter=createdAt <= '${appliedEndDate}T23:59:59Z'`;
+
+            const blob = await inventoryService.exportInventoryLogs(query.substring(1));
+            
+            // Create download link
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `nhat-ky-kho-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success("Đã xuất báo cáo thành công");
+        } catch (error) {
+            console.error("Export failed:", error);
+            toast.error("Không thể xuất báo cáo");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const resetLogFilters = () => {
+        setLogSearch('');
+        setLogTypeFilter('all');
+        setLogStartDate('');
+        setLogEndDate('');
+        setAppliedStartDate('');
+        setAppliedEndDate('');
+        setLogPage(1);
+    };
 
     const fetchInventory = async () => {
         setLoading(true);
@@ -213,20 +348,6 @@ const InventoryManagement: React.FC = () => {
         return <Badge className={`${color} border-none shadow-sm text-white`}>{label}</Badge>;
     };
 
-    const translateLogType = (type: string) => {
-        switch (type) {
-            case 'PURCHASE': return { label: 'Nhập hàng', color: 'bg-blue-100 text-blue-700 border-blue-200' };
-            case 'SALE': return { label: 'Bán hàng', color: 'bg-green-100 text-green-700 border-green-200' };
-            case 'ADJUSTMENT': return { label: 'Điều chỉnh', color: 'bg-purple-100 text-purple-700 border-purple-200' };
-            case 'RETURN': return { label: 'Trả hàng', color: 'bg-orange-100 text-orange-700 border-orange-200' };
-            case 'DAMAGE': return { label: 'Hư hỏng', color: 'bg-red-100 text-red-700 border-red-200' };
-            case 'LOSS': return { label: 'Thất thoát', color: 'bg-gray-100 text-gray-700 border-gray-200' };
-            case 'RESERVE': return { label: 'Giữ kho', color: 'bg-amber-100 text-amber-700 border-amber-200' };
-            case 'RELEASE': return { label: 'Giải phóng', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' };
-            default: return { label: type, color: 'bg-muted text-muted-foreground' };
-        }
-    };
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -240,18 +361,43 @@ const InventoryManagement: React.FC = () => {
                     </h1>
                     <p className="text-muted-foreground">Theo dõi tồn kho và cảnh báo hết hàng tự động</p>
                 </div>
-                <Button
-                    className="w-full md:w-auto gap-2 border-none bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-md shadow-pink-200"
-                    onClick={() => {
-                        setBulkItems([]);
-                        setBulkSearch('');
-                        setAdjustNote('');
-                        setBulkOpen(true);
-                    }}
-                >
-                    <Package className="h-4 w-4" /> Nhập kho hàng loạt
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        className="gap-2"
+                        onClick={fetchInventory}
+                    >
+                        <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                        Làm mới
+                    </Button>
+                    <Button
+                        className="w-full md:w-auto gap-2 border-none bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 shadow-md shadow-pink-200"
+                        onClick={() => {
+                            setBulkItems([]);
+                            setBulkSearch('');
+                            setAdjustNote('');
+                            setBulkOpen(true);
+                        }}
+                    >
+                        <Package className="h-4 w-4" /> Nhập kho hàng loạt
+                    </Button>
+                </div>
             </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                <TabsList className="bg-background/50 border h-12 p-1 gap-1">
+                    <TabsTrigger value="inventory" className="gap-2 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        <Warehouse className="h-4 w-4" />
+                        Kho hàng
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="gap-2 h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        <History className="h-4 w-4" />
+                        Nhật ký biến động
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="inventory" className="space-y-6 outline-none">
+
 
             {/* Summary Cards */}
             <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
@@ -463,6 +609,286 @@ const InventoryManagement: React.FC = () => {
                     </div>
                 </CardContent>
             </Card>
+                </TabsContent>
+
+                <TabsContent value="history" className="space-y-6 outline-none">
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+                        <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-none">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-bold uppercase text-blue-600 tracking-wider">Lượt nhập kho</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{globalLogs.filter(l => l.type === 'PURCHASE').length}</div>
+                                <p className="text-[10px] text-muted-foreground mt-1">Toàn thời gian</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-none">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-bold uppercase text-green-600 tracking-wider">Lượt bán hàng</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{globalLogs.filter(l => l.type === 'SALE').length}</div>
+                                <p className="text-[10px] text-muted-foreground mt-1">Khấu trừ tự động</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-gradient-to-br from-purple-500/10 to-transparent border-none">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-xs font-bold uppercase text-purple-600 tracking-wider">Điều chỉnh khác</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{globalLogs.filter(l => ['ADJUSTMENT', 'DAMAGE', 'LOSS'].includes(l.type || '')).length}</div>
+                                <p className="text-[10px] text-muted-foreground mt-1">Kiểm kho & Hư hỏng</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card className="border-none shadow-sm">
+                        <CardHeader className="pb-3">
+                            <div>
+                                <CardTitle className="text-lg">Nhật ký biến động tổng hợp</CardTitle>
+                                <p className="text-sm text-muted-foreground">Tra cứu chi tiết mọi thay đổi trong kho hàng</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Tìm theo sản phẩm, SKU hoặc ghi chú..." 
+                                        className="pl-9"
+                                        value={logSearch}
+                                        onChange={(e) => setLogSearch(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <div className="flex items-center gap-2 bg-muted/30 px-2 py-1 rounded-lg border border-border/50 shadow-sm">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Từ</span>
+                                            <Input 
+                                                type="date" 
+                                                className="h-7 w-[125px] border-none bg-transparent text-xs p-0 focus-visible:ring-0"
+                                                value={logStartDate}
+                                                min={DATE_MIN}
+                                                max={getTodayStr()}
+                                                onChange={(e) => setLogStartDate(clampYear(e.target.value))}
+                                            />
+                                        </div>
+                                        <div className="h-3 w-[1px] bg-border mx-1" />
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Đến</span>
+                                            <Input 
+                                                type="date" 
+                                                className="h-7 w-[125px] border-none bg-transparent text-xs p-0 focus-visible:ring-0"
+                                                value={logEndDate}
+                                                min={logStartDate || DATE_MIN}
+                                                max={getTodayStr()}
+                                                onChange={(e) => setLogEndDate(clampYear(e.target.value))}
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    <Select value={logTypeFilter} onValueChange={setLogTypeFilter}>
+                                        <SelectTrigger className="w-[140px] h-9">
+                                            <Filter className="h-3.5 w-3.5 mr-2 opacity-70" />
+                                            <SelectValue placeholder="Tất cả loại" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Tất cả loại</SelectItem>
+                                            <SelectItem value="PURCHASE">Nhập hàng</SelectItem>
+                                            <SelectItem value="SALE">Bán hàng</SelectItem>
+                                            <SelectItem value="ADJUSTMENT">Điều chỉnh</SelectItem>
+                                            <SelectItem value="RETURN">Trả hàng</SelectItem>
+                                            <SelectItem value="DAMAGE">Hư hỏng</SelectItem>
+                                            <SelectItem value="LOSS">Thất thoát</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={resetLogFilters}
+                                        className="h-9 px-3 text-muted-foreground hover:text-foreground"
+                                        title="Xóa bộ lọc"
+                                    >
+                                        <RefreshCcw className="h-4 w-4" />
+                                    </Button>
+
+                                    <Button
+                                        onClick={() => {
+                                            const today = getTodayStr();
+                                            if (logStartDate && logStartDate < DATE_MIN) {
+                                                toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+                                                return;
+                                            }
+                                            if (logEndDate && logEndDate < DATE_MIN) {
+                                                toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+                                                return;
+                                            }
+                                            if (logStartDate && logStartDate > today) {
+                                                toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+                                                return;
+                                            }
+                                            if (logEndDate && logEndDate > today) {
+                                                toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+                                                return;
+                                            }
+                                            if (logStartDate && logEndDate && new Date(logStartDate) > new Date(logEndDate)) {
+                                                toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+                                                return;
+                                            }
+                                            setAppliedStartDate(logStartDate);
+                                            setAppliedEndDate(logEndDate);
+                                            setLogPage(1);
+                                            // fetchGlobalLogs will be triggered by applied dates change
+                                        }}
+                                        className="h-9 gap-2 shadow-sm"
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        Lọc
+                                    </Button>
+
+                                    <Button 
+                                        variant="outline" 
+                                        onClick={handleExport} 
+                                        disabled={isExporting}
+                                        className="h-9 gap-2 border-primary/20 hover:bg-primary/5 hover:border-primary/40 transition-all duration-200"
+                                    >
+                                        {isExporting ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span className="hidden sm:inline">Đang xuất...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FileBarChart2 className="h-4 w-4 text-primary" />
+                                                <span className="hidden sm:inline">Xuất báo cáo</span>
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border overflow-hidden">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th className="p-4 text-left font-semibold">Sản phẩm</th>
+                                            <th className="p-4 text-center font-semibold">Biến động</th>
+                                            <th className="p-4 text-left font-semibold">Loại</th>
+                                            <th className="p-4 text-left font-semibold">Ghi chú</th>
+                                            <th className="p-4 text-left font-semibold">Người thực hiện</th>
+                                            <th className="p-4 text-right font-semibold">Thời gian</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {loadingGlobalLogs ? (
+                                            Array.from({ length: 5 }).map((_, i) => (
+                                                <tr key={i}>
+                                                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                                                        Đang tải dữ liệu nhật ký...
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : globalLogs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="p-20 text-center text-muted-foreground">
+                                                    <FileBarChart2 className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                                                    Không tìm thấy dữ liệu phù hợp
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            globalLogs.map((log) => {
+                                                const { label, color } = translateLogType(log.type);
+                                                const product = log.inventory?.productVariant?.product;
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-10 w-10 shrink-0">
+                                                                    <img 
+                                                                        src={product?.thumbnail || "https://placehold.co/40x40"} 
+                                                                        className="h-full w-full rounded object-cover border" 
+                                                                        alt=""
+                                                                    />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-bold truncate max-w-[200px]">{product?.name || 'N/A'}</p>
+                                                                    <p className="text-[10px] text-muted-foreground font-mono">{log.inventory?.productVariant?.sku}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className={cn(
+                                                            "p-4 text-center font-black text-lg",
+                                                            log.quantityChange > 0 ? "text-green-600" : log.quantityChange < 0 ? "text-rose-600" : "text-muted-foreground"
+                                                        )}>
+                                                            {log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <Badge variant="outline" className={cn("text-[10px] font-bold border", color)}>
+                                                                {label}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="p-4 text-xs italic text-muted-foreground max-w-[200px] truncate" title={log.note}>
+                                                            {log.note || '-'}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold border">
+                                                                    {log.createdBy?.charAt(0).toUpperCase() || 'A'}
+                                                                </div>
+                                                                <span className="text-xs font-medium">{log.createdBy || 'Hệ thống'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-right">
+                                                            <div className="text-xs font-medium">
+                                                                {new Date(log.createdAt).toLocaleDateString('vi-VN')}
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground font-mono">
+                                                                {new Date(log.createdAt).toLocaleTimeString('vi-VN')}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            {/* Pagination controls */}
+                            {logTotal > 0 && (
+                                <div className="flex items-center justify-between pt-4 border-t">
+                                    <p className="text-xs text-muted-foreground">
+                                        Hiển thị {((logPage - 1) * logPageSize) + 1} - {Math.min(logPage * logPageSize, logTotal)} trong tổng số {logTotal} bản ghi
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            disabled={logPage === 1 || loadingGlobalLogs}
+                                            onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                                        >
+                                            Trước
+                                        </Button>
+                                        <div className="flex items-center px-4 text-sm font-bold bg-muted/50 rounded-md">
+                                            Trang {logPage} / {Math.ceil(logTotal / logPageSize)}
+                                        </div>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            disabled={logPage >= Math.ceil(logTotal / logPageSize) || loadingGlobalLogs}
+                                            onClick={() => setLogPage(p => p + 1)}
+                                        >
+                                            Tiếp theo
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
             {/* History Modal */}
             <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
