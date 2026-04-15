@@ -51,6 +51,7 @@ import {
 import { Label } from "../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Input } from "../components/ui/input";
+import OrderTrackingTimeline from "../components/OrderTrackingTimeline";
 
 const statusConfig = {
   PENDING: {
@@ -411,22 +412,18 @@ const Orders = () => {
           </div>
 
           {selectedOrder && (
-            <div className="p-6 md:p-10 space-y-8 bg-white">
-              {/* Status Section */}
-              <div className="flex items-center gap-4">
-                <Badge
-                  className={
-                    `py-1.5 px-4 rounded-full font-black text-[10px] tracking-widest uppercase shadow-sm border-none ${(statusConfig[selectedOrder.status as keyof typeof statusConfig] || statusConfig.PENDING).color}`
-                  }
-                >
-                  {
-                    (statusConfig[selectedOrder.status as keyof typeof statusConfig] || statusConfig.PENDING).label
-                  }
-                </Badge>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground font-bold border-l border-gray-100 pl-4 uppercase tracking-tighter">
-                  <Clock className="w-4 h-4 text-gray-300" />
-                  {formatDate(selectedOrder.createdAt)}
-                </div>
+            <div className="p-6 md:p-10 space-y-6 bg-white pt-0">
+              {/* Timeline Section */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 -mt-4 shadow-sm">
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  TRẠNG THÁI HÀNH TRÌNH <span className="w-8 h-px bg-gray-100" />
+                </p>
+                <OrderTrackingTimeline 
+                   status={selectedOrder.status}
+                   createdAt={selectedOrder.createdAt}
+                   confirmedAt={selectedOrder.confirmedAt}
+                   deliveredAt={selectedOrder.deliveredAt}
+                />
               </div>
 
               {/* Shipping Info - BORDERLESS CARDS */}
