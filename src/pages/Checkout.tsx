@@ -252,7 +252,11 @@ const Checkout: React.FC = () => {
   };
 
   const handleApplyCoupon = (coupon: Coupon) => {
+    if (coupon.minOrderValue && selectedTotal < coupon.minOrderValue) {
       toast.error(`Đơn hàng tối thiểu ${formatPrice(coupon.minOrderValue)} để áp dụng mã này`);
+      return;
+    }
+
     setAppliedCoupon(coupon);
     setCouponCode(coupon.code);
     const amount = calculateDiscount(coupon, selectedTotal);
@@ -265,7 +269,7 @@ const Checkout: React.FC = () => {
       success: true
     });
     
-    toast.success('Đã áp dụng mã giảm giá');
+    toast.success(`Áp dụng thành công! Bạn được giảm ${formatPrice(amount)}`);
   };
 
   const calculateTotalWeight = () => {
