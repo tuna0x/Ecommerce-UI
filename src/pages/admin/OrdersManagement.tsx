@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, type OrderRes } from "../../service/orderService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
-import { DATE_MIN, getTodayStr, isValidDate } from "../../lib/date";
+import { DATE_MIN, getTodayStr, isValidDate, clampYear } from "../../lib/date";
 
 // --------- Constants ---------
 const STATUS_OPTIONS = [
@@ -386,7 +386,7 @@ const OrdersManagement: React.FC = () => {
                   value={startDate}
                   min={DATE_MIN}
                   max={getTodayStr()}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => setStartDate(clampYear(e.target.value))}
                   className="pl-10"
                 />
               </div>
@@ -398,7 +398,7 @@ const OrdersManagement: React.FC = () => {
                   value={endDate}
                   min={DATE_MIN}
                   max={getTodayStr()}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => setEndDate(clampYear(e.target.value))}
                   className="pl-10"
                 />
               </div>

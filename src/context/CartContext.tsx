@@ -227,16 +227,26 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
             updateTimeoutsRef.current[cartItemId] = setTimeout(async () => {
                 try {
                     await updateCartItemQuantityApi(targetDbId, quantity);
-                    // Silently refresh backend state
-                    const res = await getCartApi();
-                    if (res.data?.data?.item) {
-                        setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                    
+                    // Remove self from timeouts AFTER successful API call
+                    delete updateTimeoutsRef.current[cartItemId];
+
+                    // Only refresh backend state if NO OTHER items are currently pending sync
+                    // This prevents overwriting other optimistic updates that haven't hit the DB yet
+                    if (Object.keys(updateTimeoutsRef.current).length === 0) {
+                        const res = await getCartApi();
+                        if (res.data?.data?.item) {
+                            setCartItems(res.data.data.item.map(mapDbItemToCartItem));
+                        }
                     }
                 } catch (err: unknown) {
                     console.error("API updateQuantity failed", err);
+                    delete updateTimeoutsRef.current[cartItemId];
+                    
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     toast.error((err as any)?.response?.data?.message || "Cập nhật số lượng thất bại.");
-                    // Revert by refetching known true state
+                    
+                    // On failure, ALWAYS refetch to revert to the true backend state
                     const res = await getCartApi();
                     if (res.data?.data?.item) {
                         setCartItems(res.data.data.item.map(mapDbItemToCartItem));

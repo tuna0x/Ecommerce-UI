@@ -60,7 +60,7 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import type { IProduct } from "../../types/product.type";
-import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
+import { DATE_MIN, DATE_MAX, isValidDate, clampYear } from "../../lib/date";
 import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 import { cn } from "../../lib/utils";
 
@@ -646,7 +646,7 @@ const PromotionsManagement: React.FC = () => {
                         min={DATE_MIN}
                         max={DATE_MAX}
                         onChange={(e) =>
-                          setFormData({ ...formData, startAt: e.target.value })
+                          setFormData({ ...formData, startAt: clampYear(e.target.value) })
                         }
                       />
                     </div>
@@ -658,7 +658,7 @@ const PromotionsManagement: React.FC = () => {
                         min={DATE_MIN}
                         max={DATE_MAX}
                         onChange={(e) =>
-                          setFormData({ ...formData, endAt: e.target.value })
+                          setFormData({ ...formData, endAt: clampYear(e.target.value) })
                         }
                       />
                     </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2, Globe, Lock, X, SearchX } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
+import { DATE_MIN, DATE_MAX, isValidDate, clampYear } from "../../lib/date";
 import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -583,7 +583,7 @@ const CouponsManagement: React.FC = () => {
                   min={DATE_MIN}
                   max={DATE_MAX}
                   onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
+                    setFormData({ ...formData, startDate: clampYear(e.target.value) })
                   }
                 />
               </div>
@@ -595,7 +595,7 @@ const CouponsManagement: React.FC = () => {
                   min={DATE_MIN}
                   max={DATE_MAX}
                   onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
+                    setFormData({ ...formData, endDate: clampYear(e.target.value) })
                   }
                 />
               </div>

@@ -7,7 +7,8 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/use-toast";
-import { sendOtpApi, verifyOtpApi } from "../service/authService";
+import { sendOtpApi, verifyOtpApi, checkEmailApi } from "../service/authService";
+import { cn } from "../lib/utils";
 
 const Register: React.FC = () => {
   const [name, setName] = useState("");
@@ -22,6 +23,8 @@ const Register: React.FC = () => {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [isEmailTaken, setIsEmailTaken] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -36,6 +39,27 @@ const Register: React.FC = () => {
     }
     return () => clearInterval(timer);
   }, [countdown]);
+
+  // Handle Email Existence Check
+  useEffect(() => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email && emailRegex.test(email) && !isOtpSent) {
+      const timer = setTimeout(async () => {
+        setIsCheckingEmail(true);
+        try {
+          const res = await checkEmailApi(email);
+          setIsEmailTaken(res.data === true);
+        } catch (error) {
+          console.error("Lỗi kiểm tra email:", error);
+        } finally {
+          setIsCheckingEmail(false);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setIsEmailTaken(false);
+    }
+  }, [email, isOtpSent]);
 
   const handleSendOtp = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -192,10 +216,24 @@ const Register: React.FC = () => {
                       placeholder="name@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-10"
+                      className={cn("pl-10", isEmailTaken && "border-destructive focus-visible:ring-destructive")}
                       required
                     />
                   </div>
+                  {isEmailTaken && (
+                    <motion.p 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-[11px] text-destructive font-bold flex items-center gap-1 mt-1"
+                    >
+                      ⚠️ Tài khoản với email này đã tồn tại!
+                    </motion.p>
+                  )}
+                  {isCheckingEmail && (
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
+                       Đang kiểm tra...
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -305,7 +343,7 @@ const Register: React.FC = () => {
               </motion.div>
             )}
 
-            <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading || isSendingOtp}>
+            <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isLoading || isSendingOtp || isEmailTaken || isCheckingEmail}>
               {isLoading || isSendingOtp ? (
                 <div className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
