@@ -30,6 +30,13 @@ export const sendOtpApi = async (email: string) => {
   return response.data;
 };
 
+export const checkEmailApi = async (email: string) => {
+  const response = await axiosInstance.get<IApiResponse<boolean>>(
+    `/auth/check-email?email=${email}`,
+  );
+  return response.data;
+};
+
 export const verifyOtpApi = async (email: string, otp: string) => {
   const response = await axiosInstance.post<IApiResponse<void>>(
     "/auth/otp/verify",
