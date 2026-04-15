@@ -481,7 +481,7 @@ const CouponsManagement: React.FC = () => {
                 <Select
                   value={formData.type}
                   onValueChange={(value: CouponType) =>
-                    setFormData({ ...formData, type: value })
+                    setFormData({ ...formData, type: value, discountValue: value === "PERCENT" ? Math.min(100, formData.discountValue) : formData.discountValue })
                   }
                 >
                   <SelectTrigger>
@@ -502,9 +502,10 @@ const CouponsManagement: React.FC = () => {
                 <Input
                   type="text"
                   value={formatNumberWithDots(formData.discountValue)}
-                  onChange={(e) =>
-                    setFormData({ ...formData, discountValue: Math.max(0, parseNumberFromDots(e.target.value)) })
-                  }
+                  onChange={(e) => {
+                    const val = Math.max(0, parseNumberFromDots(e.target.value));
+                    setFormData({ ...formData, discountValue: formData.type === "PERCENT" ? Math.min(100, val) : val });
+                  }}
                   className="font-bold"
                 />
               </div>
