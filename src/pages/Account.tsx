@@ -222,8 +222,9 @@ const Account = () => {
                         <Input
                           id="age"
                           type="number"
+                          min="0"
                           value={formData.age}
-                          onChange={(e) => setFormData({ ...formData, age: parseInt(e.target.value) || 0 })}
+                          onChange={(e) => setFormData({ ...formData, age: Math.max(0, parseInt(e.target.value) || 0) })}
                         />
                       </div>
 
