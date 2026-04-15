@@ -38,10 +38,11 @@ const Register: React.FC = () => {
   }, [countdown]);
 
   const handleSendOtp = async () => {
-    if (!email || !email.includes("@")) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng nhập email hợp lệ trước khi gửi mã.",
+        description: "Vui lòng nhập định dạng email hợp lệ.",
         variant: "destructive",
       });
       return;

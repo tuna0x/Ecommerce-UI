@@ -81,7 +81,7 @@ const UserActivityLog: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(15);
+  const [pageSize] = useState(50);
 
   const fetchAnalytics = useCallback(async () => {
     setIsAnalyticsLoading(true);
