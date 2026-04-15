@@ -62,6 +62,7 @@ import {
 import type { IProduct } from "../../types/product.type";
 import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
 import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
+import { cn } from "../../lib/utils";
 
 const PromotionsManagement: React.FC = () => {
   const [promotions, setPromotions] = useState<IPromotion[]>([]);
@@ -403,7 +404,10 @@ const PromotionsManagement: React.FC = () => {
                         ) : (
                           <Badge
                             variant={promotion.active ? "default" : "secondary"}
-                            className="cursor-pointer rounded-full px-2 py-0.5 transition-all hover:scale-105 active:scale-95"
+                            className={cn(
+                              "cursor-pointer rounded-full px-3 py-1 transition-all hover:scale-105 active:scale-95 shadow-sm font-medium",
+                              promotion.active ? "bg-green-500 hover:bg-green-600 text-white border-none shadow-green-100" : "bg-slate-100 text-slate-500 border-none"
+                            )}
                             onClick={async () => {
                               try {
                                 await PromotionService.toggleActive(promotion.id, !promotion.active);
@@ -467,11 +471,17 @@ const PromotionsManagement: React.FC = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
             <div className="px-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="info">Thông tin chung</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1.5 rounded-xl mb-6 shadow-inner border border-muted-foreground/5">
+                <TabsTrigger
+                  value="info"
+                  className="rounded-lg py-2.5 transition-all duration-300 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-xl data-[state=active]:scale-[1.05] font-bold"
+                >
+                  Thông tin chung
+                </TabsTrigger>
                 <TabsTrigger
                   value="products"
                   disabled={formData.global || formData.categoryId !== undefined}
+                  className="rounded-lg py-2.5 transition-all duration-300 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:shadow-xl data-[state=active]:scale-[1.05] font-bold"
                 >
                   Sản phẩm áp dụng
                 </TabsTrigger>
@@ -480,7 +490,7 @@ const PromotionsManagement: React.FC = () => {
 
             <TabsContent value="info" className="outline-none mt-0">
               <ScrollArea className="h-[500px] md:h-[600px] max-h-[65vh] w-full">
-                <div className="space-y-4 py-4 px-6">
+                <div className="space-y-6 pt-4 px-6 pb-24">
                   <div className="space-y-2">
                     <Label>Tên khuyến mãi *</Label>
                     <Input
@@ -518,6 +528,7 @@ const PromotionsManagement: React.FC = () => {
                       onCheckedChange={(checked) =>
                         setFormData({ ...formData, global: checked, categoryId: undefined })
                       }
+                      className="data-[state=checked]:bg-blue-600 shadow-sm border-2 border-transparent focus-visible:ring-blue-500"
                     />
                   </div>
 
@@ -652,13 +663,17 @@ const PromotionsManagement: React.FC = () => {
                       />
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Trạng thái hoạt động</Label>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-muted-foreground/10 shadow-inner">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">Trạng thái hoạt động</Label>
+                      <p className="text-xs text-muted-foreground">Bật để chương trình có hiệu lực ngay</p>
+                    </div>
                     <Switch
                       checked={formData.active}
                       onCheckedChange={(checked) =>
                         setFormData({ ...formData, active: checked })
                       }
+                      className="data-[state=checked]:bg-pink-600 shadow-md border-2 border-transparent scale-110"
                     />
                   </div>
                 </div>
@@ -763,12 +778,15 @@ const PromotionsManagement: React.FC = () => {
               </div>
             </TabsContent>
           </Tabs>
-          <div className="px-6 pb-6">
+          <div className="px-6 py-4 border-t border-border bg-slate-50/80 shadow-[0_-4px_10px_0_rgba(0,0,0,0.05)]">
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl px-6 hover:bg-background hover:shadow-md transition-all">
                 Hủy
               </Button>
-              <Button onClick={handleSave}>
+              <Button
+                onClick={handleSave}
+                className="rounded-xl px-8 bg-pink-600 text-white hover:bg-pink-700 shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 font-bold"
+              >
                 {editingPromotion ? "Cập nhật" : "Thêm mới"}
               </Button>
             </DialogFooter>

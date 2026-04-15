@@ -55,7 +55,7 @@ const SearchResults: React.FC = () => {
 
       filter = conditions.join(" and ");
 
-      const res = await ProductService.getAll(0, 50, undefined, sortBy, filter || undefined);
+      const res = await ProductService.getAll(0, 50, query, sortBy, filter || undefined);
       if (res.data) {
         setProducts(res.data.result);
       }
