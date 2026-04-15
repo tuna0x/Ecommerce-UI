@@ -129,6 +129,9 @@ const ProductDetail: React.FC = () => {
     } else if (typeof product.image === 'string') {
       if (!imgs.includes(product.image)) imgs.push(product.image);
     }
+    if (imgs.length === 0) {
+        imgs.push("/logo.jpg");
+    }
     return imgs;
   }, [product]);
 

@@ -433,7 +433,7 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "image",
       header: "Hình ảnh",
       cell: ({ row }) => {
-        let image = "/no-image.png";
+        let image = "/logo.jpg";
         if (Array.isArray(row.original.image) && row.original.image.length > 0) {
            image = row.original.image[0];
         } else if (typeof row.original.image === 'string' && row.original.image) {
@@ -447,7 +447,10 @@ const ProductsManagement: React.FC = () => {
               alt={row.original.name}
               className="w-12 h-12 object-cover rounded shadow-sm"
               onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/no-image.png";
+                  const target = e.target as HTMLImageElement;
+                  if (!target.src.includes("/logo.jpg")) {
+                      target.src = "/logo.jpg";
+                  }
               }}
             />
           </div>

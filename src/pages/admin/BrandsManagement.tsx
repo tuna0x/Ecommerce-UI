@@ -310,7 +310,7 @@ const BrandsManagement: React.FC = () => {
                       <td className="py-3 px-2">
                         <div className="relative group/logo w-12 h-12">
                           <img
-                            src={brand.image || "/no-image.png"}
+                            src={brand.image || "/logo.jpg"}
                             alt={brand.name}
                             className="w-12 h-12 object-contain rounded-lg border border-border bg-background p-1 group-hover/logo:scale-105 transition-transform"
                           />
