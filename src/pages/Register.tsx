@@ -119,20 +119,14 @@ const Register: React.FC = () => {
           description: "Chào mừng bạn đến với Bông Cosmetic.",
         });
         navigate("/");
-      } else {
-        toast({
-          title: "Đăng ký thất bại",
-          description: "Email này đã được sử dụng hoặc có lỗi xảy ra.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
       }
     } catch (error: any) {
       toast({
-        title: "Xác thực thất bại",
-        description: error.response?.data?.message || "Mã OTP không chính xác.",
+        title: "Thao tác thất bại",
+        description: error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại.",
         variant: "destructive",
       });
+      console.error(error);
       setIsLoading(false);
     }
   };

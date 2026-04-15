@@ -23,27 +23,24 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const res = await login({ username: email, password: password });
+      const success = await login({ username: email, password: password });
 
-      console.log(res);
-      if (res) {
+      if (success) {
         toast({
           title: "Đăng nhập thành công!",
           description: "Chào mừng bạn quay trở lại.",
         });
         navigate("/");
-      } else {
-        toast({
-          title: "Đăng nhập thất bại",
-          description: "Email hoặc mật khẩu không đúng.",
-          variant: "destructive",
-        });
       }
-
-      setIsLoading(false);
-    } catch (err) {
-      alert("Đăng nhập thất bại!");
+    } catch (err: any) {
+      toast({
+        title: "Đăng nhập thất bại",
+        description: err.response?.data?.message || "Email hoặc mật khẩu không chính xác.",
+        variant: "destructive",
+      });
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,15 +54,14 @@ const Login: React.FC = () => {
           description: "Chào mừng bạn quay trở lại.",
         });
         navigate("/");
-      } else {
-        toast({
-          title: "Đăng nhập thất bại",
-          description: "Không thể xác thực tài khoản Google.",
-          variant: "destructive",
-        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login error", error);
+      toast({
+        title: "Đăng nhập thất bại",
+        description: error.response?.data?.message || "Không thể xác thực tài khoản Google.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
