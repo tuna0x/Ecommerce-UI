@@ -16,6 +16,7 @@ import {
   Scale,
   X,
 } from "lucide-react";
+import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 import { cn } from "../../lib/utils";
 import {
   Card,
@@ -811,17 +812,18 @@ const ProductsManagement: React.FC = () => {
               </Label>
               <Input
                 id="originalPrice"
-                type="number"
-                value={formData.originalPrice}
+                type="text"
+                value={formatNumberWithDots(formData.originalPrice)}
                 disabled={hasVariants}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const rawValue = parseNumberFromDots(e.target.value);
                   setFormData({
                     ...formData,
-                    originalPrice: Number(e.target.value),
-                  })
-                }
-                className={hasVariants ? "bg-muted/50" : ""}
-                placeholder="100000"
+                    originalPrice: rawValue,
+                  });
+                }}
+                className={hasVariants ? "bg-muted/50 font-bold" : "font-bold"}
+                placeholder="100.000"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1029,15 +1031,16 @@ const ProductsManagement: React.FC = () => {
                           <div className="space-y-2">
                             <Label className="text-xs">Giá ghi đè (VNĐ)</Label>
                             <Input
-                              type="number"
-                              value={v.price || ""}
+                              type="text"
+                              value={formatNumberWithDots(v.price)}
                               onChange={(e) => {
+                                const rawValue = e.target.value ? parseNumberFromDots(e.target.value) : null;
                                 const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].price = e.target.value ? Number(e.target.value) : null;
+                                newVariants[vIndex].price = rawValue;
                                 setFormData({ ...formData, variants: newVariants });
                               }}
-                              className="h-8 text-xs"
-                              placeholder="Sử dụng giá gốc nếu trống"
+                              className="h-8 text-xs font-bold"
+                              placeholder="Trống: Dùng giá gốc"
                             />
                           </div>
                         </div>

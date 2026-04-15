@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2, Search, Copy, Check, Percent, Tag, Loader2, Globe, Lock, X, SearchX } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
+import { formatNumberWithDots, parseNumberFromDots } from "../../lib/numberUtils";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -499,11 +500,12 @@ const CouponsManagement: React.FC = () => {
                     : "Số tiền giảm"}
                 </Label>
                 <Input
-                  type="number"
-                  value={formData.discountValue}
+                  type="text"
+                  value={formatNumberWithDots(formData.discountValue)}
                   onChange={(e) =>
-                    setFormData({ ...formData, discountValue: Number(e.target.value) })
+                    setFormData({ ...formData, discountValue: parseNumberFromDots(e.target.value) })
                   }
+                  className="font-bold"
                 />
               </div>
             </div>
@@ -511,28 +513,30 @@ const CouponsManagement: React.FC = () => {
               <div className="space-y-2">
                 <Label>Đơn tối thiểu</Label>
                 <Input
-                  type="number"
-                  value={formData.minOrderValue}
+                  type="text"
+                  value={formatNumberWithDots(formData.minOrderValue)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      minOrderValue: Number(e.target.value),
+                      minOrderValue: parseNumberFromDots(e.target.value),
                     })
                   }
+                  className="font-bold"
                   placeholder="0"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Giảm tối đa</Label>
                 <Input
-                  type="number"
-                  value={formData.maxDiscountValue}
+                  type="text"
+                  value={formatNumberWithDots(formData.maxDiscountValue)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      maxDiscountValue: Number(e.target.value),
+                      maxDiscountValue: parseNumberFromDots(e.target.value),
                     })
                   }
+                  className="font-bold"
                   placeholder="Không giới hạn"
                 />
               </div>
@@ -541,14 +545,15 @@ const CouponsManagement: React.FC = () => {
               <div className="space-y-2">
                 <Label>Tổng lượt dùng</Label>
                 <Input
-                  type="number"
-                  value={formData.usageLimit}
+                  type="text"
+                  value={formatNumberWithDots(formData.usageLimit)}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      usageLimit: Number(e.target.value),
+                      usageLimit: parseNumberFromDots(e.target.value),
                     })
                   }
+                  className="font-bold"
                   placeholder="0 = Không giới hạn"
                 />
               </div>

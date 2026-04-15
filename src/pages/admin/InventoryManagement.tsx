@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Warehouse, Search, AlertTriangle, Package, Edit, ArrowUpDown, History, Settings, RefreshCcw, Loader2, Plus, Minus, Trash2 } from 'lucide-react';
+import { formatNumberWithDots, parseNumberFromDots } from '../../lib/numberUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -483,11 +484,23 @@ const InventoryManagement: React.FC = () => {
                                                 </td>
                                                 <td className="py-4 px-4">{getStockBadge(item)}</td>
                                                 <td className="py-4 px-6">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Xem lịch sử" onClick={() => openHistory(item)}>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 border-border/60 transition-colors shadow-sm" 
+                                                            title="Xem lịch sử" 
+                                                            onClick={() => openHistory(item)}
+                                                        >
                                                             <History className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-primary hover:bg-primary/10" title="Điều chỉnh" onClick={() => openAdjust(item)}>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border-border/60 transition-colors shadow-sm" 
+                                                            title="Điều chỉnh" 
+                                                            onClick={() => openAdjust(item)}
+                                                        >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -797,18 +810,19 @@ const InventoryManagement: React.FC = () => {
                                 <Label className="text-sm font-bold">Số lượng thay đổi</Label>
                                 <Input
                                     type="text"
-                                    value={adjustQty}
+                                    value={formatNumberWithDots(adjustQty)}
                                     onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === "" || val === "-") {
-                                            setAdjustQty(val);
-                                        } else if (/^-?\d*$/.test(val)) {
-                                            setAdjustQty(val);
+                                        const rawValue = parseNumberFromDots(e.target.value);
+                                        // Handle negative numbers if the user types '-'
+                                        if (e.target.value.startsWith('-')) {
+                                            setAdjustQty(rawValue !== 0 ? -Math.abs(rawValue) : '-');
+                                        } else {
+                                            setAdjustQty(rawValue);
                                         }
                                     }}
                                     onFocus={(e) => e.target.select()}
                                     className="font-bold bg-muted/30"
-                                    placeholder="Ví dụ: 10 hoặc -5"
+                                    placeholder="Ví dụ: 1.000 hoặc -500"
                                 />
                                 <p className="text-[10px] text-muted-foreground mt-1">Sử dụng số âm (-) để giảm kho</p>
                             </div>

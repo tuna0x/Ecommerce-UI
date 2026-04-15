@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Shield,
   Lock,
+  BookOpen,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -61,6 +62,7 @@ const menuGroups: MenuGroup[] = [
       { title: 'Thuộc tính', url: '/admin/attributes', icon: Palette },
       { title: 'Thương hiệu', url: '/admin/brands', icon: Tag },
       { title: 'Kho hàng', url: '/admin/inventory', icon: Warehouse },
+      { title: 'Chi tiết sản phẩm', url: '/admin/product-detail', icon: BookOpen },
     ],
   },
   {
