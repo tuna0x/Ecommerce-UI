@@ -87,6 +87,19 @@ const CouponsManagement: React.FC = () => {
     fetchCoupons(meta.page);
   }, [fetchCoupons, meta.page]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.startDate && formData.startDate < DATE_MIN) {
+        toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+      } else if (formData.endDate && formData.endDate < DATE_MIN) {
+        toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+      } else if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+        toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.startDate, formData.endDate]);
+
   const filteredCoupons = useMemo(() => {
     return coupons.filter(
       (coupon) =>
@@ -182,6 +195,11 @@ const CouponsManagement: React.FC = () => {
       !formData.endDate
     ) {
       toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+      toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
       return;
     }
 

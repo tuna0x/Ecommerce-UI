@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { dashboardService, type StatisticsData } from "../../service/dashboardService";
-import { DATE_MIN, getTodayStr, isValidDate } from "../../lib/date";
+import { DATE_MIN, getTodayStr, clampYear } from "../../lib/date";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#6366f1'];
 
@@ -86,6 +86,18 @@ const Statistics: React.FC = () => {
     fetchData();
   }, []);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const today = getTodayStr();
+      if (startDate && startDate < DATE_MIN) toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+      else if (endDate && endDate < DATE_MIN) toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+      else if (startDate && startDate > today) toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+      else if (endDate && endDate > today) toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+      else if (startDate && endDate && new Date(startDate) > new Date(endDate)) toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate]);
+
   const handleQuickFilter = (value: string) => {
     setQuickFilter(value);
     const now = new Date();
@@ -118,10 +130,12 @@ const Statistics: React.FC = () => {
   };
 
   const handleSearch = () => {
-    if ((startDate && !isValidDate(startDate)) || (endDate && !isValidDate(endDate))) {
-      toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
-      return;
-    }
+    const today = getTodayStr();
+    if (startDate && startDate < DATE_MIN) { toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000"); return; }
+    if (endDate && endDate < DATE_MIN) { toast.error("Ngày kết thúc không được nhỏ hơn năm 2000"); return; }
+    if (startDate && startDate > today) { toast.error("Ngày bắt đầu không được lớn hơn hiện tại"); return; }
+    if (endDate && endDate > today) { toast.error("Ngày kết thúc không được lớn hơn hiện tại"); return; }
+    if (startDate && endDate && new Date(startDate) > new Date(endDate)) { toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc"); return; }
     fetchData();
   };
 
@@ -277,14 +291,14 @@ const Statistics: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase">Từ ngày</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Ngày bắt đầu</label>
                 <div className="relative">
                   <Input 
                     type="date" 
                     value={startDate} 
                     min={DATE_MIN}
-                    max={getTodayStr()}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    max={endDate || getTodayStr()}
+                    onChange={(e) => setStartDate(clampYear(e.target.value))}
                     className="bg-background pl-10"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -292,14 +306,14 @@ const Statistics: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase">Đến ngày</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Ngày kết thúc</label>
                 <div className="relative">
                   <Input 
                     type="date" 
                     value={endDate} 
-                    min={DATE_MIN}
+                    min={startDate || DATE_MIN}
                     max={getTodayStr()}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => setEndDate(clampYear(e.target.value))}
                     className="bg-background pl-10"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />

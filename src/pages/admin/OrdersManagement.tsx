@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw, Filter } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -94,6 +94,8 @@ const OrdersManagement: React.FC = () => {
   // Date filters
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
 
   // ---- Fetch ----
   const fetchOrders = useCallback(async (page: number, status: string, start?: string, end?: string) => {
@@ -132,11 +134,30 @@ const OrdersManagement: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, startDate, endDate]);
+  }, [statusFilter, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
-    fetchOrders(currentPage, statusFilter, startDate, endDate);
-  }, [fetchOrders, currentPage, statusFilter, startDate, endDate]);
+    fetchOrders(currentPage, statusFilter, appliedStartDate, appliedEndDate);
+  }, [fetchOrders, currentPage, statusFilter, appliedStartDate, appliedEndDate]);
+
+  // Debounced validation checks
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const today = getTodayStr();
+      if (startDate && startDate < DATE_MIN) {
+        toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+      } else if (endDate && endDate < DATE_MIN) {
+        toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+      } else if (startDate && startDate > today) {
+        toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+      } else if (endDate && endDate > today) {
+        toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+      } else if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+        toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate]);
 
   // ---- Client-side search (on top of server-side status filter) ----
   const displayedOrders = useMemo(() => {
@@ -360,14 +381,14 @@ const OrdersManagement: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="relative group">
+            <div className="flex flex-col md:flex-row gap-4 items-center w-full">
+              <div className="relative group flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                   placeholder="Mã đơn, tên, SĐT..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 w-full"
                 />
                 {searchTerm && (
                   <button
@@ -378,41 +399,75 @@ const OrdersManagement: React.FC = () => {
                   </button>
                 )}
               </div>
-              <div className="relative">
+              <div className="relative w-full md:w-[180px]">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="date"
-                  placeholder="Từ ngày"
+                  placeholder="Ngày bắt đầu"
                   value={startDate}
                   min={DATE_MIN}
                   max={getTodayStr()}
                   onChange={(e) => setStartDate(clampYear(e.target.value))}
-                  className="pl-10"
+                  className="pl-10 w-full"
                 />
               </div>
-              <div className="relative">
+              <div className="relative w-full md:w-[180px]">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="date"
-                  placeholder="Đến ngày"
+                  placeholder="Ngày kết thúc"
                   value={endDate}
-                  min={DATE_MIN}
+                  min={startDate || DATE_MIN}
                   max={getTodayStr()}
                   onChange={(e) => setEndDate(clampYear(e.target.value))}
-                  className="pl-10"
+                  className="pl-10 w-full"
                 />
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                }}
-                className="h-9 px-3"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" /> Reset
-              </Button>
+              <div className="flex gap-2 w-full md:w-auto shrink-0">
+                <Button 
+                  onClick={() => {
+                    const today = getTodayStr();
+                    if (startDate && startDate < DATE_MIN) {
+                      toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+                      return;
+                    }
+                    if (endDate && endDate < DATE_MIN) {
+                      toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+                      return;
+                    }
+                    if (startDate && startDate > today) {
+                      toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+                      return;
+                    }
+                    if (endDate && endDate > today) {
+                      toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+                      return;
+                    }
+                    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                      toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+                      return;
+                    }
+                    setAppliedStartDate(startDate);
+                    setAppliedEndDate(endDate);
+                  }}
+                  className="h-9 px-3 flex-1 md:flex-none"
+                >
+                  <Filter className="h-4 w-4 mr-2" /> Lọc
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                    setAppliedStartDate("");
+                    setAppliedEndDate("");
+                  }}
+                  className="h-9 px-3 flex-1 md:flex-none"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" /> Reset
+                </Button>
+              </div>
             </div>
         </CardContent>
       </Card>

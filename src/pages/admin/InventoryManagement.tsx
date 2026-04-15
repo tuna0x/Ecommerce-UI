@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { Textarea } from '../../components/ui/textarea';
-import { DATE_MIN, getTodayStr, isValidDate } from '../../lib/date';
 
 type StockFilter = 'all' | 'low' | 'out' | 'ok';
 
@@ -22,9 +21,6 @@ const InventoryManagement: React.FC = () => {
     const [filter, setFilter] = useState<StockFilter>('all');
     const [inventoryData, setInventoryData] = useState<Inventory[]>([]);
     const [loading, setLoading] = useState(true);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [appliedRange, setAppliedRange] = useState({ start: '', end: '' });
 
     // Modal states
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -57,6 +53,7 @@ const InventoryManagement: React.FC = () => {
     useEffect(() => {
         fetchInventory();
     }, []);
+
 
     const fetchInventory = async () => {
         setLoading(true);
@@ -191,27 +188,13 @@ const InventoryManagement: React.FC = () => {
             );
         }
 
-        if (appliedRange.start || appliedRange.end) {
-            data = data.filter(item => {
-                const updatedTime = new Date(item.updatedAt).getTime();
-                if (appliedRange.start) {
-                    const start = new Date(appliedRange.start).getTime();
-                    if (updatedTime < start) return false;
-                }
-                if (appliedRange.end) {
-                    const end = new Date(appliedRange.end);
-                    end.setHours(23, 59, 59, 999);
-                    if (updatedTime > end.getTime()) return false;
-                }
-                return true;
-            });
-        }
+
 
         if (filter === 'low') data = data.filter(p => (p.stock || 0) > 0 && (p.stock || 0) < (p.minStockThreshold || 0));
         if (filter === 'out') data = data.filter(p => (p.stock || 0) === 0);
         if (filter === 'ok') data = data.filter(p => (p.stock || 0) >= (p.minStockThreshold || 0));
         return data;
-    }, [inventoryData, search, filter, appliedRange]);
+    }, [inventoryData, search, filter]);
 
     const getStockStatus = (item: Inventory) => {
         const total = item.stock + item.reservedStock;
@@ -306,8 +289,8 @@ const InventoryManagement: React.FC = () => {
             {/* Filters */}
             <Card className="border-none shadow-sm bg-card/50 backdrop-blur-sm">
                 <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative w-full sm:w-[350px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder="Tìm kiếm theo tên hoặc mã sản phẩm..."
@@ -316,60 +299,10 @@ const InventoryManagement: React.FC = () => {
                                 className="pl-10 h-10 bg-background/50 border-border/50 focus:border-primary"
                             />
                         </div>
-                        <div className="flex flex-col md:flex-row gap-2 flex-1">
-                            <div className="flex items-center gap-2 bg-background/50 border border-border/50 rounded-md px-2 h-10 flex-1">
-                                <History className="h-4 w-4 text-muted-foreground" />
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    min={DATE_MIN}
-                                    max={getTodayStr()}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
-                                    placeholder="Từ ngày"
-                                />
-                                <span className="text-muted-foreground text-xs">→</span>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    min={DATE_MIN}
-                                    max={getTodayStr()}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="bg-transparent border-none text-xs focus:ring-0 outline-none w-full"
-                                    placeholder="Đến ngày"
-                                />
-                                {(startDate || endDate) && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive"
-                                        onClick={() => {
-                                            setStartDate('');
-                                            setEndDate('');
-                                            setAppliedRange({ start: '', end: '' });
-                                        }}
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                )}
-                            </div>
-                            <Button
-                                variant="secondary"
-                                className="h-10 gap-2 border-primary/10 transition-all font-semibold"
-                                onClick={() => {
-                                    if ((startDate && !isValidDate(startDate)) || (endDate && !isValidDate(endDate))) {
-                                        toast.error(`Ngày phải trong khoảng từ năm 2000 đến 2100`);
-                                        return;
-                                    }
-                                    setAppliedRange({ start: startDate, end: endDate });
-                                }}
-                            >
-                                <Search className="h-4 w-4" /> Lọc
-                            </Button>
-                        </div>
-                        <div className="flex gap-2">
+
+                        <div className="flex gap-2 w-full sm:w-auto">
                             <Select value={filter} onValueChange={(v) => setFilter(v as StockFilter)}>
-                                <SelectTrigger className="w-full sm:w-[150px] h-10">
+                                <SelectTrigger className="w-full sm:w-[180px] h-10">
                                     <SelectValue placeholder="Lọc trạng thái" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -484,7 +417,7 @@ const InventoryManagement: React.FC = () => {
                                                 </td>
                                                 <td className="py-4 px-4">{getStockBadge(item)}</td>
                                                 <td className="py-4 px-6">
-                                                    <div className="flex items-center justify-end gap-2">
+                                                    <div className="flex items-center justify-end gap-2 transition-opacity">
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm" 
