@@ -5,10 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useToast } from '../hooks/use-toast';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import CartSidebar from '../components/CartSidebar';
-import MobileNavBar from '../components/MobileNavBar';
+
 import { type UserCoupon, type Coupon } from '../service/voucherService';
 import { useMyVouchers, useAvailableVouchers, useCollectVoucher } from '../hooks/useVouchers';
 
@@ -155,8 +152,6 @@ const VoucherWallet: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <Header />
-            <CartSidebar />
 
             <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl pb-24 md:pb-8">
                 <motion.div
@@ -292,9 +287,6 @@ const VoucherWallet: React.FC = () => {
                     </TabsContent>
                 </Tabs>
             </main>
-
-            <Footer />
-            <MobileNavBar />
         </div>
     );
 };

@@ -1,9 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import MobileNavBar from '../components/MobileNavBar';
+
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -120,7 +118,6 @@ const Account = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header />
 
       <main className="flex-1 container mx-auto px-4 py-8 pb-24 md:pb-8">
         <h1 className="text-2xl font-bold mb-6">Tài khoản của tôi</h1>
@@ -301,9 +298,6 @@ const Account = () => {
           </Card>
         </div>
       </main>
-
-      <Footer />
-      <MobileNavBar />
     </div>
   );
 };

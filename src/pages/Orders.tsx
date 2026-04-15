@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import MobileNavBar from "../components/MobileNavBar";
+
 import {
   Card,
   CardContent,
@@ -295,7 +293,6 @@ const Orders = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col font-sans">
-      <Header />
 
       <main className="flex-1 container mx-auto px-4 py-8 pb-24 md:pb-12 max-w-5xl">
         {/* COSMETICury Page Header */}
@@ -554,9 +551,6 @@ const Orders = () => {
           )}
         </DialogContent>
       </Dialog>
-
-      <Footer />
-      <MobileNavBar />
     </div>
   );
 };
