@@ -140,6 +140,19 @@ const PromotionsManagement: React.FC = () => {
     fetchCategories();
   }, [meta.page, fetchPromotions]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.startAt && formData.startAt < DATE_MIN) {
+        toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+      } else if (formData.endAt && formData.endAt < DATE_MIN) {
+        toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+      } else if (formData.startAt && formData.endAt && new Date(formData.startAt) > new Date(formData.endAt)) {
+        toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.startAt, formData.endAt]);
+
   const filteredPromotions = useMemo(() => {
     return promotions.filter(
       (promo) =>
@@ -233,6 +246,11 @@ const PromotionsManagement: React.FC = () => {
   const handleSave = async () => {
     if (!formData.name || !formData.startAt || !formData.endAt) {
       toast.error("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    if (formData.startAt && formData.endAt && new Date(formData.startAt) > new Date(formData.endAt)) {
+      toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
       return;
     }
 

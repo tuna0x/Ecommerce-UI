@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { BannerLinkPicker } from "../../components/admin/BannerLinkPicker";
-import { DATE_MIN, DATE_MAX, isValidDate } from "../../lib/date";
+import { DATE_MIN, DATE_MAX, isValidDate, clampYear } from "../../lib/date";
 
 const BannersManagement: React.FC = () => {
   const [bannerList, setBannerList] = useState<IBanner[]>([]);
@@ -85,6 +85,19 @@ const BannersManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.startDate && formData.startDate < DATE_MIN) {
+        toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+      } else if (formData.endDate && formData.endDate < DATE_MIN) {
+        toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+      } else if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+        toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.startDate, formData.endDate]);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -126,8 +139,8 @@ const BannersManagement: React.FC = () => {
       position: banner.position || "hero",
       order: banner.order || 1,
       isActive: banner.isActive,
-      startDate: banner.startDate || "",
-      endDate: banner.endDate || "",
+      startDate: banner.startDate ? banner.startDate.split("T")[0] : "",
+      endDate: banner.endDate ? banner.endDate.split("T")[0] : "",
     });
     setImagePreview(banner.image);
     setFiles(null);
@@ -408,11 +421,11 @@ const BannersManagement: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Ngày bắt đầu</Label>
-                <Input type="date" value={formData.startDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
+                <Input type="date" value={formData.startDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, startDate: clampYear(e.target.value) })} />
               </div>
               <div className="grid gap-2">
                 <Label>Ngày kết thúc</Label>
-                <Input type="date" value={formData.endDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
+                <Input type="date" value={formData.endDate} min={DATE_MIN} max={DATE_MAX} onChange={(e) => setFormData({ ...formData, endDate: clampYear(e.target.value) })} />
               </div>
             </div>
             <div className="grid gap-2">
