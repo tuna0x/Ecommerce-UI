@@ -139,6 +139,21 @@ const UsersManagement: React.FC = () => {
     }
   };
 
+  const toggleUserVerification = useCallback(async (user: IUser) => {
+    try {
+      await UserService.toggleVerified(user.id, !user.verified);
+      toast.success("Đã cập nhật trạng thái xác thực");
+      // Update local state for modal if it's open
+      if (analyticsUser && analyticsUser.id === user.id) {
+        setAnalyticsUser({ ...analyticsUser, verified: !analyticsUser.verified });
+      }
+      fetchUsers(currentPage);
+    } catch (error) {
+      console.error(error);
+      toast.error("Cập nhật trạng thái xác thực thất bại");
+    }
+  }, [fetchUsers, currentPage, analyticsUser]);
+
   const toggleUserStatus = useCallback(async (user: IUser) => {
     try {
       await UserService.toggleActive(user.id, !user.active);
@@ -307,7 +322,14 @@ const UsersManagement: React.FC = () => {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-semibold">{user.name}</p>
+                            <p className="text-sm font-semibold flex items-center gap-1">
+                               {user.name}
+                               {user.verified && (
+                                 <span title="Đã xác thực">
+                                   <ShieldCheck className="w-3 h-3 text-green-500" />
+                                 </span>
+                               )}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               {user.email}
                             </p>
@@ -566,6 +588,16 @@ const UsersManagement: React.FC = () => {
                                   ) : (
                                     <Badge variant="destructive">Chưa xác thực</Badge>
                                   )}
+                                  <AccessControl module="USERS" action="TOGGLE_STATUS">
+                                     <Button 
+                                       variant="ghost" 
+                                       size="sm" 
+                                       className="h-6 px-2 text-[10px]"
+                                       onClick={() => analyticsUser && toggleUserVerification(analyticsUser)}
+                                     >
+                                       {analyticsUser?.verified ? "Hủy xác thực" : "Xác thực ngay"}
+                                     </Button>
+                                  </AccessControl>
                                </div>
                             </div>
                             <div className="p-3 rounded-lg border bg-card">
