@@ -11,6 +11,7 @@ import { ChatProvider } from "./context/ChatContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { QuickViewProvider } from "./context/QuickViewContext";
 import { SocketProvider } from "./context/SocketContext";
+import { WishlistProvider } from "./context/WishlistContext";
 
 import ScrollToTop from "./components/ScrollToTop";
 import AnimatedRoutes from "./routes/AnimatedRoutes";
@@ -33,13 +34,15 @@ function App() {
                 <NotificationProvider>
                   <ChatProvider>
                     <CartProvider>
-                      <QuickViewProvider>
-                        <TooltipProvider>
-                          <Toaster />
-                          <Sonner />
-                          <AnimatedRoutes />
-                        </TooltipProvider>
-                      </QuickViewProvider>
+                      <WishlistProvider>
+                        <QuickViewProvider>
+                          <TooltipProvider>
+                            <Toaster />
+                            <Sonner />
+                            <AnimatedRoutes />
+                          </TooltipProvider>
+                        </QuickViewProvider>
+                      </WishlistProvider>
                     </CartProvider>
                   </ChatProvider>
                 </NotificationProvider>

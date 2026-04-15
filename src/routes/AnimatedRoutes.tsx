@@ -23,6 +23,7 @@ const FlashSalePage = lazy(() => import("../pages/FlashSale"));
 const VoucherWallet = lazy(() => import("../pages/VoucherWallet"));
 const Notification = lazy(() => import("../pages/Notifications"));
 const Categories = lazy(() => import("../pages/Categories"));
+const Wishlist = lazy(() => import("../pages/Wishlist"));
 
 // Admin Components (Static layout can stay, but pages should be lazy)
 import AdminLayout from "../components/admin/AdminLayout";
@@ -107,6 +108,7 @@ const AnimatedRoutes = () => {
           <Route path="/about" element={<About />} />
           <Route path="/voucher-wallet" element={<ProtectedRoute><VoucherWallet /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
         </Route>
 
         {/* Admin Routes */}
