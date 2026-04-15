@@ -26,6 +26,10 @@ export const UserService = {
     const res = await axiosInstance.patch(`${BASE_URL}/${id}/active`, { active });
     return res.data;
   },
+  toggleVerified: async (id: number, verified: boolean): Promise<IApiResponse<IUser>> => {
+    const res = await axiosInstance.patch(`${BASE_URL}/${id}/verified`, { verified });
+    return res.data;
+  },
 
   updateRole: async (id: number, roleId: number): Promise<IApiResponse<IUser>> => {
     const res = await axiosInstance.patch(`${BASE_URL}/${id}/role`, { 
