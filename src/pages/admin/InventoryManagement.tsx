@@ -708,8 +708,9 @@ const InventoryManagement: React.FC = () => {
                                                             </Button>
                                                             <Input
                                                                 type="number"
+                                                                min="1"
                                                                 value={item.quantity}
-                                                                onChange={(e) => updateBulkQty(item.inventoryId, parseInt(e.target.value) || 0)}
+                                                                onChange={(e) => updateBulkQty(item.inventoryId, Math.max(1, parseInt(e.target.value) || 1))}
                                                                 className="w-16 h-8 text-center p-0 font-bold border-none bg-transparent"
                                                             />
                                                             <Button
@@ -835,8 +836,9 @@ const InventoryManagement: React.FC = () => {
                                 </Label>
                                 <Input
                                     type="number"
+                                    min="0"
                                     value={minStock}
-                                    onChange={(e) => setMinStock(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setMinStock(Math.max(0, parseInt(e.target.value) || 0))}
                                     onFocus={(e) => e.target.select()}
                                     className="h-9 font-medium"
                                 />
@@ -847,8 +849,9 @@ const InventoryManagement: React.FC = () => {
                                 </Label>
                                 <Input
                                     type="number"
+                                    min="0"
                                     value={maxStock}
-                                    onChange={(e) => setMaxStock(parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setMaxStock(Math.max(0, parseInt(e.target.value) || 0))}
                                     onFocus={(e) => e.target.select()}
                                     className="h-9 font-medium"
                                 />

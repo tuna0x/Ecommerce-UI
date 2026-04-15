@@ -237,6 +237,7 @@ const Category = () => {
             <label className="text-xs text-muted-foreground mb-1 block">Từ</label>
             <Input
               type="number"
+              min="0"
               value={priceRange[0]}
               onChange={(e) => setPriceRange([Math.max(0, Number(e.target.value)), priceRange[1]])}
               className="h-8 text-xs"
@@ -247,6 +248,7 @@ const Category = () => {
             <label className="text-xs text-muted-foreground mb-1 block">Đến</label>
             <Input
               type="number"
+              min="0"
               value={priceRange[1]}
               onChange={(e) => setPriceRange([priceRange[0], Math.max(priceRange[0], Number(e.target.value))])}
               className="h-8 text-xs"

@@ -402,7 +402,7 @@ const BannersManagement: React.FC = () => {
               </div>
               <div className="grid gap-2">
                 <Label>Thứ tự</Label>
-                <Input type="number" min="1" value={formData.order} onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })} />
+                <Input type="number" min="1" value={formData.order} onChange={(e) => setFormData({ ...formData, order: Math.max(1, parseInt(e.target.value) || 1) })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -586,7 +586,7 @@ const PromotionsManagement: React.FC = () => {
                         type="text"
                         value={formatNumberWithDots(formData.discountValue)}
                         onChange={(e) =>
-                          setFormData({ ...formData, discountValue: parseNumberFromDots(e.target.value) })
+                          setFormData({ ...formData, discountValue: Math.max(0, parseNumberFromDots(e.target.value)) })
                         }
                         disabled={formData.type === "FREE_SHIPPING"}
                         className="font-bold"
@@ -602,7 +602,7 @@ const PromotionsManagement: React.FC = () => {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            minOrderValue: parseNumberFromDots(e.target.value),
+                            minOrderValue: Math.max(0, parseNumberFromDots(e.target.value)),
                           })
                         }
                         className="font-bold"
@@ -617,7 +617,7 @@ const PromotionsManagement: React.FC = () => {
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            maxDiscountValue: parseNumberFromDots(e.target.value),
+                            maxDiscountValue: Math.max(0, parseNumberFromDots(e.target.value)),
                           })
                         }
                         className="font-bold"

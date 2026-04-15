@@ -503,7 +503,7 @@ const CouponsManagement: React.FC = () => {
                   type="text"
                   value={formatNumberWithDots(formData.discountValue)}
                   onChange={(e) =>
-                    setFormData({ ...formData, discountValue: parseNumberFromDots(e.target.value) })
+                    setFormData({ ...formData, discountValue: Math.max(0, parseNumberFromDots(e.target.value)) })
                   }
                   className="font-bold"
                 />
@@ -518,7 +518,7 @@ const CouponsManagement: React.FC = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      minOrderValue: parseNumberFromDots(e.target.value),
+                      minOrderValue: Math.max(0, parseNumberFromDots(e.target.value)),
                     })
                   }
                   className="font-bold"
@@ -533,7 +533,7 @@ const CouponsManagement: React.FC = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      maxDiscountValue: parseNumberFromDots(e.target.value),
+                      maxDiscountValue: Math.max(0, parseNumberFromDots(e.target.value)),
                     })
                   }
                   className="font-bold"
@@ -550,7 +550,7 @@ const CouponsManagement: React.FC = () => {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      usageLimit: parseNumberFromDots(e.target.value),
+                      usageLimit: Math.max(0, parseNumberFromDots(e.target.value)),
                     })
                   }
                   className="font-bold"

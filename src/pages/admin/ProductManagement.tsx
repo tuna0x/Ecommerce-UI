@@ -135,8 +135,8 @@ const ProductsManagement: React.FC = () => {
         originalPrice: product.originalPrice,
         stock: product.stock,
         image: null,
-        categoryId: typeof product.category === 'object' ? product.category.id : null,
-        brandId: typeof product.brand === 'object' ? product.brand.id : null,
+        categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
+        brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
         attributeValue: attrValues.map((attr) => attr.id),
         variants: product.variants?.map((v) => ({
           sku: v.sku,
@@ -433,13 +433,22 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "image",
       header: "Hình ảnh",
       cell: ({ row }) => {
-        const image = Array.isArray(row.original.image) ? row.original.image[0] : (row.original.image || "/no-image.png");
+        let image = "/no-image.png";
+        if (Array.isArray(row.original.image) && row.original.image.length > 0) {
+           image = row.original.image[0];
+        } else if (typeof row.original.image === 'string' && row.original.image) {
+           image = row.original.image;
+        }
+        
         return (
           <div className="w-12 h-12">
             <img
               src={image}
               alt={row.original.name}
               className="w-12 h-12 object-cover rounded shadow-sm"
+              onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/no-image.png";
+              }}
             />
           </div>
         );
@@ -839,10 +848,11 @@ const ProductsManagement: React.FC = () => {
                 <Input
                   id="stock"
                   type="number"
+                  min="0"
                   value={formData.stock}
                   disabled={hasVariants}
                   onChange={(e) =>
-                    setFormData({ ...formData, stock: Number(e.target.value) })
+                    setFormData({ ...formData, stock: Math.max(0, Number(e.target.value)) })
                   }
                   className={hasVariants ? "bg-muted/50" : ""}
                   placeholder="0"
@@ -1050,10 +1060,11 @@ const ProductsManagement: React.FC = () => {
                             <Label className="text-xs">Kho hàng</Label>
                             <Input
                               type="number"
+                              min="0"
                               value={v.stock}
                               onChange={(e) => {
                                 const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].stock = Number(e.target.value);
+                                newVariants[vIndex].stock = Math.max(0, Number(e.target.value));
                                 setFormData({ ...formData, variants: newVariants });
                               }}
                               className="h-8 text-xs"
@@ -1064,10 +1075,11 @@ const ProductsManagement: React.FC = () => {
                             <Label className="text-xs">Cân nặng (g)</Label>
                             <Input
                               type="number"
+                              min="0"
                               value={v.weight}
                               onChange={(e) => {
                                 const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].weight = Number(e.target.value);
+                                newVariants[vIndex].weight = Math.max(0, Number(e.target.value));
                                 setFormData({ ...formData, variants: newVariants });
                               }}
                               className="h-8 text-xs"
