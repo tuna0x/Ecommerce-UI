@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import PaginationControl from "../PaginationControl";
+import ConfirmModal from "../ConfirmModal";
 
 import { Button } from "./button";
 import {
@@ -50,6 +51,10 @@ interface DataTableProps<TData, TValue> {
   onPageChange?: (page: number) => void;
   renderSubComponent?: (props: { row: Row<TData> }) => React.ReactNode;
   getRowCanExpand?: (row: Row<TData>) => boolean;
+  confirmBulkDelete?: {
+    title: string;
+    description: (count: number) => string;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -63,6 +68,7 @@ export function DataTable<TData, TValue>({
   onPageChange,
   renderSubComponent,
   getRowCanExpand,
+  confirmBulkDelete,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expanded, setExpanded] = useState({});
@@ -117,17 +123,34 @@ export function DataTable<TData, TValue>({
         
         <div className="flex items-center gap-2">
           {Object.keys(rowSelection).length > 0 && onDeleteSelected && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => {
-                const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-                onDeleteSelected(selectedRows);
-                setRowSelection({});
-              }}
-            >
-              Xóa đã chọn ({Object.keys(rowSelection).length})
-            </Button>
+            confirmBulkDelete ? (
+              <ConfirmModal
+                title={confirmBulkDelete.title}
+                description={confirmBulkDelete.description(Object.keys(rowSelection).length)}
+                onConfirm={() => {
+                  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+                  onDeleteSelected(selectedRows);
+                  setRowSelection({});
+                }}
+                variant="destructive"
+              >
+                <Button variant="destructive" size="sm">
+                  Xóa đã chọn ({Object.keys(rowSelection).length})
+                </Button>
+              </ConfirmModal>
+            ) : (
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => {
+                  const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
+                  onDeleteSelected(selectedRows);
+                  setRowSelection({});
+                }}
+              >
+                Xóa đã chọn ({Object.keys(rowSelection).length})
+              </Button>
+            )
           )}
           
           <DropdownMenu>

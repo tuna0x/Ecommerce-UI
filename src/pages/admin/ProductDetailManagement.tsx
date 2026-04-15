@@ -38,6 +38,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2, XCircle, MoreHorizontal, LayoutList, FlaskConical, BookOpen, Settings, Package, ImageIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const ProductDetailManagement: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -186,8 +187,6 @@ const ProductDetailManagement: React.FC = () => {
     };
 
     const handleDelete = useCallback(async (id: number) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa chi tiết sản phẩm này?')) return;
-
         try {
             await productDetailService.remove(id);
             toast.success('Đã xóa chi tiết sản phẩm');
@@ -203,8 +202,6 @@ const ProductDetailManagement: React.FC = () => {
     );
 
     const handleBulkDelete = useCallback(async (selectedRows: IProductDetail[]) => {
-        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedRows.length} chi tiết sản phẩm đã chọn?`)) return;
-
         try {
             setLoading(true);
             await Promise.all(selectedRows.map(row => productDetailService.remove(row.id)));
@@ -398,12 +395,19 @@ const ProductDetailManagement: React.FC = () => {
                                     <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                    onClick={() => handleDelete(detail.id)}
-                                    className="text-destructive focus:text-destructive"
+                                <ConfirmModal
+                                    title="Xác nhận xóa"
+                                    description={`Bạn có chắc chắn muốn xóa chi tiết sản phẩm này?`}
+                                    onConfirm={() => handleDelete(detail.id)}
+                                    variant="destructive"
                                 >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Xóa chi tiết
-                                </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onSelect={(e) => e.preventDefault()}
+                                        className="text-destructive focus:text-destructive cursor-pointer"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" /> Xóa chi tiết
+                                    </DropdownMenuItem>
+                                </ConfirmModal>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -516,7 +520,17 @@ const ProductDetailManagement: React.FC = () => {
                 <DataTable
                     columns={columns}
                     data={details}
-                    onDeleteSelected={handleBulkDelete}
+                    onDeleteSelected={(rows) => {
+                        // We use a custom confirmation for bulk delete
+                        // Since DataTable calls this directly, we can either wrap inside DataTable
+                        // or trigger a state-based ConfirmModal here.
+                        // For simplicity, let's just use the handleBulkDelete logic
+                        handleBulkDelete(rows);
+                    }}
+                    confirmBulkDelete={{
+                        title: "Xác nhận xóa hàng loạt",
+                        description: (count) => `Bạn có chắc chắn muốn xóa ${count} chi tiết sản phẩm đã chọn?`
+                    }}
                     currentPage={meta.current}
                     totalPages={meta.pages}
                     onPageChange={(page) => fetchDetails(page, searchTerm)}

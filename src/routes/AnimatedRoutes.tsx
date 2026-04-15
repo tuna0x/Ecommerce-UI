@@ -10,6 +10,7 @@ const Index = lazy(() => import("../pages/Index"));
 const ProductDetail = lazy(() => import("../pages/ProductDetail"));
 const Login = lazy(() => import("../pages/Login"));
 const Register = lazy(() => import("../pages/Register"));
+const ForgotPassword = lazy(() => import("../pages/ForgotPassword"));
 const SearchResults = lazy(() => import("../pages/SearchResult"));
 const Checkout = lazy(() => import("../pages/Checkout"));
 const PaymentResult = lazy(() => import("../pages/PaymentResult"));
@@ -84,6 +85,7 @@ const AnimatedRoutes = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* User Layout Wrapper */}
         <Route element={<UserLayout />}>

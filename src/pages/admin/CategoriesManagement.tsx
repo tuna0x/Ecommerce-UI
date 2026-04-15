@@ -35,6 +35,7 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 
 import PaginationControl from "../../components/PaginationControl";
 import { useDebounce } from "../../hooks/useDebounce";
+import ConfirmModal from "../../components/ConfirmModal";
 import type {
   ICategory,
   ICreateCategory,
@@ -143,16 +144,14 @@ const CategoriesManagement: React.FC = () => {
   }, [editingId, formData, fetchCategories, resetForm]);
 
   const handleDelete = useCallback(async (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa thể loại này?")) {
-      try {
-        await categoryService.remove(id);
-        toast.success("Đã xóa thể loại thành công");
-        fetchCategories();
-      } catch (error) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
-        const message = axiosError.response?.data?.message || "Không thể xóa thể loại";
-        toast.error(message);
-      }
+    try {
+      await categoryService.remove(id);
+      toast.success("Đã xóa thể loại thành công");
+      fetchCategories();
+    } catch (error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const message = axiosError.response?.data?.message || "Không thể xóa thể loại";
+      toast.error(message);
     }
   }, [fetchCategories]);
 
@@ -333,14 +332,20 @@ const CategoriesManagement: React.FC = () => {
                         >
                             <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleDelete(category.id)}
+                        <ConfirmModal
+                            title="Xác nhận xóa"
+                            description={`Bạn có chắc chắn muốn xóa thể loại "${category.name}"? Hành động này có thể ảnh hưởng đến các sản phẩm thuộc thể loại này.`}
+                            onConfirm={() => handleDelete(category.id)}
+                            variant="destructive"
                         >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </ConfirmModal>
                         </div>
                     </TableCell>
                     </TableRow>
@@ -417,14 +422,20 @@ const CategoriesManagement: React.FC = () => {
                                 >
                                     <Pencil className="h-3 w-3" />
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-destructive border-destructive/20"
-                                    onClick={() => handleDelete(cat.id)}
+                                <ConfirmModal
+                                    title="Xác nhận xóa"
+                                    description={`Xóa thể loại "${cat.name}"?`}
+                                    onConfirm={() => handleDelete(cat.id)}
+                                    variant="destructive"
                                 >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 text-destructive border-destructive/20"
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </ConfirmModal>
                             </div>
                         </div>
                     </div>
