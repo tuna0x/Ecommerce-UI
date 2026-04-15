@@ -5,11 +5,16 @@
 export const formatNumberWithDots = (val: string | number | undefined | null): string => {
   if (val === undefined || val === null || val === "") return "";
   
-  // Remove all non-digit characters
-  const cleanVal = val.toString().replace(/\D/g, "");
+  const strVal = val.toString();
+  const isNegative = strVal.startsWith("-");
+  
+  // Remove all non-digit characters to format digits only
+  const cleanVal = strVal.replace(/\D/g, "");
   
   // Add dots as thousands separators
-  return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const formattedDigits = cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  
+  return isNegative ? `-${formattedDigits}` : formattedDigits;
 };
 
 /**
@@ -17,6 +22,9 @@ export const formatNumberWithDots = (val: string | number | undefined | null): s
  * Example: 1.000.000 -> 1000000
  */
 export const parseNumberFromDots = (val: string): number => {
-  const cleanVal = val.replace(/\./g, "");
-  return cleanVal === "" ? 0 : Number(cleanVal);
+  if (!val) return 0;
+  // Keep only digits and the minus sign
+  const cleanVal = val.replace(/[^\d-]/g, "");
+  if (cleanVal === "" || cleanVal === "-") return 0;
+  return Number(cleanVal);
 };

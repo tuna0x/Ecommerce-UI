@@ -813,13 +813,13 @@ const InventoryManagement: React.FC = () => {
                                     type="text"
                                     value={formatNumberWithDots(adjustQty)}
                                     onChange={(e) => {
-                                        const rawValue = parseNumberFromDots(e.target.value);
-                                        // Handle negative numbers if the user types '-'
-                                        if (e.target.value.startsWith('-')) {
-                                            setAdjustQty(rawValue !== 0 ? -Math.abs(rawValue) : '-');
-                                        } else {
-                                            setAdjustQty(rawValue);
+                                        const val = e.target.value;
+                                        if (val === "-") {
+                                            setAdjustQty("-");
+                                            return;
                                         }
+                                        const rawValue = parseNumberFromDots(val);
+                                        setAdjustQty(rawValue);
                                     }}
                                     onFocus={(e) => e.target.select()}
                                     className="font-bold bg-muted/30"
