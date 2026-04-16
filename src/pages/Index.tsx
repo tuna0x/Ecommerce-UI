@@ -9,6 +9,8 @@ import Testimonials from '../components/Testimonials';
 import PromoBanner from '../components/PromoBanner';
 import ScrollReveal from '../components/ScrollReveal';
 import SEO from '../components/ui/SEO';
+import SuggestedForYou from '../components/SuggestedForYou';
+import RecentlyViewed from '../components/RecentlyViewed';
 
 const Index: React.FC = () => {
   return (
@@ -26,10 +28,12 @@ const Index: React.FC = () => {
         <ScrollReveal>
           <BrandsSection />
         </ScrollReveal>
+        <SuggestedForYou />
         <ScrollReveal>
           <ProductGrid />
         </ScrollReveal>
         <NewArrivals />
+        <RecentlyViewed />
         <PromoBanner />
         <Testimonials />
       </main>

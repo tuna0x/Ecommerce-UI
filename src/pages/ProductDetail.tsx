@@ -26,6 +26,7 @@ import ProductCard from "../components/ProductCard";
 import ProductReviews from "../components/ProductReviews";
 import ProductDetailSidebar from "../components/ProductDetailSidebar";
 import ImageLightbox from "../components/ImageLightBox";
+import RecentlyViewed from "../components/RecentlyViewed";
 import { cn } from "../lib/utils";
 import { useAuth } from "../context/AuthContext";
 import { logActivity } from "../service/trackingService";
@@ -34,6 +35,7 @@ import { useInView } from "react-intersection-observer";
 import { PremiumImage } from "../components/ui/PremiumImage";
 import SEO from "../components/ui/SEO";
 import { useWishlist } from "../hooks/useWishlist";
+import { usePersonalization } from "../context/PersonalizationContext";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,7 @@ const ProductDetail: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { isInWishlist, toggleWishlist, isToggling } = useWishlist();
+  const { trackView } = usePersonalization();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -71,6 +74,7 @@ const ProductDetail: React.FC = () => {
 
       if (prodRes?.data) {
         setProduct(prodRes.data);
+        trackView(prodRes.data);
         // Fetch related products and category attributes
         const categoryId = typeof prodRes.data.category === 'object' ? prodRes.data.category.id : null;
         const categoryName = typeof prodRes.data.category === 'string' ? prodRes.data.category : prodRes.data.category?.name;
@@ -638,6 +642,8 @@ const ProductDetail: React.FC = () => {
             </div>
           </div>
         )}
+
+        <RecentlyViewed />
       </main>
 
       {/* Mobile Sticky Add to Cart Bar */}
