@@ -252,6 +252,25 @@ const ProductsManagement: React.FC = () => {
     setCurrentPage(1);
   }, [debouncedSearch]);
 
+  // Auto-calculate originalPrice from variants
+  useEffect(() => {
+    if (formData.variants && formData.variants.length > 0) {
+      const prices = formData.variants
+        .map(v => v.price)
+        .filter((p): p is number => p !== null && p !== undefined && p > 0);
+        
+      if (prices.length > 0) {
+        const minPrice = Math.min(...prices);
+        if (formData.originalPrice !== minPrice) {
+          setFormData(prev => ({
+            ...prev,
+            originalPrice: minPrice
+          }));
+        }
+      }
+    }
+  }, [formData.variants, formData.originalPrice]);
+
   const formatCurrency = useCallback((value: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
