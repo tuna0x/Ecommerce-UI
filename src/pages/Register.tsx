@@ -310,8 +310,8 @@ const Register: React.FC = () => {
                   />
                   <label htmlFor="terms" className="text-sm text-muted-foreground">
                     Tôi đồng ý với{" "}
-                    <a href="#" className="text-primary hover:underline">Điều khoản dịch vụ</a> và{" "}
-                    <a href="#" className="text-primary hover:underline">Chính sách bảo mật</a>
+                    <Link to="/terms-of-service" className="text-primary hover:underline">Điều khoản dịch vụ</Link> và{" "}
+                    <Link to="/privacy-policy" className="text-primary hover:underline">Chính sách bảo mật</Link>
                   </label>
                 </div>
               </motion.div>
@@ -393,20 +393,20 @@ const Register: React.FC = () => {
 
           {/* Social Register */}
           <div className="flex flex-col gap-3">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => {
-                toast({
-                  title: "Lỗi đăng ký",
-                  description: "Đăng ký Google thất bại.",
-                  variant: "destructive",
-                });
-              }}
-              useOneTap
-              theme="outline"
-              size="large"
-              width="100%"
-            />
+             <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => {
+                  toast({
+                    title: "Lỗi đăng ký",
+                    description: "Đăng ký Google thất bại.",
+                    variant: "destructive",
+                  });
+                }}
+                useOneTap
+                theme="outline"
+                size="large"
+                width="100%"
+              />
           </div>
 
           {/* Login Link */}
