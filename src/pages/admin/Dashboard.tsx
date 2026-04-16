@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   ShoppingCart, Users, DollarSign,
-  TrendingUp, TrendingDown, ArrowUpRight, AlertTriangle, Loader2, RefreshCcw
+  TrendingUp, TrendingDown, ArrowUpRight, AlertTriangle, Loader2, RefreshCcw,
+  Banknote, Repeat
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Link } from 'react-router-dom';
@@ -141,6 +142,17 @@ const Dashboard: React.FC = () => {
               )}
               so với kỳ trước
             </p>
+            <div className="mt-2 pt-2 border-t border-muted text-xs flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1">
+                    <Banknote className="h-3 w-3" /> AOV
+                </span>
+                <div className="flex flex-col items-end">
+                    <span className="font-semibold">{formatCurrency(data.averageOrderValue)}</span>
+                    <span className={`text-[10px] ${data.aovGrowthRate >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {data.aovGrowthRate >= 0 ? '+' : ''}{data.aovGrowthRate.toFixed(1)}%
+                    </span>
+                </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -176,6 +188,12 @@ const Dashboard: React.FC = () => {
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <span className="text-primary">{data.newUsersCount}</span> khách mới kỳ này
             </p>
+            <div className="mt-2 pt-2 border-t border-muted text-xs flex justify-between items-center">
+                <span className="text-muted-foreground flex items-center gap-1">
+                    <Repeat className="h-3 w-3" /> Khách quay lại
+                </span>
+                <span className="font-semibold text-blue-500">{data.returningUsersCount} ({data.totalOrders > 0 ? ((data.returningUsersCount / data.totalOrders) * 100).toFixed(1) : 0}%)</span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -225,7 +243,18 @@ const Dashboard: React.FC = () => {
                       <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: any) => [`${value} đơn`, 'Số lượng'] as [string, string]} />
+                  <Tooltip 
+                    formatter={(value: any, name: any) => {
+                      const cat = data.categoryDistribution.find(c => c.category === name);
+                      return [
+                        <div key={name} className="flex flex-col gap-1">
+                          <div>{value} đơn hàng</div>
+                          <div className="text-xs text-primary">AOV: {formatCurrency(cat?.aov || 0)}</div>
+                        </div>,
+                        name
+                      ];
+                    }} 
+                  />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
