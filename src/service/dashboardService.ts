@@ -15,6 +15,7 @@ export interface CategoryStat {
     category: string;
     count: number;
     value: number;
+    aov: number; // Added for detailed AOV
 }
 
 export interface ProductValueStat {
@@ -59,6 +60,7 @@ export interface StatisticsData {
     returningUsersCount: number;
     averageOrderValue: number;
     revenueGrowthRate: number;
+    aovGrowthRate: number; // Added for detailed AOV trend
 }
 
 export interface APIResponse<T> {
