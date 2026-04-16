@@ -73,7 +73,11 @@ const Notifications: React.FC = () => {
                         <div>
                             <h1 className="text-xl md:text-2xl font-bold">Thông báo</h1>
                             <p className="text-sm text-muted-foreground">
-                                {unreadCount > 0 ? `${unreadCount} thông báo chưa đọc` : 'Không có thông báo mới'}
+                                {unreadCount > 0 
+                                    ? `${unreadCount} thông báo chưa đọc` 
+                                    : notifications.length > 0 
+                                        ? `Đã xem hết ${notifications.length} thông báo` 
+                                        : 'Không có thông báo mới'}
                             </p>
                         </div>
                     </div>
@@ -143,14 +147,13 @@ const Notifications: React.FC = () => {
                                 filteredNotifications.map((notif, index) => (
                                     <motion.div
                                         key={notif.id}
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
+                                        initial={{ opacity: 0, y: 15 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }}
-                                        transition={{ delay: index * 0.03 }}
-                                        className={`group relative rounded-xl border transition-all duration-200 hover:shadow-md ${!notif.read
-                                            ? 'bg-primary/[0.03] border-primary/20 shadow-sm'
-                                            : 'bg-card border-border hover:border-primary/10'
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.2) }}
+                                        className={`group relative rounded-2xl border transition-all duration-300 ${!notif.read
+                                            ? 'bg-primary/[0.04] border-primary/20 shadow-sm'
+                                            : 'bg-card border-border hover:border-primary/20 hover:shadow-md'
                                             }`}
                                     >
                                         <div className="flex items-start gap-3 sm:gap-4 p-4">

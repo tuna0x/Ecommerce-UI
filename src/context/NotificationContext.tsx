@@ -57,12 +57,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
-            const data = await notificationService.getNotifications(1, 20);
+            const data = await notificationService.getNotifications(1, 50); // Fetch more for better history
             if (data && data.result) {
-                setNotifications(data.result.map(mapBackendToFrontend));
+                // Deduplicate by ID
+                const mappedData: Notification[] = data.result.map(mapBackendToFrontend);
+                const uniqueData: Notification[] = Array.from(new Map(mappedData.map((item: Notification) => [item.id, item])).values());
+                setNotifications(uniqueData);
+                
+                // Recalculate unread count from local data to ensure consistency with UI
+                const localUnread = uniqueData.filter((n: Notification) => !n.read).length;
+                setUnreadCount(localUnread);
             }
-            const count = await notificationService.getUnreadCount();
-            setUnreadCount(count);
         } catch (err) {
             console.error("Failed to fetch notifications", err);
         }
