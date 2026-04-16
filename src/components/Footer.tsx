@@ -138,15 +138,13 @@ const Footer: React.FC = () => {
             © 2026 BeautyLux. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-xs text-background/40">
-            <a href="#" className="hover:text-primary transition-colors">
+            <Link to="/privacy-policy" className="hover:text-primary transition-colors">
               Chính sách bảo mật
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
+            </Link>
+            <Link to="/terms-of-service" className="hover:text-primary transition-colors">
               Điều khoản sử dụng
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Cookies
-            </a>
+            </Link>
+            <span className="cursor-default">Cookies</span>
           </div>
         </div>
       </div>
