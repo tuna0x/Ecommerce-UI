@@ -335,11 +335,47 @@ const CartSidebar: React.FC = () => {
                             >
                               {item.quantity <= 1 ? <X className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                             </button>
-                            <span className="w-7 text-center text-xs font-semibold tabular-nums">
-                              {item.quantity}
-                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                if (val === '') {
+                                  return; 
+                                }
+                                const num = parseInt(val, 10);
+                                if (!isNaN(num) && num > 0) {
+                                  const maxLimit = item.stock || 9999;
+                                  if (num > maxLimit) {
+                                    updateQuantity(item.cartItemId, maxLimit);
+                                    import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa cho phép là ${maxLimit}`));
+                                  } else {
+                                    updateQuantity(item.cartItemId, num);
+                                  }
+                                }
+                              }}
+                              onBlur={(e) => {
+                                if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                                  updateQuantity(item.cartItemId, 1);
+                                  import('sonner').then(({ toast }) => toast.info("Số lượng tối thiểu là 1"));
+                                }
+                              }}
+                              max={item.stock || 9999}
+                              min="1"
+                              className="w-8 text-center text-xs font-semibold tabular-nums bg-transparent border-none focus:outline-none focus:ring-0 p-0 selection:bg-primary/20"
+                              disabled={isLoading}
+                            />
                             <button
-                              onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                              onClick={() => {
+                                const maxLimit = item.stock || 9999;
+                                if (item.quantity >= maxLimit) {
+                                  import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tối đa (${maxLimit})`));
+                                  return;
+                                }
+                                updateQuantity(item.cartItemId, item.quantity + 1);
+                              }}
                               className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors disabled:opacity-30"
                               disabled={isLoading}
                             >

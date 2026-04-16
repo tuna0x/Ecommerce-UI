@@ -21,7 +21,6 @@ const Blog = () => {
     const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('Tất cả');
     const [search, setSearch] = useState('');
-    const [meta, setMeta] = useState({ page: 1, pages: 1 });
 
     const fetchBlogs = useCallback(async () => {
         try {
@@ -39,7 +38,6 @@ const Blog = () => {
             if (res.data) {
                 const data = res.data as unknown as IPagination<IBlog>;
                 setBlogs(data.result || []);
-                setMeta({ page: data.meta.page, pages: data.meta.pages });
             }
         } catch (error) {
             console.error("Failed to fetch blogs:", error);
