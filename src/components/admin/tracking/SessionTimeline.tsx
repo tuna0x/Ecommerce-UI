@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useState, useMemo } from 'react';
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -35,8 +35,90 @@ interface SessionTimelineProps {
   logs: Log[];
 }
 
-const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
-  const [expandedSessions, setExpandedSessions] = React.useState<Set<string>>(new Set());
+// --- Static Helpers Moved Outside to avoid recreation ---
+
+const getLogIcon = (type: string) => {
+  switch (type) {
+    case 'VIEW_PRODUCT': return <Eye className="h-4 w-4 text-blue-500" />;
+    case 'ADD_CART': return <ShoppingCart className="h-4 w-4 text-green-500" />;
+    case 'PURCHASE': return <ShoppingBag className="h-4 w-4 text-amber-500" />;
+    case 'SEARCH': return <Search className="h-4 w-4 text-purple-500" />;
+    case 'CHAT_WITH_BOT': return <MessageSquare className="h-4 w-4 text-rose-500" />;
+    default: return <Activity className="h-4 w-4 text-muted-foreground" />;
+  }
+};
+
+const getDeviceIcon = (device: string) => {
+  switch (device) {
+    case 'MOBILE': return <Smartphone className="h-3 w-3" />;
+    case 'TABLET': return <Tablet className="h-3 w-3" />;
+    default: return <Monitor className="h-3 w-3" />;
+  }
+};
+
+const formatMetadata = (jsonStr: string, actionType: string) => {
+  try {
+    const data = JSON.parse(jsonStr);
+    
+    if (actionType === 'TIME_ON_PAGE' && data.durationMs) {
+      const seconds = Math.floor(data.durationMs / 1000);
+      const durationText = seconds >= 60 
+        ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+        : `${(data.durationMs / 1000).toFixed(1)} giây`;
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-bold text-blue-600">Ở lại trang: {durationText}</span>
+          <span className="text-muted-foreground italic text-[10px]">Đường dẫn: {data.path}</span>
+        </div>
+      );
+    }
+
+    if (actionType === 'PURCHASE' && data.orderId) {
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-bold text-green-600">Mua đơn hàng #{data.orderId}</span>
+          <span className="text-muted-foreground text-[10px]">PTTT: {data.method} | Mã GD: {data.transactionId || 'N/A'}</span>
+        </div>
+      );
+    }
+
+    if (actionType === 'BEGIN_CHECKOUT' && data.cartTotal) {
+      return (
+         <span className="font-bold text-orange-600">
+           Thanh toán: {new Intl.NumberFormat('vi-VN').format(data.cartTotal)}₫ ({data.itemCount} SP)
+         </span>
+      );
+    }
+
+    if (data.productName) return <span>Sản phẩm: <b>{data.productName}</b></span>;
+    if (data.query) return <span>Tìm kiếm: <b>"{data.query}"</b></span>;
+    if (data.categoryName) return <span>Danh mục: <b>{data.categoryName}</b></span>;
+    if (data.intent) return <span>Ý định: <b>{data.intent}</b></span>;
+    
+    return <span className="font-mono text-[10px] break-all opacity-70">{jsonStr}</span>;
+  } catch {
+    return <span>{jsonStr}</span>;
+  }
+};
+
+const formatDuration = (ms: number) => {
+  if (ms < 1000) return 'Vài giây';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds} giây`;
+  return `${Math.floor(seconds / 60)} phút ${seconds % 60} giây`;
+};
+
+const getReferrerText = (ref: string) => {
+   if (!ref) return 'Trực tiếp';
+   try {
+     return new URL(ref).hostname;
+   } catch {
+     return ref;
+   }
+};
+
+const SessionTimeline: React.FC<SessionTimelineProps> = memo(({ logs }) => {
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
   const toggleSession = (sessionId: string) => {
     const newExpanded = new Set(expandedSessions);
@@ -49,7 +131,7 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
   };
 
   // Group logs by sessionId
-  const sessions = React.useMemo(() => {
+  const sessions = useMemo(() => {
     const grouped: Record<string, Log[]> = {};
     logs.forEach(log => {
       if (!grouped[log.sessionId]) grouped[log.sessionId] = [];
@@ -83,90 +165,10 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
     }).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [logs]);
 
-  const getLogIcon = (type: string) => {
-    switch (type) {
-      case 'VIEW_PRODUCT': return <Eye className="h-4 w-4 text-blue-500" />;
-      case 'ADD_CART': return <ShoppingCart className="h-4 w-4 text-green-500" />;
-      case 'PURCHASE': return <ShoppingBag className="h-4 w-4 text-amber-500" />;
-      case 'SEARCH': return <Search className="h-4 w-4 text-purple-500" />;
-      case 'CHAT_WITH_BOT': return <MessageSquare className="h-4 w-4 text-rose-500" />;
-      default: return <Activity className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const getDeviceIcon = (device: string) => {
-    switch (device) {
-      case 'MOBILE': return <Smartphone className="h-3 w-3" />;
-      case 'TABLET': return <Tablet className="h-3 w-3" />;
-      default: return <Monitor className="h-3 w-3" />;
-    }
-  };
-
-  const formatMetadata = (jsonStr: string, actionType: string) => {
-    try {
-      const data = JSON.parse(jsonStr);
-      
-      if (actionType === 'TIME_ON_PAGE' && data.durationMs) {
-        const seconds = Math.floor(data.durationMs / 1000);
-        const durationText = seconds >= 60 
-          ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
-          : `${(data.durationMs / 1000).toFixed(1)} giây`;
-        return (
-          <div className="flex flex-col gap-0.5">
-            <span className="font-bold text-blue-600">Ở lại trang: {durationText}</span>
-            <span className="text-muted-foreground italic text-[10px]">Đường dẫn: {data.path}</span>
-          </div>
-        );
-      }
-
-      if (actionType === 'PURCHASE' && data.orderId) {
-        return (
-          <div className="flex flex-col gap-0.5">
-            <span className="font-bold text-green-600">Mua đơn hàng #{data.orderId}</span>
-            <span className="text-muted-foreground text-[10px]">PTTT: {data.method} | Mã GD: {data.transactionId || 'N/A'}</span>
-          </div>
-        );
-      }
-
-      if (actionType === 'BEGIN_CHECKOUT' && data.cartTotal) {
-        return (
-           <span className="font-bold text-orange-600">
-             Thanh toán: {new Intl.NumberFormat('vi-VN').format(data.cartTotal)}₫ ({data.itemCount} SP)
-           </span>
-        );
-      }
-
-      if (data.productName) return <span>Sản phẩm: <b>{data.productName}</b></span>;
-      if (data.query) return <span>Tìm kiếm: <b>"{data.query}"</b></span>;
-      if (data.categoryName) return <span>Danh mục: <b>{data.categoryName}</b></span>;
-      if (data.intent) return <span>Ý định: <b>{data.intent}</b></span>;
-      
-      return <span className="font-mono text-[10px] break-all opacity-70">{jsonStr}</span>;
-    } catch {
-      return <span>{jsonStr}</span>;
-    }
-  };
-
   return (
     <div className="space-y-4">
       {sessions.map((session) => {
         const isExpanded = expandedSessions.has(session.id);
-        
-        const formatDuration = (ms: number) => {
-          if (ms < 1000) return 'Vài giây';
-          const seconds = Math.floor(ms / 1000);
-          if (seconds < 60) return `${seconds} giây`;
-          return `${Math.floor(seconds / 60)} phút ${seconds % 60} giây`;
-        };
-
-        const getReferrerText = (ref: string) => {
-           if (!ref) return 'Trực tiếp';
-           try {
-             return new URL(ref).hostname;
-           } catch {
-             return ref;
-           }
-        };
         
         return (
           <div key={session.id} className="border rounded-xl bg-card overflow-hidden transition-all">
@@ -214,10 +216,10 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
               
               <div className="flex items-center gap-4">
                  <div className="text-right hidden sm:block border-r pr-4">
-                    <p className="text-xs font-bold text-foreground flex items-center justify-end gap-1">
+                    <div className="text-xs font-bold text-foreground flex items-center justify-end gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
                         {formatDuration(session.durationMs)}
-                    </p>
+                    </div>
                     <p className="text-[10px] text-muted-foreground font-medium">{session.logs.length} sự kiện</p>
                  </div>
                  <div className="flex -space-x-2">
@@ -274,6 +276,8 @@ const SessionTimeline: React.FC<SessionTimelineProps> = ({ logs }) => {
       })}
     </div>
   );
-};
+});
+
+SessionTimeline.displayName = "SessionTimeline";
 
 export default SessionTimeline;
