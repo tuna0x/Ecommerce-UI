@@ -44,6 +44,7 @@ import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Input } from '../ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface RichEditorProps {
     value: string;
@@ -141,13 +142,14 @@ const RichEditor: React.FC<RichEditorProps> = ({
     };
 
     return (
-        <div className={cn(
-            "border rounded-3xl bg-background transition-all duration-500 overflow-hidden shadow-sm group relative",
-            editor.isFocused ? "ring-4 ring-primary/10 border-primary/50 shadow-xl" : "border-input hover:border-border",
-            className
-        )}>
-            {/* Main Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-3 bg-muted/10 border-b border-border sticky top-0 z-20 backdrop-blur-md">
+        <TooltipProvider>
+            <div className={cn(
+                "border rounded-3xl bg-background transition-all duration-500 overflow-hidden shadow-sm group relative",
+                editor.isFocused ? "ring-4 ring-primary/10 border-primary/50 shadow-xl" : "border-input hover:border-border",
+                className
+            )}>
+                {/* Main Toolbar */}
+                <div className="flex flex-wrap items-center gap-1 p-3 bg-muted/10 border-b border-border sticky top-0 z-20 backdrop-blur-md">
                 {/* History */}
                 <div className="flex items-center gap-1">
                     <EditorButton icon={Undo} onClick={() => editor.chain().focus().undo().run()} title="Hoàn tác" />
@@ -162,16 +164,19 @@ const RichEditor: React.FC<RichEditorProps> = ({
                         icon={Heading1} 
                         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} 
                         active={editor.isActive('heading', { level: 1 })}
+                        title="Tiêu đề 1"
                     />
                     <EditorButton 
                         icon={Heading2} 
                         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} 
                         active={editor.isActive('heading', { level: 2 })}
+                        title="Tiêu đề 2"
                     />
                      <EditorButton 
                         icon={TypeIcon} 
                         onClick={() => editor.chain().focus().setParagraph().run()} 
                         active={editor.isActive('paragraph')}
+                        title="Văn bản thuần"
                     />
                 </div>
 
@@ -183,21 +188,25 @@ const RichEditor: React.FC<RichEditorProps> = ({
                         icon={Bold} 
                         onClick={() => editor.chain().focus().toggleBold().run()} 
                         active={editor.isActive('bold')}
+                        title="In đậm (Ctrl+B)"
                     />
                     <EditorButton 
                         icon={Italic} 
                         onClick={() => editor.chain().focus().toggleItalic().run()} 
                         active={editor.isActive('italic')}
+                        title="In nghiêng (Ctrl+I)"
                     />
                     <EditorButton 
                         icon={UnderlineIcon} 
                         onClick={() => editor.chain().focus().toggleUnderline().run()} 
                         active={editor.isActive('underline')}
+                        title="Gạch chân (Ctrl+U)"
                     />
                     <EditorButton 
                         icon={Strikethrough} 
                         onClick={() => editor.chain().focus().toggleStrike().run()} 
                         active={editor.isActive('strike')}
+                        title="Gạch ngang"
                     />
                 </div>
 
@@ -209,16 +218,19 @@ const RichEditor: React.FC<RichEditorProps> = ({
                         icon={AlignLeft} 
                         onClick={() => editor.chain().focus().setTextAlign('left').run()} 
                         active={editor.isActive({ textAlign: 'left' })}
+                        title="Căn lề trái"
                     />
                     <EditorButton 
                         icon={AlignCenter} 
                         onClick={() => editor.chain().focus().setTextAlign('center').run()} 
                         active={editor.isActive({ textAlign: 'center' })}
+                        title="Căn giữa"
                     />
                     <EditorButton 
                         icon={AlignRight} 
                         onClick={() => editor.chain().focus().setTextAlign('right').run()} 
                         active={editor.isActive({ textAlign: 'right' })}
+                        title="Căn lề phải"
                     />
                 </div>
 
@@ -230,21 +242,25 @@ const RichEditor: React.FC<RichEditorProps> = ({
                         icon={List} 
                         onClick={() => editor.chain().focus().toggleBulletList().run()} 
                         active={editor.isActive('bulletList')}
+                        title="Danh sách dấu chấm"
                     />
                     <EditorButton 
                         icon={ListOrdered} 
                         onClick={() => editor.chain().focus().toggleOrderedList().run()} 
                         active={editor.isActive('orderedList')}
+                        title="Danh sách số"
                     />
                     <EditorButton 
                         icon={CheckSquare} 
                         onClick={() => editor.chain().focus().toggleTaskList().run()} 
                         active={editor.isActive('taskList')}
+                        title="Danh sách công việc"
                     />
                     <EditorButton 
                         icon={Quote} 
                         onClick={() => editor.chain().focus().toggleBlockquote().run()} 
                         active={editor.isActive('blockquote')}
+                        title="Trích dẫn"
                     />
                 </div>
 
@@ -291,11 +307,13 @@ const RichEditor: React.FC<RichEditorProps> = ({
                     <EditorButton 
                         icon={TableIcon} 
                         onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} 
+                        title="Chèn bảng"
                     />
                     <EditorButton 
                         icon={Highlighter} 
                         onClick={() => editor.chain().focus().toggleHighlight().run()} 
                         active={editor.isActive('highlight')}
+                        title="Tô màu chữ"
                     />
                 </div>
 
@@ -336,6 +354,7 @@ const RichEditor: React.FC<RichEditorProps> = ({
                 </div>
             </div>
         </div>
+        </TooltipProvider>
     );
 };
 
@@ -349,24 +368,32 @@ interface EditorButtonProps {
 }
 
 const EditorButton: React.FC<EditorButtonProps> = ({ icon: Icon, onClick, title, active }) => (
-    <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className={cn(
-            "h-9 w-9 p-0 rounded-xl transition-all duration-300",
-            active 
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105 active:scale-95" 
-                : "hover:bg-primary/10 text-muted-foreground hover:text-primary"
+    <Tooltip>
+        <TooltipTrigger asChild>
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={cn(
+                    "h-9 w-9 p-0 rounded-xl transition-all duration-300",
+                    active 
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105 active:scale-95" 
+                        : "hover:bg-primary/10 text-muted-foreground hover:text-primary"
+                )}
+                onClick={(e) => {
+                    e.preventDefault();
+                    onClick();
+                }}
+            >
+                <Icon className="h-4 w-4" />
+            </Button>
+        </TooltipTrigger>
+        {title && (
+            <TooltipContent side="top" className="text-[10px] font-bold py-1 px-2 border-primary/20 shadow-lg">
+                <p>{title}</p>
+            </TooltipContent>
         )}
-        onClick={(e) => {
-            e.preventDefault();
-            onClick();
-        }}
-        title={title}
-    >
-        <Icon className="h-4 w-4" />
-    </Button>
+    </Tooltip>
 );
 
 export default RichEditor;

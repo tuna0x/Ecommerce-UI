@@ -1,50 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, User, ChevronRight, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, User, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import SEO from '../components/ui/SEO';
+import { BlogService, type IBlog } from '../service/blogService';
+import type { IPagination } from '../types/api.type';
 
 const categories = ['Tất cả', 'Chăm sóc da', 'Makeup', 'Review sản phẩm', 'Mẹo làm đẹp', 'Xu hướng'];
-
-const blogPosts = [
-    {
-        id: 1, title: '10 Bước Skincare Hàn Quốc Cho Làn Da Hoàn Hảo',
-        excerpt: 'Khám phá quy trình chăm sóc da 10 bước nổi tiếng của Hàn Quốc giúp bạn có làn da căng bóng, mịn màng như idol K-pop.',
-        image: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=400&fit=crop',
-        category: 'Chăm sóc da', author: 'Thu Trang', date: '15/03/2024', readTime: '8 phút',
-    },
-    {
-        id: 2, title: 'Review Serum Vitamin C: Top 5 Sản Phẩm Đáng Mua Nhất 2024',
-        excerpt: 'So sánh chi tiết 5 loại serum Vitamin C bán chạy nhất hiện nay từ thành phần, hiệu quả đến giá thành.',
-        image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=400&fit=crop',
-        category: 'Review sản phẩm', author: 'Minh Đức', date: '12/03/2024', readTime: '10 phút',
-    },
-    {
-        id: 3, title: 'Cách Chọn Kem Chống Nắng Phù Hợp Với Từng Loại Da',
-        excerpt: 'Hướng dẫn chi tiết cách chọn kem chống nắng dựa trên loại da, SPF phù hợp và cách thoa đúng cách.',
-        image: 'https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=600&h=400&fit=crop',
-        category: 'Chăm sóc da', author: 'Thanh Hà', date: '10/03/2024', readTime: '6 phút',
-    },
-    {
-        id: 4, title: 'Xu Hướng Makeup "Clean Girl" 2024: Đẹp Tự Nhiên',
-        excerpt: 'Tìm hiểu xu hướng trang điểm "Clean Girl" đang hot nhất năm 2024 với phong cách tối giản nhưng vẫn nổi bật.',
-        image: 'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&h=400&fit=crop',
-        category: 'Xu hướng', author: 'Thu Trang', date: '08/03/2024', readTime: '5 phút',
-    },
-    {
-        id: 5, title: '5 Mẹo Trị Mụn Tại Nhà Hiệu Quả Với Nguyên Liệu Tự Nhiên',
-        excerpt: 'Những phương pháp trị mụn đơn giản tại nhà bằng nguyên liệu tự nhiên an toàn, hiệu quả bất ngờ.',
-        image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=600&h=400&fit=crop',
-        category: 'Mẹo làm đẹp', author: 'Quốc Bảo', date: '05/03/2024', readTime: '7 phút',
-    },
-    {
-        id: 6, title: 'Hướng Dẫn Contouring Cho Từng Dáng Mặt',
-        excerpt: 'Bí quyết tạo khối phù hợp với từng dáng khuôn mặt giúp bạn trông thon gọn, sắc nét hơn.',
-        image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600&h=400&fit=crop',
-        category: 'Makeup', author: 'Thu Trang', date: '01/03/2024', readTime: '9 phút',
-    },
-];
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
@@ -52,14 +16,42 @@ const fadeUp = {
 };
 
 const Blog = () => {
+    const navigate = useNavigate();
+    const [blogs, setBlogs] = useState<IBlog[]>([]);
+    const [loading, setLoading] = useState(true);
     const [activeCategory, setActiveCategory] = useState('Tất cả');
     const [search, setSearch] = useState('');
+    const [meta, setMeta] = useState({ page: 1, pages: 1 });
 
-    const filtered = blogPosts.filter(p => {
-        const matchCat = activeCategory === 'Tất cả' || p.category === activeCategory;
-        const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
-        return matchCat && matchSearch;
-    });
+    const fetchBlogs = useCallback(async () => {
+        try {
+            setLoading(true);
+            let filterString = '';
+            if (activeCategory !== 'Tất cả') {
+                filterString = `category:'${activeCategory}'`;
+            }
+            if (search) {
+                const searchFilter = `title~'${search}'`;
+                filterString = filterString ? `${filterString} and ${searchFilter}` : searchFilter;
+            }
+
+            const res = await BlogService.getAll(1, 12, filterString, 'createdAt,desc');
+            if (res.data) {
+                const data = res.data as unknown as IPagination<IBlog>;
+                setBlogs(data.result || []);
+                setMeta({ page: data.meta.page, pages: data.meta.pages });
+            }
+        } catch (error) {
+            console.error("Failed to fetch blogs:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeCategory, search]);
+
+    useEffect(() => {
+        const timer = setTimeout(fetchBlogs, 300);
+        return () => clearTimeout(timer);
+    }, [fetchBlogs]);
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -107,13 +99,29 @@ const Blog = () => {
 
             {/* Posts Grid */}
             <section className="container mx-auto px-4 pb-20">
-                {filtered.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-12">Không tìm thấy bài viết phù hợp.</p>
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50 mb-4" />
+                        <p className="text-sm font-medium text-muted-foreground animate-pulse">Đang tải bài viết...</p>
+                    </div>
+                ) : blogs.length === 0 ? (
+                    <div className="text-center py-20 bg-secondary/20 rounded-3xl border border-dashed border-border">
+                        <p className="text-muted-foreground">Không tìm thấy bài viết nào phù hợp.</p>
+                        <button onClick={() => { setSearch(''); setActiveCategory('Tất cả'); }} className="text-primary font-bold mt-2 hover:underline">Xem tất cả</button>
+                    </div>
                 ) : (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filtered.map((post, i) => (
-                            <motion.article key={post.id} variants={fadeUp} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }}
-                                className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group cursor-pointer">
+                        {blogs.map((post, i) => (
+                            <motion.article 
+                                key={post.id} 
+                                variants={fadeUp} 
+                                custom={i} 
+                                initial="hidden" 
+                                whileInView="visible" 
+                                viewport={{ once: true }}
+                                className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group cursor-pointer"
+                                onClick={() => navigate(`/blog/${post.id}`)}
+                            >
                                 <div className="relative overflow-hidden aspect-[3/2]">
                                     <img src={post.image} alt={post.title}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -123,7 +131,7 @@ const Blog = () => {
                                     <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
                                         <span className="flex items-center gap-1"><User className="w-3 h-3" />{post.author}</span>
                                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{post.readTime}</span>
-                                        <span>{post.date}</span>
+                                        <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
                                     </div>
                                     <h3 className="font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
                                         {post.title}

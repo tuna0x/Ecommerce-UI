@@ -77,6 +77,7 @@ const menuGroups: MenuGroup[] = [
     label: 'Nội dung',
     items: [
       { title: 'Banner', url: '/admin/banners', icon: Image },
+      { title: 'Bài viết (Blog)', url: '/admin/blogs', icon: BookOpen },
     ],
   },
   {

@@ -40,6 +40,7 @@ const Statistics = lazy(() => import("../pages/admin/Statistics"));
 const ProductDetailManagement = lazy(() => import("../pages/admin/ProductDetailManagement"));
 const BrandsManagement = lazy(() => import("../pages/admin/BrandsManagement"));
 const BannersManagement = lazy(() => import("../pages/admin/BannersManagement"));
+const BlogManagement = lazy(() => import("../pages/admin/BlogManagement"));
 const ChatManagement = lazy(() => import("../pages/admin/ChatManagement"));
 const InventoryManagement = lazy(() => import("../pages/admin/InventoryManagement"));
 const UserActivityManagement = lazy(() => import("../pages/admin/UserActivityManagement"));
@@ -49,6 +50,7 @@ const PermissionsManagement = lazy(() => import("../pages/admin/PermissionsManag
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
 const Blog = lazy(() => import("../pages/Blog"));
+const BlogDetail = lazy(() => import("../pages/BlogDetail"));
 const Contact = lazy(() => import("../pages/Contact"));
 const FAQ = lazy(() => import("../pages/FAQ"));
 const About = lazy(() => import("../pages/About"));
@@ -104,6 +106,7 @@ const AnimatedRoutes = () => {
           <Route path="/category/:slug" element={<ProtectedRoute><Category /></ProtectedRoute>} />
           <Route path="/brands" element={<BrandsPage />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:id" element={<BlogDetail />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/about" element={<About />} />
@@ -128,6 +131,7 @@ const AnimatedRoutes = () => {
             <Route path="statistics" element={<Statistics />} />
             <Route path="inventory" element={<InventoryManagement />} />
             <Route path="product-detail" element={<ProductDetailManagement />} />
+            <Route path="blogs" element={<BlogManagement />} />
             <Route path="chat" element={<ChatManagement />} />
             <Route path="user-activities" element={<UserActivityManagement />} />
             <Route path="roles" element={<RolesManagement />} />
