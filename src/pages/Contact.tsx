@@ -35,7 +35,7 @@ const Contact = () => {
             <section className="py-16 md:py-20" style={{ background: 'var(--gradient-hero)' }}>
                 <div className="container mx-auto px-4 text-center">
                     <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl md:text-5xl font-bold text-foreground mb-4">Liên hệ với chúng tôi</motion.h1>
+                        className="text-4xl md:text-5xl font-bold text-foreground mb-4 leading-[1.5] md:leading-[1.5]">Liên hệ với chúng tôi</motion.h1>
                     <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                         className="text-muted-foreground max-w-lg mx-auto">
                         Chúng tôi luôn sẵn sàng lắng nghe và hỗ trợ bạn. Hãy để lại tin nhắn hoặc liên hệ trực tiếp!

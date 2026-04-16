@@ -85,7 +85,7 @@ const Brands = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center max-w-2xl mx-auto"
           >
-            <h1 className="text-4xl lg:text-5xl font-black mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
+            <h1 className="text-4xl lg:text-5xl font-black mb-6 leading-[1.5] lg:leading-[1.5] tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
               THẾ GIỚI THƯƠNG HIỆU
             </h1>
             <p className="text-muted-foreground text-lg mb-8">

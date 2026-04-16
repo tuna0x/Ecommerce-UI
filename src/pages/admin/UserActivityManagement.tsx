@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import { 
   Search, 
   Eye, 
@@ -16,7 +16,10 @@ import {
   Table as TableIcon,
   RefreshCcw,
   Monitor,
-  SearchX
+  SearchX,
+  Calendar as CalendarIcon,
+  RotateCcw,
+  Filter as FilterIcon
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import {
@@ -51,6 +54,7 @@ import { toast } from "sonner";
 import { Switch } from "../../components/ui/switch";
 import { getAllLogs, getAnalytics } from "../../service/trackingService";
 import PaginationControl from "../../components/PaginationControl";
+import { DATE_MIN, getTodayStr, clampYear } from "../../lib/date";
 
 // New Components
 import AnalyticsCards from "../../components/admin/tracking/AnalyticsCards";
@@ -71,6 +75,163 @@ interface IUserBehavior {
   pageUrl: string;
 }
 
+// --- Static Helpers Moved Outside to avoid recreation ---
+
+const formatDateTime = (dateString: string) => {
+  return new Date(dateString).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+const getActionIcon = (type: string) => {
+  switch (type) {
+    case 'VIEW_PRODUCT': return <Eye className="h-4 w-4 text-blue-500" />;
+    case 'CLICK_PRODUCT': return <MousePointer2 className="h-4 w-4 text-indigo-500" />;
+    case 'VIEW_CATEGORY': return <Activity className="h-4 w-4 text-cyan-500" />;
+    case 'ADD_CART': return <ShoppingCart className="h-4 w-4 text-green-500" />;
+    case 'REMOVE_CART': return <X className="h-4 w-4 text-red-500" />;
+    case 'UPDATE_CART': return <Activity className="h-4 w-4 text-emerald-500" />;
+    case 'PURCHASE': return <ShoppingBag className="h-4 w-4 text-amber-500" />;
+    case 'BEGIN_CHECKOUT': return <Activity className="h-4 w-4 text-orange-500" />;
+    case 'SEARCH': return <SearchIcon className="h-4 w-4 text-purple-500" />;
+    case 'TIME_ON_PAGE': return <Clock className="h-4 w-4 text-gray-500" />;
+    case 'USE_COUPON': return <Activity className="h-4 w-4 text-pink-500" />;
+    case 'CHAT_WITH_BOT': return <Activity className="h-4 w-4 text-rose-500" />;
+    default: return <Activity className="h-4 w-4" />;
+  }
+};
+
+const getActionBadgeColor = (type: string) => {
+  switch (type) {
+    case 'PURCHASE': return "bg-amber-100 text-amber-700 border-amber-200";
+    case 'BEGIN_CHECKOUT': return "bg-orange-100 text-orange-700 border-orange-200";
+    case 'ADD_CART': case 'UPDATE_CART': return "bg-green-100 text-green-700 border-green-200";
+    case 'VIEW_PRODUCT': case 'VIEW_CATEGORY': return "bg-blue-100 text-blue-700 border-blue-200";
+    case 'SEARCH': return "bg-purple-100 text-purple-700 border-purple-200";
+    case 'CHAT_WITH_BOT': return "bg-rose-100 text-rose-700 border-rose-200";
+    case 'USE_COUPON': return "bg-pink-100 text-pink-700 border-pink-200";
+    default: return "";
+  }
+};
+
+// --- Optimized Row Component ---
+
+const LogTableRow = memo(({ log }: { log: IUserBehavior }) => {
+  const metadataContent = React.useMemo(() => {
+    try {
+      const meta = JSON.parse(log.metadata);
+      if (log.actionType === 'TIME_ON_PAGE') {
+        const seconds = Math.floor(meta.durationMs / 1000);
+        const durationText = seconds >= 60 
+          ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
+          : `${(meta.durationMs / 1000).toFixed(1)} giây`;
+        return (
+          <div className="flex items-center gap-2 group cursor-help">
+            <Clock className="h-3 w-3 text-blue-500 shrink-0" />
+            <span className="text-xs font-semibold text-blue-600">Ở lại: {durationText}</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">({meta.path})</span>
+                </TooltipTrigger>
+                <TooltipContent>{meta.path}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        );
+      }
+      if (log.actionType === 'PURCHASE') {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <ShoppingBag className="h-3 w-3 text-green-500" />
+              <span className="text-xs font-bold text-green-700">Đơn hàng #{meta.orderId}</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground italic pl-4">PTTT: {meta.method}</span>
+          </div>
+        );
+      }
+      if (log.actionType === 'BEGIN_CHECKOUT') {
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5 font-semibold text-orange-700">
+              <Activity className="h-3 w-3" />
+              <span className="text-xs">Checkout: {new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground pl-4">({meta.itemCount} sản phẩm)</span>
+          </div>
+        );
+      }
+      if (log.actionType === 'ADD_CART' || log.actionType === 'UPDATE_CART') {
+        return (
+          <div className="flex items-center gap-1.5">
+            <ShoppingCart className="h-3 w-3 text-emerald-500" />
+            <span className="text-xs font-medium">{meta.productName || 'Cập nhật giỏ hàng'}</span>
+          </div>
+        );
+      }
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-[10px] text-muted-foreground truncate cursor-help bg-muted/50 p-1 px-2 rounded font-mono">
+                {log.metadata}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[300px] break-all text-[10px]">
+              {log.metadata}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } catch (e) {
+      return <span className="text-xs font-mono text-muted-foreground">{log.metadata}</span>;
+    }
+  }, [log.metadata, log.actionType]);
+
+  return (
+    <tr className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <User className={cn("h-4 w-4", !log.userEmail ? "text-orange-500" : "text-muted-foreground")} />
+          <div>
+            <p className={cn("text-sm font-medium", !log.userEmail && "text-orange-600 font-bold italic")}>
+                {log.userEmail || `Guest_${log.sessionId.slice(0, 6)}`}
+            </p>
+            <p className="text-[10px] text-muted-foreground tabular-nums">{log.ipAddress}</p>
+          </div>
+        </div>
+      </td>
+      <td className="py-3 px-4">
+        <Badge variant="outline" className={cn("text-[10px] uppercase font-bold flex items-center gap-1 w-fit", getActionBadgeColor(log.actionType))}>
+          {getActionIcon(log.actionType)}
+          {log.actionType.replace('_', ' ')}
+        </Badge>
+      </td>
+      <td className="py-3 px-4">
+          <div className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={log.pageUrl}>
+              {log.pageUrl || 'N/A'}
+          </div>
+      </td>
+      <td className="py-3 px-4 max-w-[300px]">
+        {metadataContent}
+      </td>
+      <td className="py-3 px-4 text-right">
+        <div className="text-xs font-medium tabular-nums">{formatDateTime(log.createdAt)}</div>
+      </td>
+    </tr>
+  );
+});
+
+LogTableRow.displayName = "LogTableRow";
+
+// --- Main Component ---
+
 const UserActivityLog: React.FC = () => {
   const [logs, setLogs] = useState<IUserBehavior[]>([]);
   const [analyticsData, setAnalyticsData] = useState<any>(null);
@@ -82,8 +243,14 @@ const UserActivityLog: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageSize] = useState(200);
+  const [pageSize] = useState(50); // Reduced from 200 to 50 for performance
   const [isAutoRefresh, setIsAutoRefresh] = useState(false);
+
+  // Date filters
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
 
   const fetchAnalytics = useCallback(async () => {
     setIsAnalyticsLoading(true);
@@ -106,6 +273,16 @@ const UserActivityLog: React.FC = () => {
         filter = filter ? `${filter} and actionType:'${actionFilter}'` : `actionType:'${actionFilter}'`;
       }
 
+      // Add date filters
+      if (appliedStartDate) {
+        const startFilter = `createdAt >= '${appliedStartDate}T00:00:00Z'`;
+        filter = filter ? `${filter} and ${startFilter}` : startFilter;
+      }
+      if (appliedEndDate) {
+        const endFilter = `createdAt <= '${appliedEndDate}T23:59:59Z'`;
+        filter = filter ? `${filter} and ${endFilter}` : endFilter;
+      }
+
       const res = await getAllLogs(page - 1, pageSize, filter || undefined);
       const data = res?.data?.data;
       if (data) {
@@ -118,7 +295,18 @@ const UserActivityLog: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearchTerm, actionFilter, pageSize]);
+  }, [debouncedSearchTerm, actionFilter, pageSize, appliedStartDate, appliedEndDate]);
+
+  const handleReset = useCallback(() => {
+    setSearchTerm("");
+    setActionFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setCurrentPage(1);
+    toast.success("Đã xóa tất cả bộ lọc");
+  }, []);
 
   useEffect(() => {
     fetchLogs(currentPage);
@@ -130,7 +318,7 @@ const UserActivityLog: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchTerm, actionFilter]);
+  }, [debouncedSearchTerm, actionFilter, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
     let interval: any;
@@ -144,48 +332,6 @@ const UserActivityLog: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [isAutoRefresh, currentPage, isLoading, isAnalyticsLoading, fetchLogs, fetchAnalytics]);
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
-  const getActionIcon = (type: string) => {
-    switch (type) {
-      case 'VIEW_PRODUCT': return <Eye className="h-4 w-4 text-blue-500" />;
-      case 'CLICK_PRODUCT': return <MousePointer2 className="h-4 w-4 text-indigo-500" />;
-      case 'VIEW_CATEGORY': return <Activity className="h-4 w-4 text-cyan-500" />;
-      case 'ADD_CART': return <ShoppingCart className="h-4 w-4 text-green-500" />;
-      case 'REMOVE_CART': return <X className="h-4 w-4 text-red-500" />;
-      case 'UPDATE_CART': return <Activity className="h-4 w-4 text-emerald-500" />;
-      case 'PURCHASE': return <ShoppingBag className="h-4 w-4 text-amber-500" />;
-      case 'BEGIN_CHECKOUT': return <Activity className="h-4 w-4 text-orange-500" />;
-      case 'SEARCH': return <SearchIcon className="h-4 w-4 text-purple-500" />;
-      case 'TIME_ON_PAGE': return <Clock className="h-4 w-4 text-gray-500" />;
-      case 'USE_COUPON': return <Activity className="h-4 w-4 text-pink-500" />;
-      case 'CHAT_WITH_BOT': return <Activity className="h-4 w-4 text-rose-500" />;
-      default: return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const getActionBadgeColor = (type: string) => {
-    switch (type) {
-      case 'PURCHASE': return "bg-amber-100 text-amber-700 border-amber-200";
-      case 'BEGIN_CHECKOUT': return "bg-orange-100 text-orange-700 border-orange-200";
-      case 'ADD_CART': case 'UPDATE_CART': return "bg-green-100 text-green-700 border-green-200";
-      case 'VIEW_PRODUCT': case 'VIEW_CATEGORY': return "bg-blue-100 text-blue-700 border-blue-200";
-      case 'SEARCH': return "bg-purple-100 text-purple-700 border-purple-200";
-      case 'CHAT_WITH_BOT': return "bg-rose-100 text-rose-700 border-rose-200";
-      case 'USE_COUPON': return "bg-pink-100 text-pink-700 border-pink-200";
-      default: return "";
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -203,7 +349,7 @@ const UserActivityLog: React.FC = () => {
                   className="scale-75 data-[state=checked]:bg-green-500" 
                 />
             </div>
-            <Button variant="outline" size="sm" onClick={() => { fetchAnalytics(); fetchLogs(1); }} className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => { fetchAnalytics(); fetchLogs(currentPage); }} className="gap-2">
                 <RefreshCcw className={cn("h-4 w-4", (isAnalyticsLoading || isLoading) && "animate-spin")} />
                 Làm mới
             </Button>
@@ -240,21 +386,83 @@ const UserActivityLog: React.FC = () => {
                  <CardTitle className="text-sm font-bold flex items-center gap-2">
                     <Monitor className="h-4 w-4" /> Hành trình theo phiên làm việc
                  </CardTitle>
-                 <div className="flex gap-2 items-center">
-                    <div className="relative group">
+                 <div className="flex flex-wrap gap-2 items-center">
+                    <div className="relative w-full sm:w-[180px]">
+                      <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground mr-1" />
+                      <Input 
+                        type="date"
+                        value={startDate}
+                        min={DATE_MIN}
+                        max={getTodayStr()}
+                        onChange={(e) => setStartDate(clampYear(e.target.value))}
+                        className="h-9 pl-9 text-xs"
+                      />
+                    </div>
+                    <div className="relative w-full sm:w-[180px]">
+                      <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground mr-1" />
+                      <Input 
+                        type="date"
+                        value={endDate}
+                        min={startDate || DATE_MIN}
+                        max={getTodayStr()}
+                        onChange={(e) => setEndDate(clampYear(e.target.value))}
+                        className="h-9 pl-9 text-xs"
+                      />
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="h-9 px-4 text-xs gap-2"
+                      onClick={() => {
+                        const today = getTodayStr();
+                        if (startDate && startDate < DATE_MIN) {
+                          toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+                          return;
+                        }
+                        if (endDate && endDate < DATE_MIN) {
+                          toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+                          return;
+                        }
+                        if (startDate && startDate > today) {
+                          toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+                          return;
+                        }
+                        if (endDate && endDate > today) {
+                          toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+                          return;
+                        }
+                        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                          toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+                          return;
+                        }
+                        setAppliedStartDate(startDate);
+                        setAppliedEndDate(endDate);
+                      }}
+                    >
+                      <FilterIcon className="h-3.5 w-3.5" />
+                      Lọc
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-9 px-4 text-xs gap-2"
+                      onClick={handleReset}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Reset
+                    </Button>
+                    <div className="relative group ml-1 flex-1 min-w-[150px]">
                        <Input 
-                         placeholder="Tìm email khách..." 
-                         className="h-8 max-w-[200px] pl-8 pr-8" 
+                         placeholder="Tìm email..." 
+                         className="h-9 pl-8 pr-8 text-xs" 
                          value={searchTerm} 
                          onChange={(e) => setSearchTerm(e.target.value)}
                        />
-                       <SearchIcon className="h-3 w-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                       <SearchIcon className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
                        {searchTerm && (
                          <button 
                            onClick={() => setSearchTerm("")}
                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                          >
-                           <X className="h-3 w-3" />
+                           <X className="h-4 w-4" />
                          </button>
                        )}
                     </div>
@@ -278,8 +486,8 @@ const UserActivityLog: React.FC = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                <div className="flex-1 flex gap-2">
-                  <div className="relative flex-1 group">
+                <div className="flex flex-wrap lg:flex-nowrap gap-2 items-center flex-1">
+                  <div className="relative flex-1 group min-w-[200px]">
                     <Search className={cn(
                       "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors",
                       isLoading ? "text-primary animate-pulse" : "text-muted-foreground group-focus-within:text-primary"
@@ -299,6 +507,66 @@ const UserActivityLog: React.FC = () => {
                       </button>
                     )}
                   </div>
+                  <div className="relative w-full sm:w-[180px]">
+                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      value={startDate}
+                      min={DATE_MIN}
+                      max={getTodayStr()}
+                      onChange={(e) => setStartDate(clampYear(e.target.value))}
+                      className="pl-10 h-10"
+                    />
+                  </div>
+                  <div className="relative w-full sm:w-[180px]">
+                    <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      value={endDate}
+                      min={startDate || DATE_MIN}
+                      max={getTodayStr()}
+                      onChange={(e) => setEndDate(clampYear(e.target.value))}
+                      className="pl-10 h-10"
+                    />
+                  </div>
+                  <Button 
+                    variant="default"
+                    className="gap-2 h-10 px-6"
+                    onClick={() => {
+                      const today = getTodayStr();
+                      if (startDate && startDate < DATE_MIN) {
+                        toast.error("Ngày bắt đầu không được nhỏ hơn năm 2000");
+                        return;
+                      }
+                      if (endDate && endDate < DATE_MIN) {
+                        toast.error("Ngày kết thúc không được nhỏ hơn năm 2000");
+                        return;
+                      }
+                      if (startDate && startDate > today) {
+                        toast.error("Ngày bắt đầu không được lớn hơn hiện tại");
+                        return;
+                      }
+                      if (endDate && endDate > today) {
+                        toast.error("Ngày kết thúc không được lớn hơn hiện tại");
+                        return;
+                      }
+                      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+                        toast.error("Ngày bắt đầu không thể lớn hơn ngày kết thúc");
+                        return;
+                      }
+                      setAppliedStartDate(startDate);
+                      setAppliedEndDate(endDate);
+                    }}
+                  >
+                    <FilterIcon className="h-4 w-4" /> Lọc
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="gap-2 h-10 px-4"
+                    onClick={handleReset}
+                  >
+                    <RotateCcw className="h-4 w-4" /> Reset
+                  </Button>
                 </div>
                 <Select value={actionFilter} onValueChange={setActionFilter}>
                   <SelectTrigger className="w-full lg:w-[250px] h-10">
@@ -336,106 +604,7 @@ const UserActivityLog: React.FC = () => {
                     </thead>
                     <tbody>
                       {logs.map((log) => (
-                        <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <User className={cn("h-4 w-4", !log.userEmail ? "text-orange-500" : "text-muted-foreground")} />
-                              <div>
-                                <p className={cn("text-sm font-medium", !log.userEmail && "text-orange-600 font-bold italic")}>
-                                    {log.userEmail || `Guest_${log.sessionId.slice(0, 6)}`}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground tabular-nums">{log.ipAddress}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant="outline" className={cn("text-[10px] uppercase font-bold flex items-center gap-1 w-fit", getActionBadgeColor(log.actionType))}>
-                              {getActionIcon(log.actionType)}
-                              {log.actionType.replace('_', ' ')}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">
-                             <div className="text-[10px] text-muted-foreground max-w-[120px] truncate" title={log.pageUrl}>
-                                 {log.pageUrl || 'N/A'}
-                             </div>
-                          </td>
-                          <td className="py-3 px-4 max-w-[300px]">
-                            {(() => {
-                              try {
-                                const meta = JSON.parse(log.metadata);
-                                if (log.actionType === 'TIME_ON_PAGE') {
-                                  const seconds = Math.floor(meta.durationMs / 1000);
-                                  const durationText = seconds >= 60 
-                                    ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
-                                    : `${(meta.durationMs / 1000).toFixed(1)} giây`;
-                                  return (
-                                    <div className="flex items-center gap-2 group cursor-help">
-                                      <Clock className="h-3 w-3 text-blue-500 shrink-0" />
-                                      <span className="text-xs font-semibold text-blue-600">Ở lại: {durationText}</span>
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">({meta.path})</span>
-                                          </TooltipTrigger>
-                                          <TooltipContent>{meta.path}</TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    </div>
-                                  );
-                                }
-                                if (log.actionType === 'PURCHASE') {
-                                  return (
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1.5">
-                                        <ShoppingBag className="h-3 w-3 text-green-500" />
-                                        <span className="text-xs font-bold text-green-700">Đơn hàng #{meta.orderId}</span>
-                                      </div>
-                                      <span className="text-[10px] text-muted-foreground italic pl-4">PTTT: {meta.method}</span>
-                                    </div>
-                                  );
-                                }
-                                if (log.actionType === 'BEGIN_CHECKOUT') {
-                                  return (
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-1.5 font-semibold text-orange-700">
-                                        <Activity className="h-3 w-3" />
-                                        <span className="text-xs">Checkout: {new Intl.NumberFormat('vi-VN').format(meta.cartTotal)}₫</span>
-                                      </div>
-                                      <span className="text-[10px] text-muted-foreground pl-4">({meta.itemCount} sản phẩm)</span>
-                                    </div>
-                                  );
-                                }
-                                if (log.actionType === 'ADD_CART' || log.actionType === 'UPDATE_CART') {
-                                  return (
-                                    <div className="flex items-center gap-1.5">
-                                      <ShoppingCart className="h-3 w-3 text-emerald-500" />
-                                      <span className="text-xs font-medium">{meta.productName || 'Cập nhật giỏ hàng'}</span>
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="text-[10px] text-muted-foreground truncate cursor-help bg-muted/50 p-1 px-2 rounded font-mono">
-                                          {log.metadata}
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent className="max-w-[300px] break-all text-[10px]">
-                                        {log.metadata}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                );
-                              } catch (e) {
-                                return <span className="text-xs font-mono text-muted-foreground">{log.metadata}</span>;
-                              }
-                            })()}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="text-xs font-medium tabular-nums">{formatDateTime(log.createdAt)}</div>
-                          </td>
-                        </tr>
+                        <LogTableRow key={log.id} log={log} />
                       ))}
                       {logs.length === 0 && !isLoading && (
                         <tr>

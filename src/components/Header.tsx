@@ -30,7 +30,7 @@ const Header: React.FC = () => {
   const { wishlistCount } = useWishlist();
 
   return (
-    <header className="sticky top-0 z-40 bg-background border-b border-border">
+    <header className="relative z-40 bg-background border-b border-border">
       {/* Main Header */}
       <div className="container mx-auto px-4 md:px-0">
         <div className="flex items-center justify-between h-16 md:h-20 gap-4">
@@ -115,8 +115,8 @@ const Header: React.FC = () => {
                         Danh sách yêu thích
                       </div>
                       {wishlistCount > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                          {wishlistCount}
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                          {wishlistCount > 99 ? '99+' : wishlistCount}
                         </span>
                       )}
                     </Link>
@@ -169,9 +169,9 @@ const Header: React.FC = () => {
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background"
                 >
-                  {cartCount}
+                  {cartCount > 99 ? '99+' : cartCount}
                 </motion.span>
               )}
             </button>
@@ -296,8 +296,8 @@ const Header: React.FC = () => {
                     <span>{label}</span>
                   </div>
                   {badge && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      {badge}
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
+                      {typeof badge === 'number' && badge > 99 ? '99+' : badge}
                     </span>
                   )}
                 </NavLink>

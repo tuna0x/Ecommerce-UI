@@ -66,7 +66,7 @@ const FAQ = () => {
                         <HelpCircle className="w-8 h-8 text-primary" />
                     </motion.div>
                     <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-                        className="text-4xl md:text-5xl font-bold text-foreground mb-4">Câu hỏi thường gặp</motion.h1>
+                        className="text-4xl md:text-5xl font-bold text-foreground mb-4 leading-[1.5] md:leading-[1.5]">Câu hỏi thường gặp</motion.h1>
                     <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                         className="text-muted-foreground max-w-lg mx-auto mb-8">
                         Tìm câu trả lời nhanh cho các thắc mắc phổ biến về mua sắm tại BÔNGCOSMETIC
