@@ -402,24 +402,68 @@ const ProductDetail: React.FC = () => {
             <div>
               <p className="text-sm font-medium mb-2">Số lượng</p>
               <div className="flex items-center gap-3">
-                <div className="flex items-center border border-border rounded-lg">
+                <div className="flex items-center border border-border rounded-lg overflow-hidden bg-background">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-2.5 sm:p-3 hover:bg-secondary transition-colors"
+                    disabled={quantity <= 1}
+                    className="p-2.5 sm:p-3 hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 sm:w-12 text-center font-medium">{quantity}</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val === '') {
+                        setQuantity(0);
+                      } else {
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                          // Strict validation during typing
+                          const maxLimit = currentStock > 0 ? currentStock : 9999;
+                          if (num > maxLimit) {
+                            setQuantity(maxLimit);
+                            import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa cho phép là ${maxLimit}`));
+                          } else {
+                            setQuantity(num);
+                          }
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      let finalQty = quantity;
+                      if (quantity < 1) finalQty = 1;
+                      const maxLimit = currentStock > 0 ? currentStock : 9999;
+                      if (quantity > maxLimit) {
+                        finalQty = maxLimit;
+                        import('sonner').then(({ toast }) => toast.warning(`Đã tự động điều chỉnh về số lượng tối đa ${maxLimit}`));
+                      }
+                      setQuantity(finalQty);
+                    }}
+                    max={currentStock > 0 ? currentStock : 9999}
+                    min="1"
+                    className="w-12 sm:w-16 text-center font-bold bg-transparent border-none focus:outline-none focus:ring-0 text-sm sm:text-base selection:bg-primary/20"
+                  />
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => {
+                      const maxLimit = currentStock > 0 ? currentStock : 9999;
+                      if (quantity >= maxLimit) {
+                        import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tối đa (${maxLimit})`));
+                        return;
+                      }
+                      setQuantity(quantity + 1);
+                    }}
                     className="p-2.5 sm:p-3 hover:bg-secondary transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
                 {currentStock > 0 && (
-                  <span className="text-xs sm:text-sm text-muted-foreground">
-                    Còn {currentStock} sản phẩm
+                  <span className="text-xs sm:text-sm text-muted-foreground font-medium">
+                    Còn <span className="text-foreground font-bold">{currentStock}</span> sản phẩm
                   </span>
                 )}
               </div>

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Plus, Pencil, Trash2, Search, Loader2, X, BookOpen, User, Calendar, ImageIcon, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, BookOpen, User, Calendar, ImageIcon, Upload } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { Badge } from "../../components/ui/badge";
 import { DataTable } from "../../components/ui/data-table";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import RichEditor from "../../components/admin/RichEditor";
