@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Minus, ShoppingBag, Truck, ArrowRight, Loader2, Trash2 } from 'lucide-react';
 import { useCart, FREE_SHIPPING_THRESHOLD } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { Checkbox } from '../components/ui/Checkbox';
+import { Checkbox } from './ui/Checkbox';
+import AnimatedNumber from './admin/AnimatedNumber';
+import { cn } from '../lib/utils';
 
 const CartSidebar: React.FC = () => {
   const {
@@ -384,8 +386,8 @@ const CartSidebar: React.FC = () => {
                           </div>
 
                           {/* Subtotal */}
-                          <span className="font-bold text-sm text-primary">
-                            {formatPrice(price * item.quantity)}
+                          <span className={cn("font-bold text-sm text-primary transition-opacity duration-300", isLoading ? "opacity-50 animate-pulse" : "opacity-100")}>
+                            <AnimatedNumber value={price * item.quantity} isCurrency />
                           </span>
                         </div>
                       </motion.div>
@@ -406,7 +408,9 @@ const CartSidebar: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Tạm tính</span>
-                    <span className="font-medium">{formatPrice(selectedTotal)}</span>
+                    <span className={cn("font-medium transition-opacity", isLoading ? "opacity-50" : "opacity-100")}>
+                      <AnimatedNumber value={selectedTotal} isCurrency />
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Phí vận chuyển</span>
@@ -419,7 +423,9 @@ const CartSidebar: React.FC = () => {
                 {/* Total */}
                 <div className="flex items-center justify-between py-3 border-t border-border/40 mb-4">
                   <span className="text-base font-bold tracking-tight">Tổng cộng</span>
-                  <span className="text-2xl font-bold text-primary tracking-tight">{formatPrice(selectedTotal)}</span>
+                  <span className={cn("text-2xl font-bold text-primary tracking-tight transition-all duration-300", isLoading ? "opacity-50 scale-95" : "opacity-100 scale-100")}>
+                    <AnimatedNumber value={selectedTotal} isCurrency />
+                  </span>
                 </div>
 
                 {/* Checkout Button */}

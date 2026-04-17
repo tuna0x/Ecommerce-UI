@@ -21,7 +21,7 @@ export const ProductService = {
     const params: Record<string, unknown> = {
       page,
       size,
-      filter: filter || (search ? `name~'${search}'` : undefined),
+      filter: filter || undefined,
       search: search || undefined, // raw search term for unaccented backend search
       sort: sort,
       categoryId: categoryId,
