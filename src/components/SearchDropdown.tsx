@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, ArrowRight, Loader2 } from "lucide-react";
+import { Search, X, ArrowRight, Loader2, Mic } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ProductService } from "../service/productService";
 import type { IProduct } from "../types/product.type";
@@ -24,6 +24,75 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { } = useAuth(); // No longer need isAuthenticated here
+  const [isListening, setIsListening] = useState(false);
+  const [isSupported, setIsSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'vi-VN';
+
+    recognition.onstart = () => {
+      console.log('🎤 Voice Search Started');
+      setIsListening(true);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      if (!['no-speech', 'aborted'].includes(event.error)) {
+        console.error('🎤 Mic Error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert("Nàng hãy cho phép quyền Microphone ở thanh địa chỉ để dùng tính năng này nhé! 🌸");
+        }
+      }
+    };
+
+    recognition.onresult = (event: any) => {
+      let currentTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        currentTranscript += event.results[i][0].transcript;
+      }
+      
+      if (currentTranscript) {
+        setQuery(currentTranscript);
+        // Auto open dropdown when text is recognized
+        if (!isOpen) setIsOpen(true);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+    } else {
+      try {
+        recognitionRef.current?.start();
+      } catch (error) {
+        console.error('Failed to start recognition:', error);
+      }
+    }
+  };
 
   // Filter products based on query from API
   useEffect(() => {
@@ -127,17 +196,47 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
                 setIsOpen(true);
               }
             }}
-            className={`w-full ${isMobile ? "pl-10 pr-10" : "pl-11 pr-10"} py-2.5 bg-secondary rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all`}
+            className={`w-full ${isMobile ? "pl-10 pr-20" : "pl-11 pr-24"} py-2.5 bg-secondary rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium`}
           />
-          {query && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-background rounded-full transition-colors"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
-          )}
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {query && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="p-1.5 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            
+            {isSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`relative p-1.5 rounded-full transition-all ${
+                  isListening 
+                    ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.5)]" 
+                    : "hover:bg-background text-muted-foreground hover:text-primary"
+                }`}
+                title={isListening ? "Đang nghe..." : "Tìm kiếm bằng giọng nói"}
+              >
+                {isListening && (
+                  <motion.span
+                    layoutId="pulse"
+                    initial={{ scale: 0.8, opacity: 0.5 }}
+                    animate={{ scale: 1.5, opacity: 0 }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    className="absolute inset-0 bg-primary rounded-full z-[-1]"
+                  />
+                )}
+                {isListening ? (
+                  <Mic className="w-4 h-4 animate-pulse" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </form>
 
