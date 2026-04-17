@@ -18,15 +18,11 @@ export interface ReqFlashSaleCampaignDTO {
 
 export interface FlashSaleItem {
     id: number;
-    product: {
-        id: number;
-        name: string;
-        thumbnail?: string;
-    };
-    variant?: {
-        id: number;
-        sku: string;
-    };
+    productId: number;
+    productName: string;
+    productImage?: string;
+    variantId?: number;
+    variantSku?: string;
     flashSalePrice: number;
     limitQuantity: number;
     soldQuantity: number;
@@ -60,5 +56,14 @@ export const flashSaleService = {
     updateCampaign: async (id: number, data: ReqFlashSaleCampaignDTO) => {
         const response = await axiosInstance.put<IApiResponse<FlashSaleCampaign>>(`/flash-sales/${id}`, data);
         return response.data.data;
+    },
+    
+    getActiveCampaign: async (): Promise<FlashSaleCampaign | null> => {
+        try {
+            const response = await axiosInstance.get<IApiResponse<FlashSaleCampaign>>('/flash-sales/active');
+            return response.data.data ?? null;
+        } catch (error) {
+            return null;
+        }
     }
 };
