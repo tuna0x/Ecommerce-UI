@@ -13,7 +13,6 @@ const FlashSale: React.FC = () => {
   useEffect(() => {
     const fetchFlashSales = async () => {
       try {
-        setIsLoading(true);
         const res = await ProductService.getFlashSaleProducts(0, 10);
         if (res.data?.result) {
           setFlashSaleProducts(res.data.result);
@@ -24,32 +23,49 @@ const FlashSale: React.FC = () => {
         setIsLoading(false);
       }
     };
+
     fetchFlashSales();
+    
+    // Polling every 30 seconds for real-time quantity/price updates
+    const interval = setInterval(fetchFlashSales, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const [timeLeft, setTimeLeft] = useState({
-    hours: 6,
+    hours: 0,
     minutes: 0,
     seconds: 0,
   });
 
   useEffect(() => {
+    if (flashSaleProducts.length === 0) return;
+
+    // Use endAt from the first product if available
+    const firstProduct = flashSaleProducts[0];
+    if (!firstProduct.flashSale?.endAt) return;
+
+    const endTime = new Date(firstProduct.flashSale.endAt).getTime();
+
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        const totalSeconds =
-          prev.hours * 3600 + prev.minutes * 60 + prev.seconds - 1;
-        if (totalSeconds <= 0) {
-          return { hours: 6, minutes: 0, seconds: 0 };
-        }
-        return {
-          hours: Math.floor(totalSeconds / 3600),
-          minutes: Math.floor((totalSeconds % 3600) / 60),
-          seconds: totalSeconds % 60,
-        };
+      const now = new Date().getTime();
+      const distance = endTime - now;
+
+      if (distance < 0) {
+        clearInterval(timer);
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+
+      setTimeLeft({
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((distance % (1000 * 60)) / 1000),
       });
     }, 1000);
+
     return () => clearInterval(timer);
-  }, []);
+  }, [flashSaleProducts]);
 
   const [scrollPosition, setScrollPosition] = useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);

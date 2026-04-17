@@ -1,6 +1,25 @@
 export const DATE_MIN = "2000-01-01";
 export const DATE_MAX = "2100-12-31";
 
+export const FLASH_SALE_SLOTS = [
+  { name: "Săn Deal Đêm", start: "00:00:00", end: "02:00:00" },
+  { name: "Giờ Vàng Sáng", start: "09:00:00", end: "12:00:00" },
+  { name: "Siêu Deal Trưa", start: "12:00:00", end: "15:00:00" },
+  { name: "Chớp Nhoáng Chiều", start: "15:00:00", end: "18:00:00" },
+  { name: "Deal Hoàng Hôn", start: "18:00:00", end: "21:00:00" },
+  { name: "Sale Cuối Ngày", start: "21:00:00", end: "23:59:59" },
+];
+
+export const formatToLocalDateTime = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
 export const getTodayStr = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -35,3 +54,4 @@ export const clampYear = (dateString: string): string => {
   const clampedYear = year.toString().padStart(4, "0");
   return `${clampedYear}-${parts[1]}-${parts[2]}`;
 };
+

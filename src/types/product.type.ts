@@ -44,6 +44,12 @@ export interface IProduct {
   concern?: string[];
   volume?: string;
   variants?: IVariant[];
+  flashSale?: {
+    price: number;
+    limitQuantity: number;
+    soldQuantity: number;
+    endAt: string;
+  };
 }
 
 export interface IVariantAttribute {
