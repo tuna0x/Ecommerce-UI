@@ -22,6 +22,7 @@ import {
   Shield,
   Lock,
   BookOpen,
+  Zap,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -71,6 +72,7 @@ const menuGroups: MenuGroup[] = [
       { title: 'Đơn hàng', url: '/admin/orders', icon: ShoppingCart },
       { title: 'Khuyến mãi', url: '/admin/promotions', icon: Percent },
       { title: 'Mã giảm giá', url: '/admin/coupons', icon: Ticket },
+      { title: 'Flash Sale', url: '/admin/flash-sales', icon: Zap },
     ],
   },
   {

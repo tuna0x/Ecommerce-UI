@@ -25,13 +25,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     return new Intl.NumberFormat('vi-VN').format(price);
   };
 
-  const displayPrice = product.finalPrice || product.price || 0;
+  const isFlashSale = !!product.flashSale;
+  const displayPrice = isFlashSale ? product.flashSale!.price : (product.finalPrice || product.price || 0);
   const displayOriginalPrice = product.originalPrice || 0;
   const discount = product.discount || (displayOriginalPrice > displayPrice && displayOriginalPrice > 0 ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
-  const sold = product.stock ? Math.max(0, 50 - product.stock) : 0;
-  const total = 50;
-  const soldPercent = (sold / total) * 100;
+  const sold = isFlashSale ? product.flashSale!.soldQuantity : (product.stock ? Math.max(0, 50 - product.stock) : 0);
+  const total = isFlashSale ? product.flashSale!.limitQuantity : 50;
+  const soldPercent = Math.min(100, (sold / total) * 100);
 
   const handleQuickView = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -156,9 +157,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <div className="pt-1.5 space-y-0.5">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="font-medium text-muted-foreground">
-                  Đã bán {sold}
+                  {isFlashSale ? `Đã bán ${sold}/${total}` : `Đã bán ${sold}`}
                 </span>
-                {(product.stock ?? 0) < 10 ? (
+                {isFlashSale ? (
+                   <span className="font-semibold text-primary animate-pulse">
+                   🔥 Đang cháy hàng
+                 </span>
+                ) : (product.stock ?? 0) < 10 ? (
                   <span className="font-semibold text-primary">
                     🔥 Còn {product.stock} cuối
                   </span>
