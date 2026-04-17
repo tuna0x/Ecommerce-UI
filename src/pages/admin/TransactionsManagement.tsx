@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Calendar, X, Filter, RotateCcw, BarChart3, ReceiptText, CreditCard, Wallet, Banknote, ListRestart } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Search, Eye, Loader2, RefreshCw, Calendar, X, Filter, RotateCcw, BarChart3, ReceiptText, CreditCard, Wallet, Banknote, ListRestart } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { getAllTransactionsAdminApi, type TransactionRes } from "../../service/transactionService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
-import { DATE_MIN, getTodayStr, isValidDate, clampYear } from "../../lib/date";
+import { isValidDate, clampYear } from "../../lib/date";
 
 // --------- Constants ---------
 const STATUS_OPTIONS = [
