@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw, Filter } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw, Filter, Zap, ExternalLink } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,7 +13,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "../../components/ui/dialog";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Checkbox } from "../../components/ui/Checkbox";
 import {
   Select,
   SelectContent,
@@ -29,10 +33,12 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
-import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, type OrderRes } from "../../service/orderService";
+import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, createGhnOrderApi, bulkCreateGhnOrdersApi, type OrderRes } from "../../service/orderService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { DATE_MIN, getTodayStr, isValidDate, clampYear } from "../../lib/date";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 
 // --------- Constants ---------
 const STATUS_OPTIONS = [
@@ -90,6 +96,14 @@ const OrdersManagement: React.FC = () => {
   // Bulk selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isBulkGhnDialogOpen, setIsBulkGhnDialogOpen] = useState(false);
+  const [bulkGhnSelectedIds, setBulkGhnSelectedIds] = useState<Set<number>>(new Set());
+  const [isCreatingBulkGhn, setIsCreatingBulkGhn] = useState(false);
+
+  // Filter orders for aggregate GHN dialog
+  const confirmedOrdersForGhn = useMemo(() => {
+    return orders.filter(o => o.status === 'CONFIRMED' && !o.shippingCode);
+  }, [orders]);
 
   // Date filters
   const [startDate, setStartDate] = useState("");
@@ -139,6 +153,44 @@ const OrdersManagement: React.FC = () => {
   useEffect(() => {
     fetchOrders(currentPage, statusFilter, appliedStartDate, appliedEndDate);
   }, [fetchOrders, currentPage, statusFilter, appliedStartDate, appliedEndDate]);
+
+  // ---- WebSocket for Real-time Updates ----
+  useEffect(() => {
+    // The base URL from axios usually ends with /api/v1, but websocket is at /websocket
+    const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+    const wsHost = baseURL.replace("/api/v1", "");
+    const socket = new SockJS(`${wsHost}/websocket`);
+    const client = new Client({
+      webSocketFactory: () => socket,
+      debug: (_str) => {
+        // Suppress redundant logs
+      },
+      onConnect: () => {
+        // console.log("Connected to WebSocket");
+        client.subscribe("/topic/order-updates", (message) => {
+          if (message.body) {
+            const updatedOrder: OrderRes = JSON.parse(message.body);
+            // Update the local list if the order is present
+            setOrders((prev) => 
+              prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+            );
+            
+            // Also update selected order if it's open in dialog
+            setSelectedOrder((prev) => (prev?.id === updatedOrder.id ? updatedOrder : prev));
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error("STOMP error", frame);
+      },
+    });
+
+    client.activate();
+
+    return () => {
+      client.deactivate();
+    };
+  }, []);
 
   // Debounced validation checks
   useEffect(() => {
@@ -215,6 +267,119 @@ const OrdersManagement: React.FC = () => {
     }
   };
 
+  const [isCreatingGhn, setIsCreatingGhn] = useState<number | null>(null);
+  const handleCreateGhnOrder = async (orderId: number) => {
+    try {
+      setIsCreatingGhn(orderId);
+      const res = await createGhnOrderApi(orderId);
+      // Access res.data.data because the backend wraps responses in a RestResponse object
+      const updatedOrder: OrderRes = res.data?.data || res.data;
+      
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, shippingCode: updatedOrder.shippingCode, status: updatedOrder.status } : o));
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(prev => prev ? { ...prev, shippingCode: updatedOrder.shippingCode, status: updatedOrder.status } : null);
+      }
+      
+      toast.success(`Đã tạo vận đơn GHN thành công: ${updatedOrder.shippingCode}`);
+    } catch (err: any) {
+      console.error("GHN Creation failed:", err);
+      toast.error(err.response?.data?.message || "Không thể tạo vận đơn GHN. Vui lòng kiểm tra lại địa chỉ.");
+    } finally {
+      setIsCreatingGhn(null);
+    }
+  };
+
+  const [isSimulating, setIsSimulating] = useState(false);
+  const handleSimulateDelivery = async (shippingCode: string) => {
+    try {
+      setIsSimulating(true);
+      // Directly hit the webhook endpoint to simulate GHN signal
+      const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+      const apiRoot = baseURL.replace("/api/v1", "");
+      
+      await fetch(`${apiRoot}/api/v1/public/webhooks/ghn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          OrderCode: shippingCode,
+          Status: 'delivered'
+        })
+      });
+      
+      toast.success("Đã gửi tín hiệu giả lập 'Giao hàng thành công'!", {
+        description: "Hệ thống sẽ tự động cập nhật trạng thái qua WebSocket bộ sau vài giây."
+      });
+    } catch (err) {
+      console.error("Simulation failed:", err);
+      toast.error("Không thể gửi tín hiệu giả lập.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleBulkCreateGhnOrders = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    // Only process confirmed orders without shipping code
+    const validIds = orders
+      .filter(o => ids.includes(o.id) && o.status === 'CONFIRMED' && !o.shippingCode)
+      .map(o => o.id);
+
+    if (validIds.length === 0) {
+      toast.error("Vui lòng chọn các đơn hàng 'Đã xác nhận' và chưa có mã vận đơn.");
+      return;
+    }
+
+    try {
+      setIsCreatingBulkGhn(true);
+      const res = await bulkCreateGhnOrdersApi(validIds);
+      // Access res.data.data because the backend wraps responses in a RestResponse object
+      const updatedOrders: OrderRes[] = res.data?.data || [];
+      
+      const updatedMap = new Map((Array.isArray(updatedOrders) ? updatedOrders : []).map(o => [o.id, o]));
+      
+      setOrders(prev => prev.map(o => {
+        const updated = updatedMap.get(o.id);
+        if (updated) {
+          return {
+            ...o,
+            shippingCode: updated.shippingCode,
+            status: updated.status
+          };
+        }
+        return o;
+      }));
+
+      const successCount = updatedOrders.filter(o => o.shippingCode).length;
+      toast.success(`Đã tạo thành công ${successCount}/${validIds.length} vận đơn GHN.`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Bulk GHN creation failed:", err);
+      toast.error("Quá trình tạo vận đơn hàng loạt gặp lỗi.");
+    } finally {
+      setIsCreatingBulkGhn(false);
+    }
+  };
+
+  const handlePrintGhnLabel = (shippingCode: string) => {
+    if (!shippingCode) return;
+    
+    // Check if it's a mock shipping code
+    if (shippingCode.startsWith("MOCK_GHN_")) {
+      toast.info("Chế độ Test: Mã vận đơn là giả nên không thể in nhãn thật từ GHN.", {
+        description: `Mã của bạn: ${shippingCode}`,
+        duration: 5000
+      });
+      return;
+    }
+
+    // Official GHN Print URL: https://5p.ghn.vn/order/print/ is the old one, 
+    // real printing usually requires a token or follows their new online-gateway format.
+    // However, 5p.ghn.vn is still used by many, but we'll use the current active one.
+    window.open(`https://5p.ghn.vn/order/print/${shippingCode}`, '_blank');
+  };
+
   const getTotalQuantity = (order: OrderRes) => {
     return (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
   };
@@ -226,55 +391,152 @@ const OrdersManagement: React.FC = () => {
     const html = `
       <html>
         <head>
-          <title>Hoa don #${order.id}</title>
+          <title>Hóa đơn #${order.id}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-            .invoice-title { font-size: 24px; font-weight: bold; color: #000; }
-            .section { margin: 30px 0; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .label { color: #666; font-size: 12px; text-transform: uppercase; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th { text-align: left; border-bottom: 1px solid #eee; padding: 10px; font-size: 14px; }
-            td { padding: 10px; border-bottom: 1px solid #f9f9f9; font-size: 14px; }
-            .total-row { display: flex; justify-content: flex-end; margin-top: 30px; font-size: 18px; font-weight: bold; }
-            @media print { .no-print { display: none; } }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Inter', -apple-system, sans-serif; 
+              padding: 50px; 
+              color: #1a1a1a; 
+              line-height: 1.5;
+              background-color: white;
+            }
+            .container { max-width: 850px; margin: 0 auto; }
+            
+            .header { 
+              display: flex; 
+              justify-content: space-between; 
+              align-items: flex-start;
+              margin-bottom: 50px;
+              padding-bottom: 30px;
+              border-bottom: 2px solid #f3f4f6;
+            }
+            .brand { color: #e11d48; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+            .brand span { color: #1a1a1a; }
+            .company-info { text-align: right; color: #4b5563; font-size: 13px; }
+            
+            .invoice-meta { margin-bottom: 40px; display: flex; justify-content: space-between; }
+            .invoice-title { font-size: 32px; font-weight: 800; color: #111827; margin-bottom: 8px; }
+            .meta-item { color: #6b7280; font-size: 14px; }
+            .meta-item strong { color: #111827; }
+
+            .addresses { 
+              display: grid; 
+              grid-template-columns: 1fr 1fr; 
+              gap: 60px; 
+              margin-bottom: 50px;
+              padding: 24px;
+              background-color: #f9fafb;
+              border-radius: 12px;
+            }
+            .address-box h3 { 
+              font-size: 12px; 
+              text-transform: uppercase; 
+              color: #9ca3af; 
+              letter-spacing: 1px; 
+              margin-bottom: 12px;
+              font-weight: 700;
+            }
+            .address-box p { font-size: 14px; margin-bottom: 4px; }
+            .name { font-weight: 700; color: #111827; font-size: 16px !important; margin-bottom: 8px !important; }
+
+            table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+            th { 
+              text-align: left; 
+              background-color: #f3f4f6; 
+              padding: 14px 16px; 
+              font-size: 12px; 
+              font-weight: 700; 
+              text-transform: uppercase;
+              color: #4b5563;
+              border-radius: 0;
+            }
+            th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+            th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; text-align: right; }
+            
+            td { padding: 16px; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+            td:last-child { text-align: right; font-weight: 600; }
+            .product-name { font-weight: 600; color: #111827; }
+            .product-qty { color: #6b7280; }
+
+            .summary-container { display: flex; justify-content: flex-end; }
+            .summary { width: 320px; }
+            .summary-item { 
+              display: flex; 
+              justify-content: space-between; 
+              padding: 8px 0; 
+              font-size: 14px; 
+              color: #4b5563;
+            }
+            .total { 
+              margin-top: 16px;
+              padding-top: 16px;
+              border-top: 2px solid #111827;
+              font-size: 20px;
+              font-weight: 800;
+              color: #111827;
+            }
+            .total .price { color: #e11d48; }
+
+            .footer { 
+              margin-top: 80px; 
+              text-align: center; 
+              padding-top: 40px; 
+              border-top: 1px dashed #e5e7eb;
+              color: #9ca3af;
+              font-size: 13px;
+            }
+            .thank-you { color: #4b5563; font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+
+            @media print {
+              body { padding: 30px; }
+              .no-print { display: none; }
+              @page { margin: 0; }
+            }
           </style>
         </head>
         <body>
-          <div class="header">
-            <div>
-              <div class="invoice-title">HÓA ĐƠN BÁN HÀNG</div>
-              <p>Mã đơn: <strong>#${order.id}</strong></p>
-              <p>Ngày đặt: ${formatDate(order.createdAt)}</p>
+          <div class="container">
+            <div class="header">
+              <div class="brand">BÔNG<span>COSMETIC</span></div>
+              <div class="company-info">
+                <p>180 Triều Khúc, Tân Triều, Thanh Trì, Hà Nội</p>
+                <p>Hotline: 0949.098.987</p>
+                <p>Website: bongcosmetic.id.vn</p>
+              </div>
             </div>
-            <div style="text-align: right">
-              <h2 style="margin: 0">TUNA ECOMMERCE</h2>
-              <p>Hà Nội, Việt Nam</p>
-              <p>Email: contact@tuna.com</p>
-            </div>
-          </div>
 
-          <div class="section grid">
-            <div>
-              <div class="label">Khách hàng</div>
-              <p><strong>${order.user?.name || 'Guest'}</strong></p>
-              <p>${order.user?.email || ''}</p>
+            <div class="invoice-meta">
+              <div>
+                <h1 class="invoice-title">HÓA ĐƠN BÁN HÀNG</h1>
+                <p class="meta-item">Mã đơn hàng: <strong>#${order.id}</strong></p>
+                <p class="meta-item">Ngày lập: <strong>${formatDate(order.createdAt)}</strong></p>
+              </div>
+              <div style="text-align: right">
+                <p class="meta-item" style="margin-top: 40px">Trạng thái: <strong>Đã thanh toán</strong></p>
+              </div>
             </div>
-            <div style="text-align: right">
-              <div class="label">Người nhận & Địa chỉ</div>
-              <p><strong>${order.receiverName}</strong></p>
-              <p>${order.phone}</p>
-              <p>${order.shippingAddress}, ${order.ward}, ${order.district}, ${order.province}</p>
-            </div>
-          </div>
 
-          <div class="section">
-            <div class="label">Chi tiết sản phẩm</div>
+            <div class="addresses">
+              <div class="address-box">
+                <h3>Người đặt hàng</h3>
+                <p class="name">${order.user?.name || 'Khách vãng lai'}</p>
+                <p>${order.user?.email || ''}</p>
+                <p>${order.phone || ''}</p>
+              </div>
+              <div class="address-box">
+                <h3>Địa chỉ giao hàng</h3>
+                <p class="name">${order.receiverName}</p>
+                <p>${order.phone}</p>
+                <p>${order.shippingAddress}, ${order.ward}, ${order.district}, ${order.province}</p>
+              </div>
+            </div>
+
             <table>
               <thead>
                 <tr>
-                  <th>Sản phẩm</th>
+                  <th style="width: 50%">Sản phẩm</th>
                   <th>Số lượng</th>
                   <th style="text-align: right">Đơn giá</th>
                   <th style="text-align: right">Thành tiền</th>
@@ -283,40 +545,55 @@ const OrdersManagement: React.FC = () => {
               <tbody>
                 ${order.items?.map(item => `
                   <tr>
-                    <td>${item.productName}</td>
-                    <td>${item.quantity}</td>
+                    <td>
+                      <div class="product-name">${item.productName}</div>
+                    </td>
+                    <td class="product-qty">x${item.quantity}</td>
                     <td style="text-align: right">${formatCurrency(item.price)}</td>
                     <td style="text-align: right">${formatCurrency(item.price * item.quantity)}</td>
                   </tr>
                 `).join('')}
               </tbody>
             </table>
-          </div>
 
-          <div class="total-row">
-            <div>
-              <div style="display: flex; justify-content: space-between; width: 300px; font-weight: normal; font-size: 14px; margin-bottom: 5px;">
-                <span>Tạm tính:</span> <span>${formatCurrency(order.subTotal)}</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; width: 300px; font-weight: normal; font-size: 14px; margin-bottom: 5px;">
-                <span>Phí ship:</span> <span>+${formatCurrency(order.shippingFee)}</span>
-              </div>
-              ${order.discountPrice ? `
-                <div style="display: flex; justify-content: space-between; width: 300px; font-weight: normal; font-size: 14px; color: red; margin-bottom: 5px;">
-                  <span>Giảm giá:</span> <span>-${formatCurrency(order.discountPrice)}</span>
+            <div class="summary-container">
+              <div class="summary">
+                <div class="summary-item">
+                  <span>Tạm tính</span>
+                  <span>${formatCurrency(order.subTotal)}</span>
                 </div>
-              ` : ''}
-              <div style="display: flex; justify-content: space-between; width: 300px; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px;">
-                <span>Tổng cộng:</span> <span>${formatCurrency(order.totalPrice)}</span>
+                <div class="summary-item">
+                  <span>Phí vận chuyển</span>
+                  <span>+${formatCurrency(order.shippingFee)}</span>
+                </div>
+                ${order.discountPrice ? `
+                  <div class="summary-item" style="color: #e11d48">
+                    <span>Giảm giá</span>
+                    <span>-${formatCurrency(order.discountPrice)}</span>
+                  </div>
+                ` : ''}
+                <div class="summary-item total">
+                  <span>TỔNG CỘNG</span>
+                  <span class="price">${formatCurrency(order.totalPrice)}</span>
+                </div>
               </div>
+            </div>
+
+            <div class="footer">
+              <p class="thank-you">Cảm ơn quý khách đã tin tưởng mua sắm!</p>
+              <p>Mọi thắc mắc vui lòng liên hệ hotline để được hỗ trợ.</p>
+              <p style="margin-top: 10px; font-style: italic;">Đây là hóa đơn điện tử được tạo tự động.</p>
             </div>
           </div>
 
-          <div style="margin-top: 100px; text-align: center; color: #999; font-size: 12px;">
-            Cảm ơn quý khách đã mua hàng!
-          </div>
-
-          <script>window.print();</script>
+          <script>
+            window.onload = () => {
+              setTimeout(() => {
+                window.print();
+                // window.close();
+              }, 500);
+            };
+          </script>
         </body>
       </html>
     `;
@@ -329,23 +606,74 @@ const OrdersManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Quản lý đơn hàng</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Tổng: <span className="font-semibold text-foreground">{totalItems}</span> đơn hàng
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchOrders(currentPage, statusFilter)}
-          disabled={loading}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Làm mới
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-primary hover:bg-primary/90 gap-2 shadow-lg"
+            onClick={() => {
+              setBulkGhnSelectedIds(new Set(confirmedOrdersForGhn.map(o => o.id)));
+              setIsBulkGhnDialogOpen(true);
+            }}
+          >
+            <Zap className="h-4 w-4 fill-white" />
+            Tổng hợp đơn GHN 🚀
+          </Button>
+
+          <Button
+            variant="default"
+            size="sm"
+            className={cn(
+              "gap-2 shadow-sm transition-all duration-300",
+              selectedIds.size > 0 
+                ? "bg-orange-600 hover:bg-orange-700 ring-2 ring-orange-200" 
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+            onClick={handleBulkCreateGhnOrders}
+            disabled={isCreatingBulkGhn || selectedIds.size === 0}
+          >
+            {isCreatingBulkGhn ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 fill-current" />}
+            Chuyển GHN {selectedIds.size > 0 ? `(${selectedIds.size})` : "hàng loạt"}
+          </Button>
+
+          {selectedIds.size > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 border-primary/20 bg-primary/5">
+                  Thao tác ({selectedIds.size}) <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {STATUS_OPTIONS.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    onClick={() => handleBulkUpdateStatus(s.value)}
+                  >
+                    Chuyển sang {s.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchOrders(currentPage, statusFilter)}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Làm mới
+          </Button>
+        </div>
       </div>
 
       {/* Status Tabs */}
@@ -609,14 +937,28 @@ const OrdersManagement: React.FC = () => {
                           </DropdownMenu>
                         </td>
                         <td className="py-4 px-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
-                            onClick={() => setSelectedOrder(order)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+
+                            {order.shippingCode && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                onClick={() => handlePrintGhnLabel(order.shippingCode!)}
+                                title="In nhãn GHN"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -686,6 +1028,17 @@ const OrdersManagement: React.FC = () => {
                 </p>
               </div>
               <div className="flex gap-2">
+                {selectedOrder?.shippingCode?.startsWith("MOCK_GHN_") && selectedOrder.status !== 'DELIVERED' && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="h-8 gap-1 text-xs bg-amber-600 hover:bg-amber-700 animate-pulse"
+                    onClick={() => handleSimulateDelivery(selectedOrder.shippingCode!)}
+                    disabled={isSimulating}
+                  >
+                    {isSimulating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Giả lập Giao thành công 🛠️"}
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -706,6 +1059,29 @@ const OrdersManagement: React.FC = () => {
                       <History className="h-3.5 w-3.5" />
                       Hành trình khách
                     </a>
+                  </Button>
+                )}
+                {!selectedOrder?.shippingCode && selectedOrder?.status === 'CONFIRMED' && (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="h-8 gap-1 text-xs bg-orange-600 hover:bg-orange-700"
+                    onClick={() => handleCreateGhnOrder(selectedOrder!.id)}
+                    disabled={isCreatingGhn === selectedOrder?.id}
+                  >
+                    {isCreatingGhn === selectedOrder?.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+                    Tạo đơn GHN
+                  </Button>
+                )}
+                {selectedOrder?.shippingCode && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 gap-1 text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                    onClick={() => handlePrintGhnLabel(selectedOrder!.shippingCode!)}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    In nhãn GHN
                   </Button>
                 )}
               </div>
@@ -911,6 +1287,137 @@ const OrdersManagement: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Batch GHN Dialog */}
+      <Dialog open={isBulkGhnDialogOpen} onOpenChange={setIsBulkGhnDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Tổng hợp đơn hàng chuyển GHN
+            </DialogTitle>
+            <DialogDescription>
+              Hệ thống tìm thấy <b>{confirmedOrdersForGhn.length}</b> đơn hàng đã xác nhận và sẵn sàng chuyển sang giao hàng nhanh.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden my-4 py-2 border rounded-md">
+            <ScrollArea className="h-[400px]">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background border-b z-10">
+                  <tr className="text-left">
+                    <th className="p-3 w-10">
+                      <Checkbox
+                        checked={bulkGhnSelectedIds.size === confirmedOrdersForGhn.length && confirmedOrdersForGhn.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) setBulkGhnSelectedIds(new Set(confirmedOrdersForGhn.map(o => o.id)));
+                          else setBulkGhnSelectedIds(new Set());
+                        }}
+                      />
+                    </th>
+                    <th className="p-3">Mã đơn</th>
+                    <th className="p-3">Khách hàng</th>
+                    <th className="p-3">Tổng tiền</th>
+                    <th className="p-3">Ngày đặt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {confirmedOrdersForGhn.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        Không có đơn hàng nào chờ chuyển GHN.
+                      </td>
+                    </tr>
+                  ) : (
+                    confirmedOrdersForGhn.map((order) => (
+                      <tr 
+                        key={order.id} 
+                        className="border-b hover:bg-muted/50 cursor-pointer"
+                        onClick={() => {
+                          const next = new Set(bulkGhnSelectedIds);
+                          if (next.has(order.id)) next.delete(order.id);
+                          else next.add(order.id);
+                          setBulkGhnSelectedIds(next);
+                        }}
+                      >
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={bulkGhnSelectedIds.has(order.id)}
+                            onCheckedChange={() => {
+                              const next = new Set(bulkGhnSelectedIds);
+                              if (next.has(order.id)) next.delete(order.id);
+                              else next.add(order.id);
+                              setBulkGhnSelectedIds(next);
+                            }}
+                          />
+                        </td>
+                        <td className="p-3 font-medium text-primary">#{order.id}</td>
+                        <td className="p-3">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{order.receiverName}</span>
+                            <span className="text-xs text-muted-foreground">{order.phone}</span>
+                          </div>
+                        </td>
+                        <td className="p-3 font-semibold">{order.totalPrice.toLocaleString()}đ</td>
+                        <td className="p-3 text-muted-foreground">
+                          {new Date(order.createdAt || "").toLocaleDateString('vi-VN')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Đã chọn: <span className="font-bold text-foreground">{bulkGhnSelectedIds.size}</span> đơn hàng
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsBulkGhnDialogOpen(false)}>
+                Hủy
+              </Button>
+              <Button 
+                disabled={bulkGhnSelectedIds.size === 0 || isCreatingBulkGhn}
+                className="bg-orange-600 hover:bg-orange-700"
+                onClick={async () => {
+                  try {
+                    setIsCreatingBulkGhn(true);
+                    const res = await bulkCreateGhnOrdersApi(Array.from(bulkGhnSelectedIds));
+                    // Access res.data.data because the backend wraps responses in a RestResponse object
+                    const updatedOrders: OrderRes[] = res.data.data || [];
+                    
+                    const updatedMap = new Map((Array.isArray(updatedOrders) ? updatedOrders : []).map(o => [o.id, o]));
+                    setOrders(prev => prev.map(o => {
+                      const updated = updatedMap.get(o.id);
+                      if (updated) {
+                        return { 
+                          ...o, 
+                          shippingCode: updated.shippingCode,
+                          status: updated.status 
+                        };
+                      }
+                      return o;
+                    }));
+
+                    const successCount = updatedOrders.filter(o => o.shippingCode).length;
+                    toast.success(`Đã tạo thành công ${successCount}/${bulkGhnSelectedIds.size} vận đơn GHN.`);
+                    setIsBulkGhnDialogOpen(false);
+                    setBulkGhnSelectedIds(new Set());
+                  } catch (err) {
+                    toast.error("Quá trình tạo vận đơn gặp lỗi.");
+                  } finally {
+                    setIsCreatingBulkGhn(false);
+                  }
+                }}
+              >
+                {isCreatingBulkGhn ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                Xác nhận tạo vận đơn
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

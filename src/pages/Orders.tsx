@@ -423,6 +423,7 @@ const Orders = () => {
                    createdAt={selectedOrder.createdAt}
                    confirmedAt={selectedOrder.confirmedAt}
                    deliveredAt={selectedOrder.deliveredAt}
+                   shippingCode={selectedOrder.shippingCode}
                 />
               </div>
 

@@ -23,6 +23,7 @@ interface OrderTrackingTimelineProps {
   createdAt?: string;
   confirmedAt?: string;
   deliveredAt?: string;
+  shippingCode?: string;
 }
 
 const steps: TimelineStep[] = [
@@ -36,7 +37,8 @@ const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
   status, 
   createdAt, 
   confirmedAt, 
-  deliveredAt 
+  deliveredAt,
+  shippingCode
 }) => {
   
   // Logic to determine which steps are completed
@@ -140,6 +142,23 @@ const OrderTrackingTimeline: React.FC<OrderTrackingTimelineProps> = ({
                   >
                     {date}
                   </motion.p>
+                )}
+                {index === 2 && shippingCode && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-1"
+                  >
+                    <a 
+                      href={`https://ghn.vn/blogs/trang-thai-don-hang?order_code=${shippingCode}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[9px] bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded border border-pink-100 font-bold hover:bg-pink-100 transition-colors inline-block"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {shippingCode}
+                    </a>
+                  </motion.div>
                 )}
               </div>
             </div>
