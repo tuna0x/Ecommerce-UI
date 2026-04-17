@@ -4,15 +4,23 @@ import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from './ProductCard';
 import ProductCardSkeleton from './ProductCardSkeleton';
 import { ProductService } from '../service/productService';
+import { flashSaleService, type FlashSaleCampaign } from '../service/flashSaleService';
 import type { IProduct } from '../types/product.type';
+import { Button } from './ui/button';
 
 const FlashSale: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [flashSaleProducts, setFlashSaleProducts] = useState<IProduct[]>([]);
+  const [activeCampaign, setActiveCampaign] = useState<FlashSaleCampaign | null>(null);
 
   useEffect(() => {
     const fetchFlashSales = async () => {
       try {
+        // Fetch campaign info
+        const campaign = await flashSaleService.getActiveCampaign();
+        setActiveCampaign(campaign);
+
+        // Fetch products
         const res = await ProductService.getFlashSaleProducts(0, 10);
         if (res.data?.result) {
           setFlashSaleProducts(res.data.result);
@@ -41,11 +49,11 @@ const FlashSale: React.FC = () => {
   useEffect(() => {
     if (flashSaleProducts.length === 0) return;
 
-    // Use endAt from the first product if available
-    const firstProduct = flashSaleProducts[0];
-    if (!firstProduct.flashSale?.endAt) return;
+    // Use endAt from the campaign if available
+    const endTimeStr = activeCampaign?.endAt || (flashSaleProducts[0]?.flashSale?.endAt);
+    if (!endTimeStr) return;
 
-    const endTime = new Date(firstProduct.flashSale.endAt).getTime();
+    const endTime = new Date(endTimeStr).getTime();
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
@@ -82,6 +90,76 @@ const FlashSale: React.FC = () => {
     }
   };
 
+  // If not loading and no campaign/products found, show premium Empty State
+  if (!isLoading && (!activeCampaign || flashSaleProducts.length === 0)) {
+    return (
+      <section className="py-12 md:py-20 bg-gradient-to-b from-background to-accent/5">
+        <div className="container mx-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative overflow-hidden rounded-[2rem] border border-pink-100 bg-white/50 backdrop-blur-xl p-8 md:p-12 text-center shadow-2xl shadow-pink-500/5"
+          >
+            {/* Background Decorative Elements */}
+            <div className="absolute top-0 left-0 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3 pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col items-center">
+              <motion.div
+                animate={{ 
+                  y: [0, -10, 0],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                className="mb-6 p-5 bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl shadow-lg shadow-pink-200"
+              >
+                <Zap className="w-10 h-10 md:w-12 md:h-12 text-white fill-white/20" />
+              </motion.div>
+              
+              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
+                Khung giờ Flash Sale đã kết thúc
+              </h2>
+              <p className="max-w-lg text-slate-500 text-lg leading-relaxed mb-8">
+                Hẹn gặp lại bạn vào khung giờ tiếp theo với danh sách sản phẩm giảm giá cực khủng. Đừng bỏ lỡ nhé!
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                <Button 
+                  className="bg-pink-600 hover:bg-pink-700 text-white px-8 h-12 rounded-full font-bold shadow-lg shadow-pink-200 transition-all hover:scale-105 active:scale-95"
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                >
+                  Tiếp tục mua sắm
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"
+                  onClick={() => window.location.href = '/category/all'}
+                >
+                  Xem tất cả sản phẩm
+                </Button>
+              </div>
+
+              <div className="mt-12 flex items-center gap-6 grayscale opacity-50">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-1 w-12 bg-slate-300 rounded-full" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Chất lượng</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-1 w-12 bg-slate-300 rounded-full" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Giá sốc</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="h-1 w-12 bg-slate-300 rounded-full" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Uy tín</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-8 md:py-12 bg-gradient-to-r from-primary/5 via-background to-accent/5">
       <div className="container mx-auto">
@@ -95,9 +173,11 @@ const FlashSale: React.FC = () => {
               <Zap className="w-5 h-5 text-primary-foreground" />
             </motion.div>
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold">Flash Sale</h2>
+              <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight">
+                {activeCampaign?.name || "Flash Sale"}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Giảm sốc - Số lượng có hạn
+                {activeCampaign?.description || "Giảm sốc - Số lượng có hạn"}
               </p>
             </div>
           </div>

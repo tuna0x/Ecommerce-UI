@@ -220,10 +220,10 @@ const FlashSaleManagement: React.FC = () => {
 
     const items: Record<string, { price: number; limit: number; productId: number; variantId?: number }> = {};
     campaign.items.forEach(item => {
-      const key = item.variant?.id ? `v${item.variant.id}` : `p${item.product.id}`;
+      const key = item.variantId ? `v${item.variantId}` : `p${item.productId}`;
       items[key] = {
-        productId: item.product.id,
-        variantId: item.variant?.id,
+        productId: item.productId,
+        variantId: item.variantId,
         price: item.flashSalePrice,
         limit: item.limitQuantity
       };
