@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, UserCog, Loader2, Eye, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save } from "lucide-react";
+import { Search, Loader2, Eye, EyeOff, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save, UserPlus, Pencil, Trash2, Camera, Lock, Unlock } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -10,7 +10,7 @@ import {
   CardDescription,
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { AccessControl } from "../../components/auth/AccessControl";
+
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -68,6 +68,26 @@ const UsersManagement: React.FC = () => {
   const [pageSize] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
 
+  // New CRUD states
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<IUser | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<IUser | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Form states
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    age: 0,
+    gender: "MALE",
+    roleId: ""
+  });
+
   const fetchUsers = useCallback(async (page: number) => {
     setIsLoading(true);
     try {
@@ -120,9 +140,7 @@ const UsersManagement: React.FC = () => {
     });
   };
 
-  const handleRoleChange = (user: IUser, roleId: string) => {
-    setPendingRoleChange({ user, newRoleId: roleId });
-  };
+
 
   const confirmRoleChange = async () => {
     if (!pendingRoleChange) return;
@@ -139,7 +157,8 @@ const UsersManagement: React.FC = () => {
     }
   };
 
-  const toggleUserVerification = useCallback(async (user: IUser) => {
+  const toggleUserVerification = async (user: IUser) => {
+    console.log("LOG: toggleUserVerification called for user:", user.email);
     try {
       await UserService.toggleVerified(user.id, !user.verified);
       toast.success("Đã cập nhật trạng thái xác thực");
@@ -149,12 +168,12 @@ const UsersManagement: React.FC = () => {
       }
       fetchUsers(currentPage);
     } catch (error) {
-      console.error(error);
+      console.error("LỖI XÁC THỰC API:", error);
       toast.error("Cập nhật trạng thái xác thực thất bại");
     }
-  }, [fetchUsers, currentPage, analyticsUser]);
+  };
 
-  const toggleUserStatus = useCallback(async (user: IUser) => {
+  const handleToggleUserLock = useCallback(async (user: IUser) => {
     try {
       await UserService.toggleActive(user.id, !user.active);
       toast.success("Đã cập nhật trạng thái người dùng");
@@ -193,6 +212,110 @@ const UsersManagement: React.FC = () => {
     }
   };
 
+  const handleOpenAddModal = () => {
+    setEditingUser(null);
+    setFormData({
+      name: "",
+      email: "",
+      password: "",
+      age: 0,
+      gender: "MALE",
+      roleId: roles.find(r => r.name === "ROLE_USER")?.id.toString() || ""
+    });
+    setImageFile(null);
+    setImagePreview(null);
+    setShowPassword(false);
+    setIsUserModalOpen(true);
+  };
+
+  const handleOpenEditModal = (user: IUser) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name || "",
+      email: user.email || "",
+      password: "", // Don't show password
+      age: user.age || 0,
+      gender: user.gender || "MALE",
+      roleId: user.role?.id.toString() || ""
+    });
+    setImageFile(null);
+    setImagePreview(user.image || null);
+    setShowPassword(false);
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (editingUser) {
+        // Update
+        const updateData = {
+          id: editingUser.id,
+          name: formData.name,
+          age: formData.age,
+          gender: formData.gender,
+          role: { id: parseInt(formData.roleId) }
+        };
+        await UserService.updateProfile(updateData, imageFile || undefined);
+        toast.success("Cập nhật người dùng thành công");
+      } else {
+        // Create
+        const createData = {
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          userProfile: {
+            name: formData.name,
+            age: formData.age,
+            gender: formData.gender
+          },
+          role: { id: parseInt(formData.roleId) }
+        };
+        await UserService.create(createData);
+        toast.success("Tạo người dùng thành công");
+      }
+      setIsUserModalOpen(false);
+      fetchUsers(currentPage);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Thao tác thất bại");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsSubmitting(true);
+    try {
+      const res = await UserService.delete(userToDelete.id);
+      if (res.data === "LOCKED") {
+        toast.info("Tài khoản đã được KHÓA thay vì xóa vĩnh viễn để bảo vệ tính toàn vẹn của đơn hàng", {
+          duration: 5000,
+          icon: <Lock className="w-5 h-5 text-amber-500" />
+        });
+      } else {
+        toast.success("Đã xóa vĩnh viễn người dùng thành công");
+      }
+      setIsDeleteConfirmOpen(false);
+      fetchUsers(currentPage);
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể xử lý yêu cầu xóa");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#06b6d4'];
 
 
@@ -208,6 +331,13 @@ const UsersManagement: React.FC = () => {
             Xem danh sách và phân quyền người dùng
           </p>
         </div>
+        <Button 
+          onClick={handleOpenAddModal}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-95 gap-2 w-full sm:w-auto"
+        >
+          <UserPlus className="w-4 h-4" />
+          Thêm người dùng
+        </Button>
       </div>
 
       {/* Stats */}
@@ -279,165 +409,173 @@ const UsersManagement: React.FC = () => {
         <CardHeader>
           <CardTitle>Danh sách người dùng ({totalElements})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6">
           <div className={cn("relative", isLoading ? "opacity-50" : "opacity-100")}>
             {isLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center -top-8">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}
-            <div className="overflow-x-auto border rounded-lg bg-card">
-              <table className="w-full">
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto border rounded-xl bg-card">
+              <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b bg-muted/30">
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Người dùng
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Tuổi/Địa chỉ
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Vai trò
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Ngày tạo
-                    </th>
-                    <th className="text-right py-3 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">
-                      Hành động
-                    </th>
+                    <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Người dùng</th>
+                    <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Thông tin</th>
+                    <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Vai trò</th>
+                    <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Trạng thái</th>
+                    <th className="text-right py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Hành động</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/50 transition-all group">
+                    <tr key={user.id} className="hover:bg-muted/30 transition-colors group">
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8 border border-border/50">
+                          <Avatar className="w-10 h-10 border-2 border-background shadow-sm">
                             <AvatarImage src={user.image} alt={user.name} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                              {user.name && user.name.length > 0 ? user.name.charAt(0).toUpperCase() : 'U'}
-                            </AvatarFallback>
+                            <AvatarFallback className="bg-primary/10 text-primary font-bold">{user.name?.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-sm font-semibold flex items-center gap-1">
+                            <p className="text-sm font-bold flex items-center gap-1">
                                {user.name}
-                               {user.verified && (
-                                 <span title="Đã xác thực">
-                                   <ShieldCheck className="w-3 h-3 text-green-500" />
-                                 </span>
-                               )}
+                               {user.verified && <ShieldCheck className="w-3.5 h-3.5 text-green-500 fill-green-50" />}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              {user.email}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">{user.age ?? 'N/A'}</span> tuổi
+                      <td className="py-4 px-4">
+                         <div className="flex flex-col gap-1">
+                            <span className="text-xs font-medium"><span className="text-muted-foreground">Tuổi:</span> {user.age || 'N/A'}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter tabular-nums">{formatDate(user.createdAt)}</span>
+                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <Select
-                          value={user.role?.id.toString()}
-                          onValueChange={(value) => handleRoleChange(user, value)}
-                        >
-                          <SelectTrigger className="w-[140px] h-8 text-[10px] font-bold uppercase tracking-wider">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((r) => (
-                              <SelectItem key={r.id} value={r.id.toString()} className="text-[10px] font-bold uppercase">
-                                {r.name === "SUPER_ADMIN" ? "Admin" : r.name === "ROLE_USER" ? "Người dùng" : r.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px] uppercase font-bold tracking-wider",
-                            user.active
-                              ? "border-green-500 text-green-600 bg-green-50"
-                              : "border-destructive text-destructive bg-destructive/10"
-                          )}
-                        >
-                          {user.active ? "Hoạt động" : "Bị khóa"}
+                        <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 text-[10px] uppercase font-black tracking-widest h-6">
+                           {user.role?.name === "SUPER_ADMIN" ? "Admin" : user.role?.name === "ROLE_USER" ? "Người dùng" : user.role?.name}
                         </Badge>
                       </td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">
-                        {formatDate(user.createdAt)}
-                      </td>
                       <td className="py-4 px-4">
-                        <div className="flex items-center justify-end gap-1">
-
-
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
-                            title="Xem chi tiết 360 độ"
-                            onClick={() => viewUserAnalytics(user)}
-                          >
+                        <div className="flex items-center gap-2">
+                           <div className={cn("w-1.5 h-1.5 rounded-full", user.active ? "bg-green-500 animate-pulse" : "bg-red-500")} />
+                           <span className={cn("text-xs font-bold", user.active ? "text-green-600" : "text-red-600")}>
+                             {user.active ? "Active" : "Locked"}
+                           </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5 px-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50" onClick={() => viewUserAnalytics(user)} title="Analytics">
                             <Eye className="h-4 w-4" />
                           </Button>
-
-                          <AccessControl module="USERS" action="TOGGLE_STATUS">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-destructive/10 transition-colors"
-                              title={
-                                user.active
-                                  ? "Vô hiệu hóa"
-                                  : "Kích hoạt"
-                              }
-                              onClick={() => toggleUserStatus(user)}
-                            >
-                              <UserCog className={`h-4 w-4 ${user.active ? "text-muted-foreground" : "text-destructive font-bold"}`} />
-                            </Button>
-                          </AccessControl>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={cn("h-8 w-8", user.active ? "text-amber-500 hover:bg-amber-50" : "text-green-500 hover:bg-green-50")}
+                            onClick={() => handleToggleUserLock(user)} 
+                            title={user.active ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                          >
+                            {user.active ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500 hover:bg-amber-50" onClick={() => handleOpenEditModal(user)} title="Sửa">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => { setUserToDelete(user); setIsDeleteConfirmOpen(true); }} title="Xóa">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </td>
                     </tr>
                   ))}
-                  {users.length === 0 && !isLoading && (
-                    <tr>
-                      <td colSpan={6} className="py-20 text-center">
-                        <div className="flex flex-col items-center justify-center max-w-[200px] mx-auto text-muted-foreground">
-                          <div className="relative mb-4">
-                             <UserX className="w-12 h-12 opacity-20" />
-                             <Search className="w-6 h-6 absolute -bottom-1 -right-1 text-primary animate-bounce" />
-                          </div>
-                          <p className="font-semibold text-foreground">Không tìm thấy kết quả</p>
-                          <p className="text-xs mt-1 text-center">Vui lòng thử lại với từ khóa hoặc bộ lọc khác</p>
-                          {searchTerm && (
-                            <Button 
-                              variant="link" 
-                              size="sm" 
-                              onClick={() => setSearchTerm("")}
-                              className="mt-2 text-primary h-auto p-0"
-                            >
-                              Xóa tìm kiếm
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
-              <div className="p-4 border-t bg-muted/10">
-                <PaginationControl
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4 px-4 pb-4">
+               {users.map((user) => (
+                 <Card key={user.id} className="border-none shadow-md overflow-hidden bg-card/50 backdrop-blur-sm">
+                    <CardContent className="p-4">
+                       <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                             <Avatar className="w-12 h-12 border-2 border-primary/20">
+                                <AvatarImage src={user.image} />
+                                <AvatarFallback className="bg-primary/10 text-primary font-black uppercase text-lg">{user.name?.charAt(0)}</AvatarFallback>
+                             </Avatar>
+                             <div>
+                                <p className="font-black text-foreground flex items-center gap-1.5">
+                                   {user.name}
+                                   {user.verified && <ShieldCheck className="w-4 h-4 text-green-500" />}
+                                </p>
+                                <p className="text-xs text-muted-foreground font-medium">{user.email}</p>
+                             </div>
+                          </div>
+                          <Badge className={cn(
+                            "text-[10px] font-black uppercase tracking-tighter",
+                            user.active ? "bg-green-500/10 text-green-600 border-green-200" : "bg-red-500/10 text-red-600 border-red-200"
+                          )}>
+                             {user.active ? "Active" : "Locked"}
+                          </Badge>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 rounded-xl p-3">
+                          <div className="space-y-0.5">
+                             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Vai trò</p>
+                             <p className="text-xs font-black text-primary uppercase">{user.role?.name.replace('ROLE_', '')}</p>
+                          </div>
+                          <div className="space-y-0.5">
+                             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Tuổi</p>
+                             <p className="text-xs font-black text-foreground">{user.age || 'N/A'}</p>
+                          </div>
+                       </div>
+
+                       <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                          <div className="flex items-center gap-1">
+                             <Button variant="ghost" size="icon" className="h-10 w-10 text-blue-500" onClick={() => viewUserAnalytics(user)}>
+                               <Eye className="h-5 w-5" />
+                             </Button>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className={cn("h-10 w-10", user.active ? "text-amber-500" : "text-green-500")}
+                                onClick={() => handleToggleUserLock(user)}
+                             >
+                               {user.active ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
+                             </Button>
+                             <Button variant="ghost" size="icon" className="h-10 w-10 text-amber-500" onClick={() => handleOpenEditModal(user)}>
+                               <Pencil className="h-5 w-5" />
+                             </Button>
+                          </div>
+                          <Button variant="ghost" size="icon" className="h-10 w-10 text-red-500" onClick={() => { setUserToDelete(user); setIsDeleteConfirmOpen(true); }}>
+                             <Trash2 className="h-5 w-5" />
+                          </Button>
+                       </div>
+                    </CardContent>
+                 </Card>
+               ))}
+            </div>
+
+            {users.length === 0 && !isLoading && (
+              <div className="py-20 text-center flex flex-col items-center justify-center space-y-4">
+                 <div className="p-6 bg-muted/30 rounded-full">
+                    <UserX className="w-12 h-12 text-muted-foreground/30" />
+                 </div>
+                 <div className="space-y-1">
+                    <p className="font-black text-xl mb-1">Không tìm thấy người dùng</p>
+                    <p className="text-sm text-muted-foreground">Thử thay đổi từ khóa tìm kiếm hoặc vai trò</p>
+                 </div>
               </div>
+            )}
+            
+            <div className="p-4 sm:border-t border-none bg-transparent sm:bg-muted/10">
+              <PaginationControl
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </CardContent>
@@ -448,21 +586,195 @@ const UsersManagement: React.FC = () => {
         open={!!pendingRoleChange}
         onOpenChange={(open) => !open && setPendingRoleChange(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận thay đổi vai trò</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn thay đổi vai trò của <strong>{pendingRoleChange?.user.name}</strong> 
-              từ <span className="font-bold text-primary">{pendingRoleChange?.user.role?.name === "SUPER_ADMIN" ? "Admin" : pendingRoleChange?.user.role?.name === "ROLE_USER" ? "Người dùng" : pendingRoleChange?.user.role?.name}</span>{' '}
-              sang <span className="font-bold text-green-600">{roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name === "SUPER_ADMIN" ? "Admin" : roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name === "ROLE_USER" ? "Người dùng" : roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name}</span>?
+            <AlertDialogTitle className="text-xl font-bold">Xác nhận thay đổi vai trò</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Bạn có chắc muốn chuyển vai trò của <strong>{pendingRoleChange?.user.name}</strong> sang <span className="text-primary font-bold">{roles.find(r => r.id.toString() === pendingRoleChange?.newRoleId)?.name.replace('ROLE_', '')}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingRoleChange(null)}>Hủy</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRoleChange}>Xác nhận</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl">Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRoleChange} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">Đồng ý</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-center text-xl font-black tracking-tight">Xóa vĩnh viễn tài khoản?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-muted-foreground">
+              Hành động này sẽ xóa hoàn toàn dữ liệu của <strong>{userToDelete?.name}</strong> và không thể hoàn tác. Bạn có thực sự chắc chắn?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center gap-2 mt-4">
+            <AlertDialogCancel className="rounded-xl font-bold w-full sm:w-24">Hủy</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteUser}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold w-full sm:w-32 shadow-lg shadow-red-200"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Xóa ngay"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create/Edit User Modal */}
+      <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden border-none shadow-2xl rounded-3xl max-h-[92vh] flex flex-col">
+          <DialogHeader className="p-8 pb-4 bg-gradient-to-br from-primary/10 via-background to-background shrink-0 border-b border-primary/5">
+             <div className="flex items-center gap-4">
+               <div className="p-3 bg-primary/20 rounded-2xl">
+                  {editingUser ? <Pencil className="w-6 h-6 text-primary" /> : <UserPlus className="w-6 h-6 text-primary" />}
+               </div>
+               <div>
+                  <DialogTitle className="text-2xl font-black tracking-tight uppercase">
+                    {editingUser ? "Cập nhật tài khoản" : "Tạo tài khoản mới"}
+                  </DialogTitle>
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] mt-0.5 opacity-70">
+                    {editingUser ? "Chỉnh sửa thông tin chuyên sâu cho User" : "Thiết lập tài khoản quản trị/người dùng"}
+                  </p>
+               </div>
+             </div>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 px-8 py-4 overflow-y-auto">
+            <form id="user-form" onSubmit={handleSaveUser} className="space-y-6 pb-6">
+               {/* Avatar Upload Container */}
+               <div className="flex flex-col items-center justify-center p-6 bg-muted/10 rounded-3xl border-2 border-dashed border-primary/20 group hover:border-primary/40 transition-all">
+                  <div className="relative">
+                    <Avatar className="w-24 h-24 border-4 border-background shadow-xl ring-2 ring-primary/20">
+                      <AvatarImage src={imagePreview || undefined} />
+                      <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">{formData.name?.charAt(0) || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <label className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer shadow-lg hover:scale-110 active:scale-95 transition-all">
+                       <Camera className="w-4 h-4" />
+                       <input type="file" className="hidden" accept="image/*" onChange={onImageChange} />
+                    </label>
+                  </div>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground mt-4 tracking-widest group-hover:text-primary transition-colors">Tải lên ảnh đại diện</p>
+               </div>
+
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tên hiển thị</label>
+                    <Input 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      placeholder="Nguyễn Văn A"
+                      className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Email (Tên đăng nhập)</label>
+                    <Input 
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      placeholder="example@gmail.com"
+                      className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold"
+                      required
+                      disabled={!!editingUser}
+                    />
+                  </div>
+
+                  {!editingUser && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Mật khẩu ban đầu</label>
+                      <div className="relative">
+                        <Input 
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          onChange={(e) => setFormData({...formData, password: e.target.value})}
+                          placeholder="••••••••"
+                          className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold pr-12"
+                          required={!editingUser}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:bg-transparent hover:text-primary transition-colors"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Độ tuổi</label>
+                    <Input 
+                      type="number"
+                      value={formData.age}
+                      onChange={(e) => setFormData({...formData, age: parseInt(e.target.value)})}
+                      className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Giới tính</label>
+                    <Select value={formData.gender} onValueChange={(val) => setFormData({...formData, gender: val})}>
+                      <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold">
+                        <SelectValue placeholder="Chọn giới tính" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-none shadow-xl">
+                        <SelectItem value="MALE" className="font-bold">Nam giới</SelectItem>
+                        <SelectItem value="FEMALE" className="font-bold">Nữ giới</SelectItem>
+                        <SelectItem value="OTHER" className="font-bold">Khác</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Phân quyền hội viên</label>
+                    <Select value={formData.roleId} onValueChange={(val) => setFormData({...formData, roleId: val})}>
+                      <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold">
+                        <SelectValue placeholder="Chọn vai trò" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-none shadow-xl">
+                        {roles.map(r => (
+                          <SelectItem key={r.id} value={r.id.toString()} className="font-bold">
+                             {r.name === 'SUPER_ADMIN' ? 'Hệ thống (Admin)' : r.name === 'ROLE_USER' ? 'Khách hàng (User)' : r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+               </div>
+            </form>
+          </ScrollArea>
+
+          <div className="p-8 pt-4 bg-muted/10 shrink-0 flex gap-4 border-t border-primary/5">
+             <Button 
+               variant="outline" 
+               className="flex-1 h-12 rounded-xl font-bold uppercase tracking-widest hover:bg-background transition-all"
+               onClick={() => setIsUserModalOpen(false)}
+             >
+               Hủy bỏ
+             </Button>
+             <Button 
+               form="user-form"
+               type="submit"
+               disabled={isSubmitting}
+               className="flex-[2] h-12 rounded-xl font-black uppercase tracking-widest bg-primary shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+             >
+               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+               {editingUser ? "Cập nhật ngay" : "Tạo tài khoản"}
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Customer 360 View Dialog */}
       <Dialog open={!!analyticsUser} onOpenChange={() => { setAnalyticsUser(null); setAnalyticsData(null); }}>
@@ -641,7 +953,7 @@ const UsersManagement: React.FC = () => {
                          </div>
 
                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="p-4 shadow-sm border-none bg-background group cursor-pointer hover:ring-1 hover:ring-primary/20 transition-all">
+                            <Card className="p-4 shadow-sm border-none bg-background group hover:ring-1 hover:ring-primary/20 transition-all">
                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mb-2 opacity-60">Xác thực Email</p>
                                <div className="flex items-center justify-between">
                                   {analyticsUser?.verified ? (
@@ -656,23 +968,22 @@ const UsersManagement: React.FC = () => {
                                     </div>
                                   )}
                                   
-                                  <AccessControl module="USERS" action="TOGGLE_STATUS">
-                                     <Button 
-                                       variant="outline" 
-                                       size="sm" 
-                                       className="h-7 text-[10px] font-bold px-3 rounded-full hover:bg-primary/10 transition-colors"
-                                       onClick={(e) => {
-                                          e.stopPropagation();
-                                          analyticsUser && toggleUserVerification(analyticsUser);
-                                       }}
-                                     >
-                                       {analyticsUser?.verified ? "Hủy xác thực" : "Xác thực ngay"}
-                                     </Button>
-                                  </AccessControl>
+                                   <Button 
+                                     variant="outline" 
+                                     size="sm" 
+                                     className="h-7 text-[10px] font-bold px-3 rounded-full hover:bg-primary/10 transition-colors relative z-[100] cursor-pointer pointer-events-auto"
+                                     style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                                     onClick={() => {
+                                        console.log("FIRE: Verification Click for ID:", analyticsUser?.id);
+                                        if (analyticsUser) toggleUserVerification(analyticsUser);
+                                     }}
+                                   >
+                                     {analyticsUser?.verified ? "Hủy xác thực" : "Xác thực ngay"}
+                                   </Button>
                                </div>
                             </Card>
 
-                            <Card className="p-4 shadow-sm border-none bg-background group cursor-pointer hover:ring-1 hover:ring-primary/20 transition-all">
+                            <Card className="p-4 shadow-sm border-none bg-background group hover:ring-1 hover:ring-primary/20 transition-all">
                                <p className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mb-2 opacity-60">Hoạt động</p>
                                <div className="flex items-center gap-2">
                                  {analyticsUser?.active ? (

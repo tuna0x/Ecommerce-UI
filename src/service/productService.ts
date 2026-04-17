@@ -109,4 +109,10 @@ export const ProductService = {
     const res = await axiosInstance.get(`/price/${id}`);
     return res.data;
   },
+
+  getRelatedProducts: async (id: number): Promise<IApiResponse<IProduct[]>> => {
+    const res = await axiosInstance.get(`${BASE_URL}/${id}/related`);
+    return res.data;
+  },
 };
+
