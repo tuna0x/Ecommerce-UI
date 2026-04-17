@@ -73,5 +73,16 @@ export const UserService = {
     const res = await axiosInstance.post(`/auth/change-password`, data);
     return res.data;
   },
+
+  create: async (data: any): Promise<IApiResponse<IUser>> => {
+    const res = await axiosInstance.post(BASE_URL, data);
+    return res.data;
+  },
+
+  delete: async (id: number): Promise<IApiResponse<string>> => {
+    const res = await axiosInstance.delete(`${BASE_URL}/${id}`);
+    return res.data;
+  },
 };
+
 

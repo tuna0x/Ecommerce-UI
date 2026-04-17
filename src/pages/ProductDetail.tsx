@@ -20,7 +20,7 @@ import productDetailService from "../service/productDetailService";
 import { attributeValueService } from "../service/attributeService";
 import type { IProduct } from "../types/product.type";
 import type { IProductDetail } from "../types/productDetail.type";
-import type { IApiResponse } from "../types/api.type";
+
 import { useCart } from "../context/CartContext";
 import ProductCard from "../components/ProductCard";
 import ProductReviews from "../components/ProductReviews";
@@ -75,27 +75,20 @@ const ProductDetail: React.FC = () => {
       if (prodRes?.data) {
         setProduct(prodRes.data);
         trackView(prodRes.data);
-        // Fetch related products and category attributes
+        
+        // Fetch category attributes and smart related products in parallel
         const categoryId = typeof prodRes.data.category === 'object' ? prodRes.data.category.id : null;
-        const categoryName = typeof prodRes.data.category === 'string' ? prodRes.data.category : prodRes.data.category?.name;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const promises: Promise<IApiResponse<any>>[] = [];
+        const [relatedRes] = await Promise.all([
+          ProductService.getRelatedProducts(prodId),
+          categoryId ? attributeValueService.getAll(`attribute.categories.id:'${categoryId}'`) : Promise.resolve({ data: null })
+        ]);
 
-        if (categoryName) {
-          promises.push(ProductService.getAll(0, 4, undefined, "id,desc", `category.name:'${categoryName}'`));
-        }
-
-        if (categoryId) {
-          promises.push(attributeValueService.getAll(`attribute.categories.id:'${categoryId}'`));
-        }
-
-        const results = await Promise.all(promises);
-
-        if (categoryName && results[0]?.data) {
-          setRelatedProducts(results[0].data.result.filter((p: IProduct) => p.id !== prodId));
+        if (relatedRes?.data) {
+          setRelatedProducts(relatedRes.data);
         }
       }
+
 
       if (detailRes.data && detailRes.data.result.length > 0) {
         setDetailContent(detailRes.data.result[0]);
