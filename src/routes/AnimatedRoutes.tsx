@@ -49,6 +49,7 @@ const UserActivityManagement = lazy(() => import("../pages/admin/UserActivityMan
 const RolesManagement = lazy(() => import("../pages/admin/RolesManagement"));
 const PermissionsManagement = lazy(() => import("../pages/admin/PermissionsManagement"));
 const FlashSaleManagement = lazy(() => import("../pages/admin/FlashSaleManagement"));
+const TransactionsManagement = lazy(() => import("../pages/admin/TransactionsManagement"));
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
@@ -67,7 +68,7 @@ const AnimatedRoutes = () => {
     if (lastLocationStr.current !== location.pathname) {
       const timeSpent = Date.now() - startTime.current;
       logActivity('TIME_ON_PAGE', { path: lastLocationStr.current, durationMs: timeSpent });
-      
+
       lastLocationStr.current = location.pathname;
       startTime.current = Date.now();
     }
@@ -142,6 +143,7 @@ const AnimatedRoutes = () => {
             <Route path="roles" element={<RolesManagement />} />
             <Route path="permissions" element={<PermissionsManagement />} />
             <Route path="flash-sales" element={<FlashSaleManagement />} />
+            <Route path="transactions" element={<TransactionsManagement />} />
           </Route>
         </Route>
 

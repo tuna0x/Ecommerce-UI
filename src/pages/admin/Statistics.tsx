@@ -68,8 +68,9 @@ const Statistics: React.FC = () => {
       const currentStart = s !== undefined ? s : startDate;
       const currentEnd = e !== undefined ? e : endDate;
 
-      const startISO = currentStart ? new Date(currentStart).toISOString() : undefined;
-      const endISO = currentEnd ? new Date(currentEnd).toISOString() : undefined;
+      // Adjust dates to cover full day (local time to ISO)
+      const startISO = currentStart ? new Date(`${currentStart}T00:00:00`).toISOString() : undefined;
+      const endISO = currentEnd ? new Date(`${currentEnd}T23:59:59`).toISOString() : undefined;
 
       const stats = await dashboardService.getStatistics(startISO, endISO);
       setData(stats);
@@ -109,6 +110,9 @@ const Statistics: React.FC = () => {
         break;
       case "last_30_days":
         start.setDate(now.getDate() - 30);
+        break;
+      case "last_6_months":
+        start.setMonth(now.getMonth() - 6);
         break;
       case "this_month":
         start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -151,8 +155,8 @@ const Statistics: React.FC = () => {
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const startISO = startDate ? new Date(startDate).toISOString() : undefined;
-      const endISO = endDate ? new Date(endDate).toISOString() : undefined;
+      const startISO = startDate ? new Date(`${startDate}T00:00:00`).toISOString() : undefined;
+      const endISO = endDate ? new Date(`${endDate}T23:59:59`).toISOString() : undefined;
       
       const blob = await dashboardService.exportExcel(startISO, endISO);
       
@@ -286,6 +290,7 @@ const Statistics: React.FC = () => {
                     <SelectItem value="this_month">Tháng này</SelectItem>
                     <SelectItem value="this_year">Năm nay</SelectItem>
                     <SelectItem value="last_6_months">6 tháng qua</SelectItem>
+                    <SelectItem value="custom" disabled className="hidden">Tùy chỉnh</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -298,7 +303,10 @@ const Statistics: React.FC = () => {
                     value={startDate} 
                     min={DATE_MIN}
                     max={endDate || getTodayStr()}
-                    onChange={(e) => setStartDate(clampYear(e.target.value))}
+                    onChange={(e) => {
+                      setStartDate(clampYear(e.target.value));
+                      setQuickFilter("custom");
+                    }}
                     className="bg-background pl-10"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -313,7 +321,10 @@ const Statistics: React.FC = () => {
                     value={endDate} 
                     min={startDate || DATE_MIN}
                     max={getTodayStr()}
-                    onChange={(e) => setEndDate(clampYear(e.target.value))}
+                    onChange={(e) => {
+                      setEndDate(clampYear(e.target.value));
+                      setQuickFilter("custom");
+                    }}
                     className="bg-background pl-10"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />

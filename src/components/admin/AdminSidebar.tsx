@@ -73,6 +73,7 @@ const menuGroups: MenuGroup[] = [
       { title: 'Khuyến mãi', url: '/admin/promotions', icon: Percent },
       { title: 'Mã giảm giá', url: '/admin/coupons', icon: Ticket },
       { title: 'Flash Sale', url: '/admin/flash-sales', icon: Zap },
+      { title: 'Giao dịch', url: '/admin/transactions', icon: BarChart3 },
     ],
   },
   {
