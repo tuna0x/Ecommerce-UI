@@ -73,7 +73,7 @@ export const dashboardService = {
         const params = new URLSearchParams();
         if (startDate) params.append("startDate", startDate);
         if (endDate) params.append("endDate", endDate);
-        
+
         const res = await axiosInstance.get<APIResponse<StatisticsData>>(
             `/dashboard/statistics?${params.toString()}`
         );
@@ -83,7 +83,7 @@ export const dashboardService = {
         const params = new URLSearchParams();
         if (startDate) params.append("startDate", startDate);
         if (endDate) params.append("endDate", endDate);
-        
+
         const res = await axiosInstance.get(`/dashboard/export-excel?${params.toString()}`, {
             responseType: 'blob'
         });

@@ -19,13 +19,13 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { 
-  TrendingUp, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  AlertTriangle, 
-  DollarSign, 
+import {
+  TrendingUp,
+  Package,
+  ShoppingCart,
+  Users,
+  AlertTriangle,
+  DollarSign,
   Warehouse,
   Loader2,
   RefreshCcw
@@ -34,14 +34,14 @@ import { cn } from "../../lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "../../components/ui/select";
-import { 
+import {
   Calendar,
   FileSpreadsheet,
   Search,
@@ -103,7 +103,7 @@ const Statistics: React.FC = () => {
     setQuickFilter(value);
     const now = new Date();
     let start = new Date();
-    
+
     switch (value) {
       case "last_7_days":
         start.setDate(now.getDate() - 7);
@@ -124,10 +124,10 @@ const Statistics: React.FC = () => {
         start.setDate(now.getDate() - 30);
         break;
     }
-    
+
     const startStr = start.toISOString().split('T')[0];
     const endStr = now.toISOString().split('T')[0];
-    
+
     setStartDate(startStr);
     setEndDate(endStr);
     fetchData(startStr, endStr);
@@ -157,9 +157,9 @@ const Statistics: React.FC = () => {
       setIsExporting(true);
       const startISO = startDate ? new Date(`${startDate}T00:00:00`).toISOString() : undefined;
       const endISO = endDate ? new Date(`${endDate}T23:59:59`).toISOString() : undefined;
-      
+
       const blob = await dashboardService.exportExcel(startISO, endISO);
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
@@ -167,7 +167,7 @@ const Statistics: React.FC = () => {
       link.setAttribute('download', `thong-ke-${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -213,7 +213,7 @@ const Statistics: React.FC = () => {
           <h2 className="text-xl font-bold">Đã có lỗi xảy ra</h2>
           <p className="text-muted-foreground">{error}</p>
         </div>
-        <button 
+        <button
           onClick={() => fetchData()}
           className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
         >
@@ -264,7 +264,7 @@ const Statistics: React.FC = () => {
           <h1 className="text-2xl font-bold text-foreground">Thống kê & Báo cáo</h1>
           <p className="text-muted-foreground">Phân tích hiệu suất kinh doanh và quản lý kho</p>
         </div>
-        <button 
+        <button
           onClick={() => fetchData()}
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors bg-secondary/50 px-3 py-1.5 rounded-full border border-border/50"
         >
@@ -298,9 +298,9 @@ const Statistics: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Ngày bắt đầu</label>
                 <div className="relative">
-                  <Input 
-                    type="date" 
-                    value={startDate} 
+                  <Input
+                    type="date"
+                    value={startDate}
                     min={DATE_MIN}
                     max={endDate || getTodayStr()}
                     onChange={(e) => {
@@ -316,9 +316,9 @@ const Statistics: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted-foreground uppercase">Ngày kết thúc</label>
                 <div className="relative">
-                  <Input 
-                    type="date" 
-                    value={endDate} 
+                  <Input
+                    type="date"
+                    value={endDate}
                     min={startDate || DATE_MIN}
                     max={getTodayStr()}
                     onChange={(e) => {
@@ -339,9 +339,9 @@ const Statistics: React.FC = () => {
               <Button variant="outline" onClick={handleReset} className="flex-1 lg:flex-none gap-2">
                 <RotateCcw className="h-4 w-4" /> Reset
               </Button>
-              <Button 
-                variant="secondary" 
-                onClick={handleExportExcel} 
+              <Button
+                variant="secondary"
+                onClick={handleExportExcel}
                 disabled={isExporting}
                 className="flex-1 lg:flex-none gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
@@ -371,12 +371,12 @@ const Statistics: React.FC = () => {
             <SummaryCard title="Khách hàng" value={data.totalUsers} icon={Users} iconColor="text-purple-500" />
             <SummaryCard title="Sản phẩm" value={data.totalProducts} icon={Package} iconColor="text-orange-500" />
             <SummaryCard title="AOV (Thành công)" value={data.averageOrderValue} isCurrency icon={TrendingUp} iconColor="text-blue-600" />
-            <SummaryCard 
-                title="Tăng trưởng" 
-                value={data.revenueGrowthRate} 
-                isPercentage 
-                icon={TrendingUp} 
-                iconColor={data.revenueGrowthRate >= 0 ? "text-emerald-500" : "text-red-500"} 
+            <SummaryCard
+              title="Tăng trưởng"
+              value={data.revenueGrowthRate}
+              isPercentage
+              icon={TrendingUp}
+              iconColor={data.revenueGrowthRate >= 0 ? "text-emerald-500" : "text-red-500"}
             />
           </div>
 
@@ -404,7 +404,7 @@ const Statistics: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Top Products */}
             <Card className="hover:shadow-md transition-all border-border/50">
               <CardHeader>
@@ -534,8 +534,8 @@ const Statistics: React.FC = () => {
                           <Cell key={index} fill={entry.color} stroke="none" />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} 
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         formatter={(value) => [`${value} đơn`, 'Số lượng']}
                       />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
@@ -550,26 +550,26 @@ const Statistics: React.FC = () => {
         <TabsContent value="inventory" className="space-y-6">
           {/* Inventory Summary Cards */}
           <div className="grid gap-4 md:grid-cols-3">
-            <SummaryCard 
-                title="Sắp hết hàng" 
-                value={data.inventorySummary.lowStockCount} 
-                icon={AlertTriangle} 
-                iconColor="text-yellow-500" 
-                unit=" mặt hàng"
+            <SummaryCard
+              title="Sắp hết hàng"
+              value={data.inventorySummary.lowStockCount}
+              icon={AlertTriangle}
+              iconColor="text-yellow-500"
+              unit=" mặt hàng"
             />
-            <SummaryCard 
-                title="Hết hàng" 
-                value={data.inventorySummary.outOfStockCount} 
-                icon={AlertTriangle} 
-                iconColor="text-red-500" 
-                unit=" mặt hàng"
+            <SummaryCard
+              title="Hết hàng"
+              value={data.inventorySummary.outOfStockCount}
+              icon={AlertTriangle}
+              iconColor="text-red-500"
+              unit=" mặt hàng"
             />
-            <SummaryCard 
-                title="Tổng lượng tồn" 
-                value={data.inventorySummary.totalItems} 
-                icon={Package} 
-                iconColor="text-emerald-500" 
-                unit=" mục"
+            <SummaryCard
+              title="Tổng lượng tồn"
+              value={data.inventorySummary.totalItems}
+              icon={Package}
+              iconColor="text-emerald-500"
+              unit=" mục"
             />
           </div>
 
