@@ -75,3 +75,11 @@ export const bulkUpdateOrderStatusApi = async (ids: number[], status: string) =>
 export const cancelOrderApi = async (id: number, reason: string) => {
     return axiosInstance.put(`/order/${id}/cancel?reason=${encodeURIComponent(reason)}`);
 };
+
+export const createGhnOrderApi = async (id: number) => {
+    return axiosInstance.post(`/order/${id}/ghn`);
+};
+
+export const bulkCreateGhnOrdersApi = async (ids: number[]) => {
+    return axiosInstance.post("/order/bulk-ghn", ids);
+};
