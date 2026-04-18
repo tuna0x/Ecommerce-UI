@@ -76,7 +76,7 @@ export const inventoryService = {
 
     getInventoryLogsAll: async (page: number = 1, pageSize: number = 20, query: string = "") => {
         const res = await axiosInstance.get<APIResponse<ResultPaginationDTO>>(
-            `/inventory/logs?current=${page}&pageSize=${pageSize}${query}`
+            `/inventory/logs?page=${page - 1}&size=${pageSize}${query}`
         );
         return res.data.data;
     },
