@@ -39,7 +39,9 @@ const SuggestedForYou: React.FC = () => {
                     4, 
                     undefined, 
                     filter ? "createdAt,desc" : "averageRating,desc", 
-                    filter
+                    filter,
+                    undefined,
+                    true
                 );
 
                 if (response && response.data) {
