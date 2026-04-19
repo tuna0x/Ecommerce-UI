@@ -123,16 +123,45 @@ const ProductDetail: React.FC = () => {
     if (product.thumbnail) imgs.push(product.thumbnail);
     if (Array.isArray(product.image)) {
       product.image.forEach(img => {
-        if (!imgs.includes(img)) imgs.push(img);
+        if (img && !imgs.includes(img)) imgs.push(img);
       });
-    } else if (typeof product.image === 'string') {
+    } else if (typeof product.image === 'string' && product.image) {
       if (!imgs.includes(product.image)) imgs.push(product.image);
     }
+
+    if (product.variants) {
+      product.variants.forEach(v => {
+        if (v.image && !imgs.includes(v.image)) imgs.push(v.image);
+      });
+    }
+
     if (imgs.length === 0) {
-        imgs.push("/logo.jpg");
+      imgs.push("/logo.jpg");
     }
     return imgs;
   }, [product]);
+
+  // Find the variant that matches selected attributes
+  const matchedVariant = useMemo(() => {
+    if (!product || !product.variants || product.variants.length === 0) return null;
+
+    return product.variants.find(v => {
+      // Every selected attribute must match the variant's attributes
+      return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
+        return v.variantAttributes.some(va => va.name === attrName && va.attributeValue === selectedVal);
+      });
+    });
+  }, [product, selectedAttributes]);
+
+  // Effect to auto-switch image when a variant is selected
+  useEffect(() => {
+    if (matchedVariant?.image) {
+      const variantImageIndex = images.indexOf(matchedVariant.image);
+      if (variantImageIndex !== -1) {
+        setSelectedImage(variantImageIndex);
+      }
+    }
+  }, [matchedVariant, images]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price) + '₫';
@@ -163,17 +192,6 @@ const ProductDetail: React.FC = () => {
     return product.attributeValue;
   }, [product]);
 
-  // Find the variant that matches selected attributes
-  const matchedVariant = useMemo(() => {
-    if (!product || !product.variants || product.variants.length === 0) return null;
-
-    return product.variants.find(v => {
-      // Every selected attribute must match the variant's attributes
-      return Object.entries(selectedAttributes).every(([attrName, selectedVal]) => {
-        return v.variantAttributes.some(va => va.name === attrName && va.attributeValue === selectedVal);
-      });
-    });
-  }, [product, selectedAttributes]);
 
   // Pre-select attributes and sync with current groups
   useEffect(() => {

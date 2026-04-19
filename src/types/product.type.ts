@@ -29,6 +29,7 @@ export interface IProduct {
   weight?: number; // Legacy/Optional
   thumbnail?: string;
   image: string[] | string | null;
+  productImages?: { id: number; imageUrl: string }[];
   category: { id: number; name: string } | string;
   brand: { id: number; name: string } | string;
   attributeValue: IProductAttributeValue[] | null;
@@ -66,6 +67,8 @@ export interface IVariant {
   stock: number;
   reservedStock: number;
   weight: number;
+  image: string;
+  productImageId?: number;
   variantAttributes: IVariantAttribute[];
 }
 
@@ -74,6 +77,8 @@ export interface IVariantCreate {
   price: number | null;
   stock: number;
   weight: number;
+  productImageId?: number;
+  productImageIndex?: number;
   attributeValues: number[];
 }
 
