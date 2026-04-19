@@ -39,7 +39,7 @@ const SearchResults: React.FC = () => {
     setLoading(true);
     try {
       let filter = "";
-      const conditions: string[] = [];
+      const conditions: string[] = ["active:true"];
 
       if (query) conditions.push(`name~'${query}'`);
       if (brandParam) conditions.push(`brand.name:'${brandParam}'`);
@@ -55,7 +55,7 @@ const SearchResults: React.FC = () => {
 
       filter = conditions.join(" and ");
 
-      const res = await ProductService.getAll(0, 50, query, sortBy, filter || undefined);
+      const res = await ProductService.getAll(0, 50, query, sortBy, filter || undefined, undefined, true);
       if (res.data) {
         setProducts(res.data.result);
       }

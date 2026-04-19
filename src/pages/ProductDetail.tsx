@@ -476,9 +476,13 @@ const ProductDetail: React.FC = () => {
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                {currentStock > 0 && (
+                {currentStock > 0 ? (
                   <span className="text-xs sm:text-sm text-muted-foreground font-medium">
                     Còn <span className="text-foreground font-bold">{currentStock}</span> sản phẩm
+                  </span>
+                ) : (
+                  <span className="text-xs sm:text-sm text-destructive font-bold uppercase tracking-wider">
+                    Hết hàng
                   </span>
                 )}
               </div>

@@ -15,7 +15,7 @@ const ProductGrid: React.FC = () => {
       try {
         setIsLoading(true);
         // Fetch first page, 10 products, sorted by soldCount descending
-        const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc");
+        const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc", undefined, undefined, true);
         if (response && response.data) {
           setProducts(response.data.result);
         }

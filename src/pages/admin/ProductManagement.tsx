@@ -40,6 +40,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "../../components/ui/dialog";
+import { Switch } from "../../components/ui/switch";
 import { toast } from "sonner";
 import type {
   ICreateProduct,
@@ -110,26 +111,23 @@ const ProductsManagement: React.FC = () => {
   }, [currentPage, pageSize, debouncedSearch, sort]);
 
   const hasVariants = (formData.variants || []).length > 0;
-  
+
   const availableImages = useMemo(() => {
-    const images: { id?: number; url: string; index?: number }[] = [];
-    
-    // Existing images (if editing)
-    if (editingProductId) {
-      const product = products.find(p => p.id === editingProductId);
-      if (product && product.productImages) {
-        product.productImages.forEach(img => {
-          images.push({ id: img.id, url: img.imageUrl });
-        });
+    const product = editingProductId ? products.find(p => p.id === editingProductId) : null;
+
+    return imagePreviews.map((url, idx) => {
+      // Find if this URL matches any existing productImage to get its ID
+      const existingImg = product?.productImages?.find(img => img.imageUrl === url);
+
+      if (existingImg) {
+        return { id: existingImg.id, url: existingImg.imageUrl };
       }
-    }
-    
-    // New previews
-    imagePreviews.forEach((url, idx) => {
-      images.push({ url, index: idx });
+
+      // If not existing, it's a new one. We need its index in the 'files' array.
+      // The 'files' array matches the order of 'blob:' urls in imagePreviews.
+      const blobIdx = imagePreviews.slice(0, idx).filter(p => p.startsWith('blob:')).length;
+      return { url, index: blobIdx };
     });
-    
-    return images;
   }, [editingProductId, products, imagePreviews]);
 
   const openDialog = useCallback(async (product: IProduct | null) => {
@@ -159,6 +157,7 @@ const ProductsManagement: React.FC = () => {
         categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
         brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
         attributeValue: attrValues.map((attr) => attr.id),
+        active: product.active !== false,
         variants: product.variants?.map((v) => ({
           sku: v.sku,
           price: v.price,
@@ -193,10 +192,12 @@ const ProductsManagement: React.FC = () => {
         categoryId: null,
         brandId: null,
         attributeValue: [],
-        variants: []
+        variants: [],
+        active: true
       });
       setImagePreviews([]);
       setFiles([]);
+      setFormData(prev => ({ ...prev, active: true }));
     }
     setIsDialogOpen(true);
   }, [value]);
@@ -280,7 +281,7 @@ const ProductsManagement: React.FC = () => {
       const prices = formData.variants
         .map(v => v.price)
         .filter((p): p is number => p !== null && p !== undefined && p > 0);
-        
+
       if (prices.length > 0) {
         const minPrice = Math.min(...prices);
         if (formData.originalPrice !== minPrice) {
@@ -309,7 +310,8 @@ const ProductsManagement: React.FC = () => {
       categoryId: null,
       brandId: null,
       attributeValue: [],
-      variants: []
+      variants: [],
+      active: true
     }); setSelectedAttributes({});
     setEditingProductId(null);
   }, []);
@@ -348,6 +350,7 @@ const ProductsManagement: React.FC = () => {
           image: imagePreviews.filter(p => !p.startsWith('blob:')),
           attributeValue: attrIds || [],
           variants: formData.variants,
+          active: formData.active,
         };
 
         await ProductService.update(updateData, files);
@@ -476,11 +479,11 @@ const ProductsManagement: React.FC = () => {
       cell: ({ row }) => {
         let image = "/logo.jpg";
         if (Array.isArray(row.original.image) && row.original.image.length > 0) {
-           image = row.original.image[0];
+          image = row.original.image[0];
         } else if (typeof row.original.image === 'string' && row.original.image) {
-           image = row.original.image;
+          image = row.original.image;
         }
-        
+
         return (
           <div className="w-12 h-12">
             <img
@@ -488,10 +491,10 @@ const ProductsManagement: React.FC = () => {
               alt={row.original.name}
               className="w-12 h-12 object-cover rounded shadow-sm"
               onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (!target.src.includes("/logo.jpg")) {
-                      target.src = "/logo.jpg";
-                  }
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes("/logo.jpg")) {
+                  target.src = "/logo.jpg";
+                }
               }}
             />
           </div>
@@ -525,6 +528,50 @@ const ProductsManagement: React.FC = () => {
           {typeof row.original.category === 'string' ? row.original.category : row.original.category?.name}
         </Badge>
       ),
+    },
+    {
+      accessorKey: "active",
+      header: "Trạng thái",
+      cell: ({ row }) => {
+        const product = row.original;
+        const isActive = product.active !== false;
+
+        return (
+          <Badge
+            variant={isActive ? "secondary" : "outline"}
+            className={cn(
+              "cursor-pointer transition-all",
+              isActive ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-gray-50 text-gray-500"
+            )}
+            onClick={async (e) => {
+              e.stopPropagation();
+              const newStatus = !isActive;
+              try {
+                // Determine if images is an array or string/null for the update payload
+                const existingImages = Array.isArray(product.image) ? product.image : (product.image ? [product.image as string] : []);
+                
+                await ProductService.update({
+                  id: product.id,
+                  name: product.name,
+                  originalPrice: product.originalPrice,
+                  stock: product.stock,
+                  categoryId: (product.category as any)?.id || null,
+                  brandId: (product.brand as any)?.id || null,
+                  image: existingImages,
+                  attributeValue: product.attributeValue?.map(av => av.id) || [],
+                  active: newStatus
+                });
+                toast.success(`Đã ${newStatus ? 'bật' : 'tắt'} sản phẩm`);
+                fetchProducts();
+              } catch {
+                toast.error("Không thể cập nhật trạng thái");
+              }
+            }}
+          >
+            {isActive ? "Đang bán" : "Ngừng bán"}
+          </Badge>
+        );
+      }
     },
     {
       id: "attributes",
@@ -919,6 +966,28 @@ const ProductsManagement: React.FC = () => {
               />
             </div>
 
+            <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm bg-muted/20">
+              <div className="space-y-0.5">
+                <Label htmlFor="active" className="text-base font-semibold italic">Trạng thái hiển thị</Label>
+                <p className="text-xs text-muted-foreground italic">
+                  Cho phép khách hàng nhìn thấy sản phẩm này trên cửa hàng.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={formData.active ? "secondary" : "outline"} className={cn(
+                  "pointer-events-none",
+                  formData.active ? "bg-emerald-50 text-emerald-700" : "bg-gray-50 text-gray-500"
+                )}>
+                  {formData.active ? "Đang bán" : "Ngừng bán"}
+                </Badge>
+                <Switch
+                  id="active"
+                  checked={formData.active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
+                />
+              </div>
+            </div>
+
             {/* Attribute Values Section */}
             {filteredAttributes.length > 0 && (
               <div className="grid gap-3">
@@ -1136,12 +1205,12 @@ const ProductsManagement: React.FC = () => {
                           <Label className="text-xs">Ảnh biến thể</Label>
                           <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-muted/20">
                             {availableImages.map((img, i) => {
-                              const isSelected = img.id 
-                                ? v.productImageId === img.id 
+                              const isSelected = img.id
+                                ? v.productImageId === img.id
                                 : v.productImageIndex === img.index;
-                              
+
                               return (
-                                <div 
+                                <div
                                   key={i}
                                   onClick={() => {
                                     const newVariants = [...(formData.variants || [])];
@@ -1159,9 +1228,9 @@ const ProductsManagement: React.FC = () => {
                                     isSelected ? "border-primary shadow-sm ring-1 ring-primary" : "border-transparent opacity-60 hover:opacity-100"
                                   )}
                                 >
-                                  <img 
-                                    src={img.url} 
-                                    alt="Variant" 
+                                  <img
+                                    src={img.url}
+                                    alt="Variant"
                                     className="w-full h-full object-cover"
                                   />
                                   {isSelected && (
@@ -1184,39 +1253,39 @@ const ProductsManagement: React.FC = () => {
                         <div className="space-y-2">
                           <Label className="text-xs">Thuộc tính</Label>
                           <div className="flex flex-wrap gap-2">
-                              {groupedAttributes.map((attr) => {
-                                // Find which value of this attribute is selected for this variant
-                                const selectedValueId = v.attributeValues.find(id =>
-                                  attr.values.some(av => av.id === id)
-                                );
+                            {groupedAttributes.map((attr) => {
+                              // Find which value of this attribute is selected for this variant
+                              const selectedValueId = v.attributeValues.find(id =>
+                                attr.values.some(av => av.id === id)
+                              );
 
-                                return (
-                                  <div key={attr.attributeId} className="w-full">
-                                    <SearchableSelect
-                                      options={attr.values.map(av => ({
-                                        value: av.id.toString(),
-                                        label: av.value
-                                      }))}
-                                      value={selectedValueId?.toString() || "none"}
-                                      onValueChange={(val) => {
-                                        const newVariants = [...(formData.variants || [])];
-                                        const attrValueIds = newVariants[vIndex].attributeValues.filter(id =>
-                                          !attr.values.some(av => av.id === id)
-                                        );
-                                        if (val !== "none") {
-                                          attrValueIds.push(Number(val));
-                                        }
-                                        newVariants[vIndex].attributeValues = attrValueIds;
-                                        setFormData({ ...formData, variants: newVariants });
-                                      }}
-                                      placeholder={attr.attributeName}
-                                      className="h-8 text-xs w-full"
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
+                              return (
+                                <div key={attr.attributeId} className="w-full">
+                                  <SearchableSelect
+                                    options={attr.values.map(av => ({
+                                      value: av.id.toString(),
+                                      label: av.value
+                                    }))}
+                                    value={selectedValueId?.toString() || "none"}
+                                    onValueChange={(val) => {
+                                      const newVariants = [...(formData.variants || [])];
+                                      const attrValueIds = newVariants[vIndex].attributeValues.filter(id =>
+                                        !attr.values.some(av => av.id === id)
+                                      );
+                                      if (val !== "none") {
+                                        attrValueIds.push(Number(val));
+                                      }
+                                      newVariants[vIndex].attributeValues = attrValueIds;
+                                      setFormData({ ...formData, variants: newVariants });
+                                    }}
+                                    placeholder={attr.attributeName}
+                                    className="h-8 text-xs w-full"
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -1296,8 +1365,8 @@ const ProductsManagement: React.FC = () => {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting} className="rounded-xl px-6 hover:bg-background hover:shadow-md transition-all">
               Hủy
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={isSubmitting}
               className="rounded-xl px-8 bg-pink-600 text-white hover:bg-pink-700 shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 font-bold"
             >

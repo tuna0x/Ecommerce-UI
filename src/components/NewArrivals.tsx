@@ -16,7 +16,7 @@ const NewArrivals: React.FC = () => {
             try {
                 setIsLoading(true);
                 // Fetch first page, 8 products, sorted by createdAt descending
-                const response = await ProductService.getAll(0, 8, undefined, "createdAt,desc");
+                const response = await ProductService.getAll(0, 8, undefined, "createdAt,desc", undefined, undefined, true);
                 if (response && response.data) {
                     setNewProducts(response.data.result);
                 }

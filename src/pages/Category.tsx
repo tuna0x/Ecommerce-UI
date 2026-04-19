@@ -122,7 +122,7 @@ const Category = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setIsLoading(true);
-      const filters: string[] = [];
+      const filters: string[] = ["active:true"];
 
       if (activeCategoryNode && slug !== "all") {
         const getDescendantIds = (node: FrontendCategory): number[] => {
@@ -167,7 +167,9 @@ const Category = () => {
         meta.pageSize,
         undefined,
         sortBy,
-        filterString
+        filterString,
+        undefined,
+        true
       );
 
       if (res.data) {

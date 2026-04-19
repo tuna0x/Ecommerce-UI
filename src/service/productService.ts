@@ -16,7 +16,8 @@ export const ProductService = {
     search?: string,
     sort?: string,
     filter?: string,
-    categoryId?: number
+    categoryId?: number,
+    isPublic?: boolean
   ): Promise<IApiResponse<IPagination<IProduct>>> => {
     const params: Record<string, unknown> = {
       page,
@@ -25,6 +26,7 @@ export const ProductService = {
       search: search || undefined, // raw search term for unaccented backend search
       sort: sort,
       categoryId: categoryId,
+      isPublic: isPublic,
     };
 
     const res = await axiosInstance.get(BASE_URL, { params });

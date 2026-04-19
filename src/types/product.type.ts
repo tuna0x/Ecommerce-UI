@@ -51,6 +51,7 @@ export interface IProduct {
     soldQuantity: number;
     endAt: string;
   };
+  active?: boolean;
 }
 
 export interface IVariantAttribute {
@@ -91,6 +92,7 @@ export interface ICreateProduct {
   brandId: number | null;
   attributeValue: number[] | undefined;
   variants?: IVariantCreate[];
+  active?: boolean;
 }
 
 export interface IUpdateProduct {
@@ -103,6 +105,7 @@ export interface IUpdateProduct {
   brandId: number | null;
   attributeValue: number[] | null;
   variants?: IVariantCreate[];
+  active?: boolean;
 }
 
 export interface IPrice {
