@@ -223,9 +223,15 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                   </div>
 
                   {/* Stock */}
-                  {currentStock > 0 && currentStock < 10 && (
-                    <p className="text-xs font-semibold text-primary">
-                      🔥 Chỉ còn {currentStock} sản phẩm cuối
+                  {currentStock > 0 ? (
+                    currentStock < 10 && (
+                      <p className="text-xs font-semibold text-primary">
+                        🔥 Chỉ còn {currentStock} sản phẩm cuối
+                      </p>
+                    )
+                  ) : (
+                    <p className="text-xs font-bold text-destructive uppercase tracking-widest">
+                      Hết hàng
                     </p>
                   )}
 
@@ -233,10 +239,11 @@ const QuickView: React.FC<QuickViewProps> = ({ product, isOpen, onClose }) => {
                   <div className="flex gap-2 pt-2">
                     <button
                       onClick={handleAddToCart}
-                      className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md"
+                      disabled={currentStock === 0}
+                      className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md disabled:opacity-70 disabled:grayscale disabled:cursor-not-allowed"
                     >
                       <ShoppingBag className="w-4 h-4" />
-                      Thêm vào giỏ
+                      {currentStock === 0 ? "Hết hàng" : "Thêm vào giỏ"}
                     </button>
                     <button
                       onClick={handleToggleWishlist}

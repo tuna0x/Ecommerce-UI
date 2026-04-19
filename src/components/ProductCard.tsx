@@ -7,6 +7,7 @@ import { useQuickView } from '../context/QuickViewContext';
 import { logActivity } from '../service/trackingService';
 import { PremiumImage } from './ui/PremiumImage';
 import { useWishlist } from '../hooks/useWishlist';
+import { cn } from "../lib/utils";
 
 interface ProductCardProps {
   product: IProduct;
@@ -77,7 +78,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <PremiumImage
             src={mainImage}
             alt={product.name}
-            className="transition-transform duration-500 group-hover:scale-105"
+            className={cn(
+              "transition-transform duration-500 group-hover:scale-105",
+              product.stock === 0 && "grayscale opacity-60"
+            )}
           />
  
           {hoverImage && (
@@ -85,8 +89,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               src={hoverImage}
               alt={product.name}
               showSkeleton={false}
-              containerClassName="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              containerClassName={cn(
+                "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+                product.stock === 0 && "grayscale"
+              )}
             />
+          )}
+
+          {/* Out of Stock Overlay */}
+          {product.stock === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="bg-background/90 backdrop-blur-sm border border-border px-3 py-1.5 rounded-full shadow-lg">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Hết hàng
+                </span>
+              </div>
+            </div>
           )}
 
           {/* Discount Badge */}
@@ -163,6 +181,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                    <span className="font-semibold text-primary animate-pulse">
                    🔥 Đang cháy hàng
                  </span>
+                ) : (product.stock ?? 0) <= 0 ? (
+                  <span className="font-semibold text-destructive uppercase tracking-tighter">
+                    Hết hàng
+                  </span>
                 ) : (product.stock ?? 0) < 10 ? (
                   <span className="font-semibold text-primary">
                     🔥 Còn {product.stock} cuối
