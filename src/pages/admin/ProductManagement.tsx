@@ -110,6 +110,27 @@ const ProductsManagement: React.FC = () => {
   }, [currentPage, pageSize, debouncedSearch, sort]);
 
   const hasVariants = (formData.variants || []).length > 0;
+  
+  const availableImages = useMemo(() => {
+    const images: { id?: number; url: string; index?: number }[] = [];
+    
+    // Existing images (if editing)
+    if (editingProductId) {
+      const product = products.find(p => p.id === editingProductId);
+      if (product && product.productImages) {
+        product.productImages.forEach(img => {
+          images.push({ id: img.id, url: img.imageUrl });
+        });
+      }
+    }
+    
+    // New previews
+    imagePreviews.forEach((url, idx) => {
+      images.push({ url, index: idx });
+    });
+    
+    return images;
+  }, [editingProductId, products, imagePreviews]);
 
   const openDialog = useCallback(async (product: IProduct | null) => {
     if (product) {
@@ -143,6 +164,7 @@ const ProductsManagement: React.FC = () => {
           price: v.price,
           stock: v.stock,
           weight: v.weight,
+          productImageId: v.productImageId,
           attributeValues: v.variantAttributes.map(va => {
             // Find the ID in product's attributeValue or current value state
             const attrMatch = [...(product.attributeValue || []), ...value].find(av => {
@@ -1108,9 +1130,60 @@ const ProductsManagement: React.FC = () => {
                               placeholder="0"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Thuộc tính</Label>
-                            <div className="flex flex-wrap gap-2">
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-xs">Ảnh biến thể</Label>
+                          <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-muted/20">
+                            {availableImages.map((img, i) => {
+                              const isSelected = img.id 
+                                ? v.productImageId === img.id 
+                                : v.productImageIndex === img.index;
+                              
+                              return (
+                                <div 
+                                  key={i}
+                                  onClick={() => {
+                                    const newVariants = [...(formData.variants || [])];
+                                    if (img.id) {
+                                      newVariants[vIndex].productImageId = img.id;
+                                      newVariants[vIndex].productImageIndex = undefined;
+                                    } else {
+                                      newVariants[vIndex].productImageIndex = img.index;
+                                      newVariants[vIndex].productImageId = undefined;
+                                    }
+                                    setFormData({ ...formData, variants: newVariants });
+                                  }}
+                                  className={cn(
+                                    "relative w-12 h-12 rounded border-2 cursor-pointer overflow-hidden transition-all hover:scale-105",
+                                    isSelected ? "border-primary shadow-sm ring-1 ring-primary" : "border-transparent opacity-60 hover:opacity-100"
+                                  )}
+                                >
+                                  <img 
+                                    src={img.url} 
+                                    alt="Variant" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                      <div className="bg-primary text-primary-foreground rounded-full p-0.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {availableImages.length === 0 && (
+                              <div className="text-[10px] text-muted-foreground italic py-1">
+                                Hãy tải ảnh lên trước để chọn cho biến thể
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs">Thuộc tính</Label>
+                          <div className="flex flex-wrap gap-2">
                               {groupedAttributes.map((attr) => {
                                 // Find which value of this attribute is selected for this variant
                                 const selectedValueId = v.attributeValues.find(id =>
@@ -1144,7 +1217,6 @@ const ProductsManagement: React.FC = () => {
                               })}
                             </div>
                           </div>
-                        </div>
                       </CardContent>
                     </Card>
                   ))}
