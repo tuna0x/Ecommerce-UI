@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { motion, AnimatePresence } from 'framer-motion';
 import { inventoryService } from '../../service/inventoryService';
 import type { Inventory, InventoryLog } from '../../service/inventoryService';
+import { categoryService } from '../../service/categoryService';
+import type { ICategory } from '../../types/category.type';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
@@ -40,6 +42,8 @@ const InventoryManagement: React.FC = () => {
     const [inventoryData, setInventoryData] = useState<Inventory[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [categories, setCategories] = useState<ICategory[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
     const toggleSelection = (id: number) => {
         setSelectedIds(prev =>
@@ -69,6 +73,7 @@ const InventoryManagement: React.FC = () => {
     const [adjustNote, setAdjustNote] = useState('');
     const [minStock, setMinStock] = useState(10);
     const [maxStock, setMaxStock] = useState(100);
+    const [costPrice, setCostPrice] = useState<number | string>(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Global History states
@@ -96,12 +101,25 @@ const InventoryManagement: React.FC = () => {
         sku: string;
         name: string;
         thumbnail: string;
+        costPrice: number;
         quantity: number;
     }[]>([]);
 
     useEffect(() => {
         fetchInventory();
+        fetchCategories();
     }, []);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await categoryService.getAll(0, 100);
+            if (!res.error) {
+                setCategories(res.data?.result || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch categories", error);
+        }
+    };
 
     const fetchGlobalLogs = async () => {
         setLoadingGlobalLogs(true);
@@ -252,6 +270,7 @@ const InventoryManagement: React.FC = () => {
         setAdjustNote('');
         setMinStock(item.minStockThreshold);
         setMaxStock(item.maxStock);
+        setCostPrice(item.costPrice || 0);
         setAdjustOpen(true);
     };
 
@@ -266,6 +285,7 @@ const InventoryManagement: React.FC = () => {
                 quantity: finalQty,
                 type: adjustType,
                 note: adjustNote,
+                costPrice: Number(costPrice),
                 minStockThreshold: minStock,
                 maxStock: maxStock
             });
@@ -287,6 +307,7 @@ const InventoryManagement: React.FC = () => {
                 productId: item.productId,
                 variantId: item.variantId,
                 quantity: item.quantity,
+                costPrice: item.costPrice,
                 type: 'PURCHASE', // Default for bulk import
                 note: adjustNote || 'Nhập kho hàng loạt'
             }));
@@ -313,6 +334,7 @@ const InventoryManagement: React.FC = () => {
             sku: item.productVariant.sku,
             name: item.productVariant.product.name,
             thumbnail: item.productVariant.product.thumbnail,
+            costPrice: item.costPrice || 0,
             quantity: 1
         })));
         setBulkSearch('');
@@ -329,8 +351,15 @@ const InventoryManagement: React.FC = () => {
             sku: item.productVariant.sku,
             name: item.productVariant.product.name,
             thumbnail: item.productVariant.product.thumbnail,
+            costPrice: item.costPrice || 0,
             quantity: 1
         }]);
+    };
+
+    const updateBulkCost = (inventoryId: number, cost: number) => {
+        setBulkItems(bulkItems.map(item =>
+            item.inventoryId === inventoryId ? { ...item, costPrice: cost } : item
+        ));
     };
 
     const updateBulkQty = (inventoryId: number, qty: number) => {
@@ -353,6 +382,7 @@ const InventoryManagement: React.FC = () => {
             sku: item.productVariant.sku,
             name: item.productVariant.product.name,
             thumbnail: item.productVariant.product.thumbnail,
+            costPrice: item.costPrice || 0,
             quantity: 1
         }))]);
         toast.success(`Đã thêm ${newItems.length} sản phẩm sắp hết hàng`);
@@ -372,6 +402,7 @@ const InventoryManagement: React.FC = () => {
             sku: item.productVariant.sku,
             name: item.productVariant.product.name,
             thumbnail: item.productVariant.product.thumbnail,
+            costPrice: item.costPrice || 0,
             quantity: 1
         }))]);
         toast.success(`Đã thêm ${newItems.length} sản phẩm đã hết hàng`);
@@ -399,6 +430,10 @@ const InventoryManagement: React.FC = () => {
 
 
 
+        if (selectedCategory !== 'all') {
+            data = data.filter(p => p.productVariant?.product?.categoryName === selectedCategory);
+        }
+
         if (filter === 'low') data = data.filter(p => (p.stock || 0) > 0 && (p.stock || 0) < (p.minStockThreshold || 0));
         if (filter === 'out') data = data.filter(p => (p.stock || 0) === 0);
         if (filter === 'ok') data = data.filter(p => (p.stock || 0) >= (p.minStockThreshold || 0));
@@ -415,6 +450,7 @@ const InventoryManagement: React.FC = () => {
 
     const totalAvailable = (filtered || []).reduce((acc: number, item: Inventory) => acc + (item.stock || 0), 0);
     const totalReserved = (filtered || []).reduce((acc: number, item: Inventory) => acc + (item.reservedStock || 0), 0);
+    const totalValue = (filtered || []).reduce((acc: number, item: Inventory) => acc + ((item.stock || 0) * (item.costPrice || 0)), 0);
     const lowStockCount = (filtered || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0).length;
 
     const getStockBadge = (item: Inventory) => {
@@ -478,8 +514,8 @@ const InventoryManagement: React.FC = () => {
                         {[
                             { label: 'Sẵn sàng bán', value: totalAvailable.toLocaleString(), sub: 'Sẵn có trong kho', icon: Package, color: 'text-primary' },
                             { label: 'Đang giữ chỗ', value: totalReserved.toLocaleString(), sub: 'Chờ xác nhận đơn', icon: ArrowUpDown, color: 'text-blue-500' },
-                            { label: 'Sắp hết hàng', value: lowStockCount, sub: 'Dưới 10 sản phẩm', icon: AlertTriangle, color: 'text-orange-500' },
-                            { label: 'Tồn đọng cao', value: filtered.filter(p => (p.stock + (p.reservedStock || 0)) > p.maxStock).length, sub: 'Vượt định mức', icon: AlertTriangle, color: 'text-yellow-600' },
+                            { label: 'Giá trị tồn kho', value: totalValue.toLocaleString() + ' ₫', sub: 'Tổng vốn kẹt', icon: FileBarChart2, color: 'text-emerald-500' },
+                            { label: 'Sắp hết hàng', value: lowStockCount, sub: 'Dưới định mức', icon: AlertTriangle, color: 'text-orange-500' },
                         ].map((stat, i) => (
                             <motion.div
                                 key={i}
@@ -538,6 +574,17 @@ const InventoryManagement: React.FC = () => {
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+                                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                        <SelectTrigger className="w-full sm:w-[150px] h-10">
+                                            <SelectValue placeholder="Danh mục" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Tất cả danh mục</SelectItem>
+                                            {categories.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     <Select value={filter} onValueChange={(v) => setFilter(v as StockFilter)}>
                                         <SelectTrigger className="w-full sm:w-[180px] h-10">
                                             <SelectValue placeholder="Lọc trạng thái" />
@@ -571,8 +618,9 @@ const InventoryManagement: React.FC = () => {
                                                 />
                                             </th>
                                             <th className="py-4 px-2 text-sm font-semibold text-muted-foreground">Sản phẩm</th>
-                                            <th className="py-4 px-4 text-sm font-semibold text-muted-foreground hidden md:table-cell">ID</th>
-                                            <th className="py-4 px-4 text-sm font-semibold text-muted-foreground min-w-[200px]">Kho hàng / Tỷ lệ</th>
+                                            <th className="py-4 px-4 text-sm font-semibold text-muted-foreground hidden lg:table-cell">Danh mục</th>
+                                            <th className="py-4 px-4 text-sm font-semibold text-muted-foreground min-w-[150px]">Kho hàng / Tỷ lệ</th>
+                                            <th className="py-4 px-4 text-sm font-semibold text-muted-foreground hidden sm:table-cell">Giá vốn / Tồn</th>
                                             <th className="py-4 px-4 text-sm font-semibold text-muted-foreground">Trạng thái</th>
                                             <th className="py-4 px-6 text-sm font-semibold text-muted-foreground text-right">Thao tác</th>
                                         </tr>
@@ -588,7 +636,6 @@ const InventoryManagement: React.FC = () => {
                                                 ))
                                             ) : filtered.map((item) => {
                                                 const status = getStockStatus(item);
-                                                const total = item.stock + item.reservedStock;
                                                 const stockPercent = Math.min(100, (item.stock / item.maxStock) * 100);
                                                 const reservedPercent = Math.min(100 - stockPercent, (item.reservedStock / item.maxStock) * 100);
 
@@ -636,21 +683,21 @@ const InventoryManagement: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="py-4 px-4 text-sm text-muted-foreground hidden md:table-cell">
-                                                            <Badge variant="secondary" className="font-normal text-[10px] py-0 px-2 h-5">
-                                                                #{item.id}
+                                                        <td className="py-4 px-4 text-sm text-muted-foreground hidden lg:table-cell">
+                                                            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-normal text-[11px]">
+                                                                {item.productVariant?.product?.categoryName || 'N/A'}
                                                             </Badge>
                                                         </td>
-                                                        <td className="py-4 px-4 min-w-[200px]">
+                                                        <td className="py-4 px-4 min-w-[180px]">
                                                             <div className="space-y-1.5">
-                                                                <div className="flex items-center justify-between text-xs mb-1">
+                                                                <div className="flex items-center justify-between text-[11px] mb-1">
                                                                     <div className="flex gap-2">
                                                                         <span className="font-bold text-foreground">{item.stock}</span>
                                                                         <span className="text-blue-600 font-semibold opacity-80">({item.reservedStock} held)</span>
                                                                     </div>
                                                                     <span className="text-muted-foreground font-bold opacity-60">MAX: {item.maxStock}</span>
                                                                 </div>
-                                                                <div className="relative h-2.5 w-full bg-muted rounded-full overflow-hidden flex shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
+                                                                <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden flex shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
                                                                     <div
                                                                         style={{ width: `${stockPercent}%` }}
                                                                         className={`${status.color} h-full transition-all duration-700 ease-out`}
@@ -660,11 +707,12 @@ const InventoryManagement: React.FC = () => {
                                                                         className="bg-blue-400 h-full transition-all duration-700 ease-out opacity-60 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)]"
                                                                     />
                                                                 </div>
-                                                                {total > item.maxStock && (
-                                                                    <p className="text-[10px] text-yellow-600 font-bold flex items-center gap-1 mt-1 animate-pulse">
-                                                                        <AlertTriangle className="h-3 w-3" /> CẢNH BÁO TỒN ĐỌNG CAO
-                                                                    </p>
-                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4 px-4 hidden sm:table-cell">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Vốn: {formatNumberWithDots((item.costPrice || 0).toString())} ₫</span>
+                                                                <span className="text-xs font-bold text-foreground whitespace-nowrap">Tồn: {formatNumberWithDots(((item.stock || 0) * (item.costPrice || 0)).toString())} ₫</span>
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-4">{getStockBadge(item)}</td>
@@ -924,11 +972,18 @@ const InventoryManagement: React.FC = () => {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className={cn(
-                                                            "p-4 text-center font-black text-lg",
-                                                            log.quantityChange > 0 ? "text-green-600" : log.quantityChange < 0 ? "text-rose-600" : "text-muted-foreground"
-                                                        )}>
-                                                            {log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange}
+                                                        <td className="p-4 text-center">
+                                                            <div className={cn(
+                                                                "font-black text-lg",
+                                                                log.quantityChange > 0 ? "text-green-600" : log.quantityChange < 0 ? "text-rose-600" : "text-muted-foreground"
+                                                            )}>
+                                                                {log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange}
+                                                            </div>
+                                                            {log.oldCostPrice !== undefined && log.newCostPrice !== undefined && log.oldCostPrice !== log.newCostPrice && (
+                                                                <div className="text-[10px] text-orange-600 mt-0.5 font-medium italic">
+                                                                    Giá: {formatNumberWithDots(log.oldCostPrice || 0)} → {formatNumberWithDots(log.newCostPrice || 0)}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="p-4">
                                                             <Badge variant="outline" className={cn("text-[10px] font-bold border", color)}>
@@ -1035,8 +1090,15 @@ const InventoryManagement: React.FC = () => {
                                                 <td className="p-3 text-muted-foreground whitespace-nowrap">
                                                     {new Date(log.createdAt).toLocaleString('vi-VN')}
                                                 </td>
-                                                <td className={`p-3 text-center font-bold ${log.quantityChange > 0 ? 'text-green-600' : log.quantityChange < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                                    {log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange}
+                                                <td className="p-3 text-center">
+                                                    <div className={`font-bold ${log.quantityChange > 0 ? 'text-green-600' : log.quantityChange < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                                        {log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange}
+                                                    </div>
+                                                    {log.oldCostPrice !== undefined && log.newCostPrice !== undefined && log.oldCostPrice !== log.newCostPrice && (
+                                                        <div className="text-[10px] text-orange-600 mt-1 font-medium italic whitespace-nowrap">
+                                                            Giá: {formatNumberWithDots(log.oldCostPrice || 0)} → {formatNumberWithDots(log.newCostPrice || 0)}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="p-3">
                                                     {(() => {
@@ -1188,8 +1250,9 @@ const InventoryManagement: React.FC = () => {
                                     <thead className="bg-muted/20 sticky top-0 z-10 backdrop-blur-sm border-b">
                                         <tr>
                                             <th className="p-4 text-left font-semibold text-muted-foreground">Sản phẩm</th>
-                                            <th className="p-4 text-center font-semibold text-muted-foreground w-[180px]">Số lượng nhập</th>
-                                            <th className="p-4 text-right font-semibold text-muted-foreground w-[80px]">Thao tác</th>
+                                            <th className="p-4 text-center font-semibold text-muted-foreground w-[160px]">Số lượng</th>
+                                            <th className="p-4 text-left font-semibold text-muted-foreground w-[150px]">Giá vốn (₫)</th>
+                                            <th className="p-4 text-right font-semibold text-muted-foreground w-[60px]">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/40">
@@ -1261,6 +1324,17 @@ const InventoryManagement: React.FC = () => {
                                                                 >
                                                                     <Plus className="h-3.5 w-3.5" />
                                                                 </Button>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Input
+                                                                    type="text"
+                                                                    value={formatNumberWithDots(item.costPrice.toString())}
+                                                                    onChange={(e) => updateBulkCost(item.inventoryId, Math.abs(Number(parseNumberFromDots(e.target.value))) || 0)}
+                                                                    className="w-24 h-9 text-right font-bold bg-muted/20 border-none focus-visible:ring-1 focus-visible:ring-primary/30"
+                                                                />
+                                                                <span className="text-[10px] font-bold text-muted-foreground">₫</span>
                                                             </div>
                                                         </td>
                                                         <td className="p-4 text-right">
@@ -1424,7 +1498,7 @@ const InventoryManagement: React.FC = () => {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-blue-600 flex items-center gap-1.5">
-                                    <RefreshCcw className="h-3.5 w-3.5" /> Ngưỡng tồn tối đa
+                                    <ArrowUpDown className="h-3.5 w-3.5" /> Ngưỡng tồn tối đa
                                 </Label>
                                 <Input
                                     type="number"
@@ -1435,6 +1509,24 @@ const InventoryManagement: React.FC = () => {
                                     className="h-10 font-bold bg-white/50"
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                            <Label className="text-sm font-bold flex items-center gap-2 text-primary">
+                                <Plus className="h-3.5 w-3.5" /> Cập nhật giá vốn mới (₫)
+                            </Label>
+                            <div className="relative">
+                                <Input
+                                    type="text"
+                                    value={formatNumberWithDots(costPrice.toString())}
+                                    onChange={(e) => setCostPrice(Math.abs(Number(parseNumberFromDots(e.target.value))) || 0)}
+                                    className="h-12 font-black text-xl pl-4 pr-10 border-2 border-primary/20 focus-visible:border-primary transition-all bg-white"
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-lg">₫</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-medium italic">
+                                * Giá vốn mới sẽ được áp dụng cho toàn bộ số lượng trong kho sau khi điều chỉnh.
+                            </p>
                         </div>
 
                         <div className="space-y-2">
@@ -1453,7 +1545,7 @@ const InventoryManagement: React.FC = () => {
                         </Button>
                         <Button
                             onClick={handleAdjustSubmit}
-                            disabled={isSubmitting || (adjustQty === 0 && minStock === selectedItem?.minStockThreshold && maxStock === selectedItem?.maxStock)}
+                            disabled={isSubmitting || (adjustQty === 0 && minStock === selectedItem?.minStockThreshold && maxStock === selectedItem?.maxStock && costPrice === selectedItem?.costPrice)}
                             className="bg-primary hover:bg-primary/90 min-w-[140px] shadow-md shadow-primary/20"
                         >
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCcw className="h-4 w-4 mr-2" />}

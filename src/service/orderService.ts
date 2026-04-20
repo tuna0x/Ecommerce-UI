@@ -83,3 +83,8 @@ export const createGhnOrderApi = async (id: number) => {
 export const bulkCreateGhnOrdersApi = async (ids: number[]) => {
     return axiosInstance.post("/order/bulk-ghn", ids);
 };
+
+export const updateOrderAddressApi = async (id: number, data: Partial<OrderRes>) => {
+    return axiosInstance.put(`/order/${id}/address`, data);
+};
+

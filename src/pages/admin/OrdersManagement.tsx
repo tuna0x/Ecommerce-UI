@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw, Filter, Zap, ExternalLink } from "lucide-react";
+import { Search, Eye, ChevronDown, Loader2, RefreshCw, Package, Calendar, CheckSquare, Square, History, Printer, X, SearchX, RotateCcw, Filter, Zap, ExternalLink, Edit2, Save, Undo2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -33,7 +33,9 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "sonner";
-import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, createGhnOrderApi, bulkCreateGhnOrdersApi, type OrderRes } from "../../service/orderService";
+import { getAllOrdersAdminApi, bulkUpdateOrderStatusApi, createGhnOrderApi, bulkCreateGhnOrdersApi, updateOrderAddressApi, type OrderRes } from "../../service/orderService";
+import { SearchableSelect } from "../../components/SearchableSelect";
+import { addressDataService, type LocationItem } from "../../service/addressDataService";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { DATE_MIN, getTodayStr, isValidDate, clampYear } from "../../lib/date";
@@ -99,6 +101,16 @@ const OrdersManagement: React.FC = () => {
   const [isBulkGhnDialogOpen, setIsBulkGhnDialogOpen] = useState(false);
   const [bulkGhnSelectedIds, setBulkGhnSelectedIds] = useState<Set<number>>(new Set());
   const [isCreatingBulkGhn, setIsCreatingBulkGhn] = useState(false);
+  
+  // Address editing
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [editAddressData, setEditAddressData] = useState<Partial<OrderRes>>({});
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  
+  // Location Data for editing
+  const [provinces, setProvinces] = useState<LocationItem[]>([]);
+  const [districts, setDistricts] = useState<LocationItem[]>([]);
+  const [wards, setWards] = useState<LocationItem[]>([]);
 
   // Filter orders for aggregate GHN dialog
   const confirmedOrdersForGhn = useMemo(() => {
@@ -211,6 +223,14 @@ const OrdersManagement: React.FC = () => {
     return () => clearTimeout(timer);
   }, [startDate, endDate]);
 
+  useEffect(() => {
+    const loadProvinces = async () => {
+      const data = await addressDataService.getProvinces();
+      setProvinces(data);
+    };
+    loadProvinces();
+  }, []);
+
   // ---- Client-side search (on top of server-side status filter) ----
   const displayedOrders = useMemo(() => {
     if (!searchTerm.trim()) return orders;
@@ -314,6 +334,83 @@ const OrdersManagement: React.FC = () => {
       toast.error("Không thể gửi tín hiệu giả lập.");
     } finally {
       setIsSimulating(false);
+    }
+  };
+
+  const handleAdminProvinceChange = async (provinceName: string) => {
+    setEditAddressData(prev => ({ ...prev, province: provinceName, district: "", ward: "" }));
+    setDistricts([]);
+    setWards([]);
+    
+    const province = provinces.find(p => p.name === provinceName);
+    if (province) {
+      const data = await addressDataService.getDistricts(province.code);
+      setDistricts(data);
+    }
+  };
+
+  const handleAdminDistrictChange = async (districtName: string) => {
+    setEditAddressData(prev => ({ ...prev, district: districtName, ward: "" }));
+    setWards([]);
+
+    const district = districts.find(d => d.name === districtName);
+    if (district) {
+      const data = await addressDataService.getWards(district.code);
+      setWards(data);
+    }
+  };
+
+  const handleStartEditAddress = async () => {
+    if (!selectedOrder) return;
+    
+    // Initial data
+    setEditAddressData({
+      receiverName: selectedOrder.receiverName,
+      phone: selectedOrder.phone,
+      shippingAddress: selectedOrder.shippingAddress,
+      ward: selectedOrder.ward,
+      district: selectedOrder.district,
+      province: selectedOrder.province
+    });
+
+    setIsEditingAddress(true);
+
+    // Pre-load districts/wards if we have current address data
+    if (selectedOrder.province) {
+      const p = provinces.find(x => x.name === selectedOrder.province);
+      if (p) {
+        const dData = await addressDataService.getDistricts(p.code);
+        setDistricts(dData);
+        
+        if (selectedOrder.district) {
+          const d = dData.find(x => x.name === selectedOrder.district);
+          if (d) {
+            const wData = await addressDataService.getWards(d.code);
+            setWards(wData);
+          }
+        }
+      }
+    }
+  };
+
+  const handleSaveAddress = async () => {
+    if (!selectedOrder) return;
+    try {
+      setIsSavingAddress(true);
+      await updateOrderAddressApi(selectedOrder.id, editAddressData);
+      
+      const updatedOrder = { ...selectedOrder, ...editAddressData };
+      
+      // Update local state
+      setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
+      setSelectedOrder(updatedOrder);
+      setIsEditingAddress(false);
+      toast.success("Đã cập nhật địa chỉ thành công");
+    } catch (err: any) {
+      console.error("Address update failed:", err);
+      toast.error(err.response?.data?.message || "Không thể cập nhật địa chỉ");
+    } finally {
+      setIsSavingAddress(false);
     }
   };
 
@@ -1012,13 +1109,19 @@ const OrdersManagement: React.FC = () => {
       </Card>
 
       {/* Detail Dialog */}
-      <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+      <Dialog 
+        open={!!selectedOrder} 
+        onOpenChange={() => {
+          setSelectedOrder(null);
+          setIsEditingAddress(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between pr-8">
+            <DialogTitle className="flex flex-col md:flex-row md:items-center justify-between gap-4 pr-8">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  Chi tiết đơn hàng
+                  <span className="shrink-0">Chi tiết đơn hàng</span>
                   <span className="font-mono text-primary animate-pulse-subtle">
                     #{selectedOrder?.id}
                   </span>
@@ -1027,7 +1130,7 @@ const OrdersManagement: React.FC = () => {
                   Mã giao dịch: {selectedOrder?.transactionID || "—"}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {selectedOrder?.shippingCode?.startsWith("MOCK_GHN_") && selectedOrder.status !== 'DELIVERED' && (
                   <Button 
                     variant="default" 
@@ -1197,10 +1300,116 @@ const OrdersManagement: React.FC = () => {
                   <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Email:</span> <span className="break-all">{selectedOrder.user?.email ?? "—"}</span></p>
                 </div>
                 <div className="bg-muted/50 p-4 rounded-xl space-y-2">
-                  <p className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-3">Người nhận</p>
-                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Tên:</span> <span className="font-semibold break-words">{selectedOrder.receiverName ?? "—"}</span></p>
-                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">SĐT:</span> <span className="break-words">{selectedOrder.phone ?? "—"}</span></p>
-                  <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Địa chỉ:</span> <span className="break-words">{selectedOrder.shippingAddress ?? "—"}</span></p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Người nhận</p>
+                    {selectedOrder.status === 'PENDING' && !isEditingAddress && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 px-2 text-[10px] gap-1 hover:bg-primary/10 hover:text-primary transition-colors"
+                        onClick={handleStartEditAddress}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                        Chỉnh sửa
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditingAddress ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Họ tên</label>
+                        <Input 
+                          value={editAddressData.receiverName || ""} 
+                          onChange={(e) => setEditAddressData({...editAddressData, receiverName: e.target.value})}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Số điện thoại</label>
+                        <Input 
+                          value={editAddressData.phone || ""} 
+                          onChange={(e) => setEditAddressData({...editAddressData, phone: e.target.value})}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase">Địa chỉ chi tiết</label>
+                        <Input 
+                          value={editAddressData.shippingAddress || ""} 
+                          onChange={(e) => setEditAddressData({...editAddressData, shippingAddress: e.target.value})}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Tỉnh/TP</label>
+                          <SearchableSelect 
+                            options={provinces.map(p => ({ value: p.name, label: p.name }))}
+                            value={editAddressData.province || ""} 
+                            onValueChange={handleAdminProvinceChange}
+                            placeholder="Chọn Tỉnh"
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Quận/Huyện</label>
+                          <SearchableSelect 
+                            options={districts.map(d => ({ value: d.name, label: d.name }))}
+                            value={editAddressData.district || ""} 
+                            onValueChange={handleAdminDistrictChange}
+                            placeholder="Chọn Quận"
+                            disabled={!editAddressData.province}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Phường/Xã</label>
+                          <SearchableSelect 
+                            options={wards.map(w => ({ value: w.name, label: w.name }))}
+                            value={editAddressData.ward || ""} 
+                            onValueChange={(val) => setEditAddressData({...editAddressData, ward: val})}
+                            placeholder="Chọn Xã"
+                            disabled={!editAddressData.district}
+                            className="h-9 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          size="sm" 
+                          className="flex-1 h-8 gap-1 text-xs" 
+                          onClick={handleSaveAddress}
+                          disabled={isSavingAddress}
+                        >
+                          {isSavingAddress ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                          Lưu
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1 h-8 gap-1 text-xs"
+                          onClick={() => setIsEditingAddress(false)}
+                        >
+                          <Undo2 className="h-3 w-3" />
+                          Hủy
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="flex gap-2"><span className="text-muted-foreground shrink-0">Tên:</span> <span className="font-semibold break-words">{selectedOrder.receiverName ?? "—"}</span></p>
+                      <p className="flex gap-2"><span className="text-muted-foreground shrink-0">SĐT:</span> <span className="break-words">{selectedOrder.phone ?? "—"}</span></p>
+                      <p className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0">Địa chỉ:</span> 
+                        <span className="font-medium break-words">
+                          {[selectedOrder.shippingAddress, selectedOrder.ward, selectedOrder.district, selectedOrder.province]
+                            .filter(Boolean)
+                            .join(", ") || "—"}
+                        </span>
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

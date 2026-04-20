@@ -63,6 +63,7 @@ export interface IVariant {
   id: number;
   sku: string;
   price: number | null;
+  costPrice?: number;
   discountPrice?: number;
   finalPrice?: number;
   stock: number;
@@ -76,6 +77,7 @@ export interface IVariant {
 export interface IVariantCreate {
   sku: string;
   price: number | null;
+  costPrice?: number;
   stock: number;
   weight: number;
   productImageId?: number;
@@ -86,6 +88,7 @@ export interface IVariantCreate {
 export interface ICreateProduct {
   name: string;
   originalPrice: number;
+  costPrice?: number;
   stock: number;
   image: string[] | null;
   categoryId: number | null;
@@ -99,6 +102,7 @@ export interface IUpdateProduct {
   id: number;
   name: string;
   originalPrice: number;
+  costPrice?: number;
   stock: number;
   image: string[] | null;
   categoryId: number | null;
