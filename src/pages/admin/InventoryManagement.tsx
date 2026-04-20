@@ -370,18 +370,18 @@ const InventoryManagement: React.FC = () => {
 
     const addLowStockItems = () => {
         const lowStock = (inventoryData || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0);
-        const newItems = lowStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id));
+        const newItems = lowStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id) && item.productVariant?.product);
         if (newItems.length === 0) {
             toast.info('Không có sản phẩm sắp hết hàng mới để thêm');
             return;
         }
         setBulkItems([...bulkItems, ...newItems.map(item => ({
             inventoryId: item.id,
-            productId: item.productVariant.product.id,
-            variantId: item.productVariant.id,
-            sku: item.productVariant.sku,
-            name: item.productVariant.product.name,
-            thumbnail: item.productVariant.product.thumbnail,
+            productId: item.productVariant?.product?.id || 0,
+            variantId: item.productVariant?.id || 0,
+            sku: item.productVariant?.sku || 'N/A',
+            name: item.productVariant?.product?.name || 'Sản phẩm đã xóa',
+            thumbnail: item.productVariant?.product?.thumbnail || '',
             costPrice: item.costPrice || 0,
             quantity: 1
         }))]);
@@ -390,18 +390,18 @@ const InventoryManagement: React.FC = () => {
 
     const addOutOfStockItems = () => {
         const outOfStock = (inventoryData || []).filter(item => (item.stock || 0) === 0);
-        const newItems = outOfStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id));
+        const newItems = outOfStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id) && item.productVariant?.product);
         if (newItems.length === 0) {
             toast.info('Không có sản phẩm hết hàng mới để thêm');
             return;
         }
         setBulkItems([...bulkItems, ...newItems.map(item => ({
             inventoryId: item.id,
-            productId: item.productVariant.product.id,
-            variantId: item.productVariant.id,
-            sku: item.productVariant.sku,
-            name: item.productVariant.product.name,
-            thumbnail: item.productVariant.product.thumbnail,
+            productId: item.productVariant?.product?.id || 0,
+            variantId: item.productVariant?.id || 0,
+            sku: item.productVariant?.sku || 'N/A',
+            name: item.productVariant?.product?.name || 'Sản phẩm đã xóa',
+            thumbnail: item.productVariant?.product?.thumbnail || '',
             costPrice: item.costPrice || 0,
             quantity: 1
         }))]);
@@ -413,8 +413,8 @@ const InventoryManagement: React.FC = () => {
     };
 
     const filteredBulkSearch = (inventoryData || []).filter(item =>
-        item.productVariant.product.name.toLowerCase().includes(bulkSearch.toLowerCase()) ||
-        item.productVariant.sku.toLowerCase().includes(bulkSearch.toLowerCase())
+        item.productVariant?.product?.name?.toLowerCase().includes(bulkSearch.toLowerCase()) ||
+        (item.productVariant?.sku && item.productVariant.sku.toLowerCase().includes(bulkSearch.toLowerCase()))
     ).slice(0, 5);
 
     const filtered = useMemo(() => {
@@ -427,6 +427,9 @@ const InventoryManagement: React.FC = () => {
                 (p.productVariant?.sku && p.productVariant.sku.toLowerCase().includes(s))
             );
         }
+
+        // Final safety filter to remove items without product/variant info
+        data = data.filter(p => p.productVariant && p.productVariant.product);
 
 
 
