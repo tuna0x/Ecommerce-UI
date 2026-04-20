@@ -6,6 +6,8 @@ export interface InventoryLog {
     quantityChange: number;
     type: 'PURCHASE' | 'SALE' | 'ADJUSTMENT' | 'RETURN' | 'DAMAGE' | 'LOSS' | 'RESERVE' | 'RELEASE';
     note: string;
+    oldCostPrice?: number;
+    newCostPrice?: number;
     createdAt: string;
     createdBy?: string;
 }
@@ -19,10 +21,12 @@ export interface Inventory {
             id: number;
             name: string;
             thumbnail: string;
+            categoryName?: string;
         };
     };
     stock: number;
     reservedStock: number;
+    costPrice: number;
     minStockThreshold: number;
     maxStock: number;
     updatedAt: string;
@@ -34,6 +38,7 @@ export interface InventoryAdjustPayload {
     quantity: number;
     type: string;
     note: string;
+    costPrice?: number;
     minStockThreshold?: number;
     maxStock?: number;
 }

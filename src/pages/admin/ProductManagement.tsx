@@ -79,6 +79,7 @@ const ProductsManagement: React.FC = () => {
   const [formData, setFormData] = useState<ICreateProduct>({
     name: "",
     originalPrice: 0,
+    costPrice: 0,
     stock: 0,
     image: null,
     brandId: null as number | null,
@@ -152,6 +153,7 @@ const ProductsManagement: React.FC = () => {
       setFormData({
         name: product.name,
         originalPrice: product.originalPrice,
+        costPrice: (product as any).costPrice || 0,
         stock: product.stock,
         image: null,
         categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
@@ -161,6 +163,7 @@ const ProductsManagement: React.FC = () => {
         variants: product.variants?.map((v) => ({
           sku: v.sku,
           price: v.price,
+          costPrice: (v as any).costPrice || 0,
           stock: v.stock,
           weight: v.weight,
           productImageId: v.productImageId,
@@ -187,6 +190,7 @@ const ProductsManagement: React.FC = () => {
       setFormData({
         name: "",
         originalPrice: 0,
+        costPrice: 0,
         stock: 0,
         image: null,
         categoryId: null,
@@ -305,6 +309,7 @@ const ProductsManagement: React.FC = () => {
     setFormData({
       name: "",
       originalPrice: 0,
+      costPrice: 0,
       stock: 0,
       image: null,
       categoryId: null,
@@ -321,7 +326,7 @@ const ProductsManagement: React.FC = () => {
       setIsSubmitting(true);
       if (
         !formData.name ||
-        !formData.originalPrice ||
+        formData.originalPrice === undefined ||
         !formData.categoryId
       ) {
         toast.error("Vui lòng điền đầy đủ thông tin");
@@ -343,6 +348,7 @@ const ProductsManagement: React.FC = () => {
           id: editingProductId,
           name: formData.name,
           originalPrice: formData.originalPrice,
+          costPrice: formData.costPrice || 0,
           stock: formData.stock,
           brandId: formData.brandId,
           categoryId: formData.categoryId,
@@ -901,30 +907,52 @@ const ProductsManagement: React.FC = () => {
                 searchPlaceholder="Tìm thương hiệu..."
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="originalPrice" className={hasVariants ? "text-muted-foreground flex items-center gap-2" : ""}>
-                Giá gốc (VNĐ)
-                {hasVariants && (
-                  <span className="text-[10px] font-normal italic text-primary">
-                    (Tự động lấy giá thấp nhất từ biến thể)
-                  </span>
-                )}
-              </Label>
-              <Input
-                id="originalPrice"
-                type="text"
-                value={formatNumberWithDots(formData.originalPrice)}
-                disabled={hasVariants}
-                onChange={(e) => {
-                  const rawValue = parseNumberFromDots(e.target.value);
-                  setFormData({
-                    ...formData,
-                    originalPrice: rawValue,
-                  });
-                }}
-                className={hasVariants ? "bg-muted/50 font-bold" : "font-bold"}
-                placeholder="100.000"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="originalPrice" className={hasVariants ? "text-muted-foreground flex items-center gap-2" : ""}>
+                  Giá bán (VNĐ)
+                  {hasVariants && (
+                    <span className="text-[10px] font-normal italic text-primary">
+                      (Tự động: Min giá biến thể)
+                    </span>
+                  )}
+                </Label>
+                <Input
+                  id="originalPrice"
+                  type="text"
+                  value={formatNumberWithDots(formData.originalPrice)}
+                  disabled={hasVariants}
+                  onChange={(e) => {
+                    const rawValue = parseNumberFromDots(e.target.value);
+                    setFormData({
+                      ...formData,
+                      originalPrice: rawValue,
+                    });
+                  }}
+                  className={hasVariants ? "bg-muted/50 font-bold h-10" : "font-bold h-10"}
+                  placeholder="100.000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="costPrice" className={hasVariants ? "text-muted-foreground flex items-center gap-2" : ""}>
+                  Giá vốn (VNĐ)
+                </Label>
+                <Input
+                  id="costPrice"
+                  type="text"
+                  value={formatNumberWithDots(formData.costPrice || 0)}
+                  disabled={hasVariants}
+                  onChange={(e) => {
+                    const rawValue = parseNumberFromDots(e.target.value);
+                    setFormData({
+                      ...formData,
+                      costPrice: rawValue,
+                    });
+                  }}
+                  className={hasVariants ? "bg-muted/50 font-bold h-10 text-orange-600" : "font-bold h-10 text-orange-600"}
+                  placeholder="80.000"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -1078,6 +1106,7 @@ const ProductsManagement: React.FC = () => {
                         const newVariants = allCombinations.map((comb, idx) => ({
                           sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${idx + 1}-${Date.now()}`,
                           price: null,
+                          costPrice: formData.costPrice || 0,
                           stock: 0,
                           weight: 200, // Default weight for variants
                           attributeValues: comb
@@ -1103,6 +1132,7 @@ const ProductsManagement: React.FC = () => {
                         const newVariant = {
                           sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`,
                           price: null,
+                          costPrice: formData.costPrice || 0,
                           stock: 0,
                           weight: 0,
                           attributeValues: []
@@ -1152,7 +1182,7 @@ const ProductsManagement: React.FC = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-xs">Giá ghi đè (VNĐ)</Label>
+                            <Label className="text-xs">Giá bán Override</Label>
                             <Input
                               type="text"
                               value={formatNumberWithDots(v.price)}
@@ -1163,7 +1193,22 @@ const ProductsManagement: React.FC = () => {
                                 setFormData({ ...formData, variants: newVariants });
                               }}
                               className="h-8 text-xs font-bold"
-                              placeholder="Trống: Dùng giá gốc"
+                              placeholder="Dùng giá chính"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Giá vốn (VNĐ)</Label>
+                            <Input
+                              type="text"
+                              value={formatNumberWithDots(v.costPrice)}
+                              onChange={(e) => {
+                                const rawValue = e.target.value ? parseNumberFromDots(e.target.value) : 0;
+                                const newVariants = [...(formData.variants || [])];
+                                (newVariants[vIndex] as any).costPrice = rawValue;
+                                setFormData({ ...formData, variants: newVariants });
+                              }}
+                              className="h-8 text-xs font-bold text-orange-600"
+                              placeholder="0"
                             />
                           </div>
                         </div>
