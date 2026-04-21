@@ -8,7 +8,8 @@ export interface TransactionRes {
     amount: number;
     paymentMethod: string;
     status: string;
-    externalId: string;
+    externalId?: string;
+    external_id?: string; // Add snake_case variant in case backend returns it
     rawData: string;
     createdAt: string;
     createdBy: string;

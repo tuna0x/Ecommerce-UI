@@ -182,7 +182,7 @@ const OrderCard = memo(({ order, onViewDetail, onCancel, formatPrice, formatDate
                 <Eye className="w-4 h-4 mr-2" />
                 Chi tiết
               </Button>
-              {order.status === 'PENDING' && (
+              {(order.status === 'PENDING' || (order.status === 'CONFIRMED' && order.paymentMethod === 'VNPAY')) && (
                 <Button
                   variant="ghost"
                   size="sm"
