@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Search, Loader2, Eye, EyeOff, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save, UserPlus, Pencil, Trash2, Camera, Lock, Unlock } from "lucide-react";
+import { Search, Loader2, Eye, EyeOff, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save, UserPlus, Pencil, Trash2, Camera, Lock, Unlock, Phone } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
@@ -85,7 +85,8 @@ const UsersManagement: React.FC = () => {
     password: "",
     age: 0,
     gender: "MALE",
-    roleId: ""
+    roleId: "",
+    phoneNumber: ""
   });
 
   const fetchUsers = useCallback(async (page: number) => {
@@ -158,7 +159,6 @@ const UsersManagement: React.FC = () => {
   };
 
   const toggleUserVerification = async (user: IUser) => {
-    console.log("LOG: toggleUserVerification called for user:", user.email);
     try {
       await UserService.toggleVerified(user.id, !user.verified);
       toast.success("Đã cập nhật trạng thái xác thực");
@@ -220,7 +220,8 @@ const UsersManagement: React.FC = () => {
       password: "",
       age: 0,
       gender: "MALE",
-      roleId: roles.find(r => r.name === "ROLE_USER")?.id.toString() || ""
+      roleId: roles.find(r => r.name === "ROLE_USER")?.id.toString() || "",
+      phoneNumber: ""
     });
     setImageFile(null);
     setImagePreview(null);
@@ -236,7 +237,8 @@ const UsersManagement: React.FC = () => {
       password: "", // Don't show password
       age: user.age || 0,
       gender: user.gender || "MALE",
-      roleId: user.role?.id.toString() || ""
+      roleId: user.role?.id.toString() || "",
+      phoneNumber: user.phoneNumber || ""
     });
     setImageFile(null);
     setImagePreview(user.image || null);
@@ -255,6 +257,7 @@ const UsersManagement: React.FC = () => {
           name: formData.name,
           age: formData.age,
           gender: formData.gender,
+          phoneNumber: formData.phoneNumber,
           role: { id: parseInt(formData.roleId) }
         };
         await UserService.updateProfile(updateData, imageFile || undefined);
@@ -424,6 +427,7 @@ const UsersManagement: React.FC = () => {
                   <tr className="border-b bg-muted/30">
                     <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Người dùng</th>
                     <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Thông tin</th>
+                     <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Liên hệ</th>
                     <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Vai trò</th>
                     <th className="text-left py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Trạng thái</th>
                     <th className="text-right py-4 px-4 text-xs font-bold uppercase text-muted-foreground tracking-wider">Hành động</th>
@@ -452,8 +456,13 @@ const UsersManagement: React.FC = () => {
                             <span className="text-xs font-medium"><span className="text-muted-foreground">Tuổi:</span> {user.age || 'N/A'}</span>
                             <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter tabular-nums">{formatDate(user.createdAt)}</span>
                          </div>
-                      </td>
-                      <td className="py-4 px-4">
+                       </td>
+                       <td className="py-4 px-4">
+                         <div className="flex flex-col gap-1">
+                            <span className="text-xs font-medium text-primary flex items-center gap-1"><Phone className="w-3 h-3" /> {user.phoneNumber || 'N/A'}</span>
+                         </div>
+                       </td>
+                       <td className="py-4 px-4">
                         <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 text-[10px] uppercase font-black tracking-widest h-6">
                            {user.role?.name === "SUPER_ADMIN" ? "Admin" : user.role?.name === "ROLE_USER" ? "Người dùng" : user.role?.name}
                         </Badge>
@@ -750,7 +759,20 @@ const UsersManagement: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-               </div>
+ 
+                   <div className="space-y-2">
+                     <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Số điện thoại</label>
+                     <Input 
+                       value={formData.phoneNumber}
+                       onChange={(e) => {
+                         const val = e.target.value.replace(/\D/g, "");
+                         if (val.length <= 10) setFormData({...formData, phoneNumber: val});
+                       }}
+                       placeholder="0912345678"
+                       className="h-12 rounded-xl bg-muted/20 border-2 border-primary/10 focus-visible:ring-primary/30 font-bold"
+                     />
+                   </div>
+                </div>
             </form>
           </ScrollArea>
 
@@ -974,7 +996,7 @@ const UsersManagement: React.FC = () => {
                                      className="h-7 text-[10px] font-bold px-3 rounded-full hover:bg-primary/10 transition-colors relative z-[100] cursor-pointer pointer-events-auto"
                                      style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                                      onClick={() => {
-                                        console.log("FIRE: Verification Click for ID:", analyticsUser?.id);
+                                        // Handle verification click
                                         if (analyticsUser) toggleUserVerification(analyticsUser);
                                      }}
                                    >

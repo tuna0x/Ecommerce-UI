@@ -135,8 +135,7 @@ const AddressManager: React.FC = () => {
 
     const openEdit = (addr: ShippingAddress) => {
         setEditingId(addr.id);
-        const { id, ...rest } = addr;
-        console.log("Editing address id:", id); // Using id to avoid unused var
+        const { id: _, ...rest } = addr;
         setForm(rest);
         setDialogOpen(true);
     };

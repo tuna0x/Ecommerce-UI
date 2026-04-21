@@ -51,9 +51,6 @@ export const BannerService = {
       formData.append("file", file);
     }
 
-    console.group("=== DEBUG: BannerService.create API Content ===");
-    formData.forEach((value, key) => console.log(`${key}:`, value));
-    console.groupEnd();
 
     const res = await axiosInstance.post(BASE_URL, formData);
     return res.data;
@@ -85,9 +82,6 @@ export const BannerService = {
       formData.append("file", file);
     }
 
-    console.group("=== DEBUG: BannerService.update API Content ===");
-    formData.forEach((value, key) => console.log(`${key}:`, value));
-    console.groupEnd();
 
     const res = await axiosInstance.put(BASE_URL, formData);
     return res.data;

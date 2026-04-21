@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Clock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Clock, Phone } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -14,6 +14,7 @@ import { GoogleLogin } from "@react-oauth/google";
 const Register: React.FC = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -137,7 +138,7 @@ const Register: React.FC = () => {
       await verifyOtpApi(email, otp);
       
       // 2. Register
-      const success = await register({ name, email, password });
+      const success = await register({ name, email, password, phoneNumber });
 
       if (success) {
         toast({
@@ -224,6 +225,25 @@ const Register: React.FC = () => {
                       placeholder="Nguyễn Văn A"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Số điện thoại</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
+                      placeholder="0912345678"
+                      value={phoneNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        if (val.length <= 10) setPhoneNumber(val);
+                      }}
                       className="pl-10"
                       required
                     />

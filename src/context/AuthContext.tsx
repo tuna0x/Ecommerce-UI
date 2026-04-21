@@ -16,6 +16,7 @@ interface User {
   image?: string;
   age?: number;
   gender?: string;
+  phoneNumber?: string;
   role: {
     name: string;
   };

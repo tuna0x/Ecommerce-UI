@@ -44,6 +44,7 @@ export const UserService = {
     age?: number;
     gender?: string;
     image?: string;
+    phoneNumber?: string;
   }, file?: File): Promise<IApiResponse<IUser>> => {
     const formData = new FormData();
     formData.append("data", new Blob([JSON.stringify(data)], { type: "application/json" }));
