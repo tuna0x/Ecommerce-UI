@@ -453,26 +453,32 @@ const Checkout: React.FC = () => {
         addressId: number;
         cartItemId: number[];
         couponCode: string | null;
-        paymentMethod: 'VNPAY' | 'COD';
+        paymentMethod: 'VNPAY' | 'COD' | 'PAYOS';
       }
+
+      const mapPaymentMethod = (): 'VNPAY' | 'COD' | 'PAYOS' => {
+        if (paymentMethod === 'vnpay') return 'VNPAY';
+        if (paymentMethod === 'payos') return 'PAYOS';
+        return 'COD';
+      };
 
       const payload: OrderPayload = {
         addressId: finalAddressId,
         cartItemId: cartItemIds,
         couponCode: appliedCoupon ? appliedCoupon.code : (couponCode || null),
-        paymentMethod: (paymentMethod === 'banking' || paymentMethod === 'vnpay') ? 'VNPAY' : 'COD'
+        paymentMethod: mapPaymentMethod()
       };
 
       const res = await checkoutApi(payload);
 
-      if (payload.paymentMethod === 'VNPAY') {
-        const data = (res.data?.data || res.data) as { paymentUrl?: string, url?: string };
-        const urlToRedirect = data.paymentUrl || data.url;
+      if (payload.paymentMethod === 'VNPAY' || payload.paymentMethod === 'PAYOS') {
+        const data = (res.data?.data || res.data) as { paymentUrl?: string, url?: string, checkoutUrl?: string };
+        const urlToRedirect = data.paymentUrl || data.checkoutUrl || data.url;
 
         if (urlToRedirect) {
           window.location.href = urlToRedirect;
         } else {
-          toast.error('Không nhận được URL thanh toán VNPay từ máy chủ');
+          toast.error('Không nhận được URL thanh toán từ máy chủ');
           setIsSubmitting(false);
         }
       } else {

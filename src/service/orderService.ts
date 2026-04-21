@@ -40,14 +40,9 @@ export const checkoutApi = async (data: {
     addressId?: number | null;
     cartItemId: number[];
     couponCode?: string | null;
-    paymentMethod: "COD" | "VNPAY" | "MOMO" | "BANKING";
+    paymentMethod: "COD" | "VNPAY" | "PAYOS";
 }) => {
-    // Note: The backend PaymentMethodEnum might just support COD and VNPAY
-    const payload = {
-        ...data,
-        paymentMethod: data.paymentMethod === "VNPAY" || data.paymentMethod === "BANKING" ? "VNPAY" : "COD"
-    };
-    return axiosInstance.post("/order/checkout", payload);
+    return axiosInstance.post("/order/checkout", data);
 };
 
 export const getMyOrdersApi = async (page: number, size: number) => {
