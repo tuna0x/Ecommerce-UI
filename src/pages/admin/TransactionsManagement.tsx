@@ -32,7 +32,7 @@ const STATUS_OPTIONS = [
 const METHOD_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   COD: { label: "COD", icon: Banknote, color: "text-orange-600 bg-orange-50" },
   VNPAY: { label: "VNPAY", icon: Wallet, color: "text-blue-600 bg-blue-50" },
-  MOMO: { label: "MoMo", icon: CreditCard, color: "text-pink-600 bg-pink-50" },
+  PAYOS: { label: "PayOS", icon: CreditCard, color: "text-indigo-600 bg-indigo-50" },
 };
 
 const PAGE_SIZE = 10;

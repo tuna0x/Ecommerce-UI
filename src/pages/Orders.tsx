@@ -85,7 +85,7 @@ const paymentMethodLabels: Record<string, string> = {
   COD: "Thanh toán khi nhận hàng",
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   VNPAY: "Ví VNPAY",
-  MOMO: "Ví MoMo",
+  PAYOS: "Cổng thanh toán PayOS",
   BANKING: "Chuyển khoản"
 };
 
