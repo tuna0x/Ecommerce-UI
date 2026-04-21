@@ -349,37 +349,37 @@ const CartSidebar: React.FC = () => {
                                 }
                                 const num = parseInt(val, 10);
                                 if (!isNaN(num) && num > 0) {
-                                  const maxLimit = item.stock || 9999;
+                                  const maxLimit = item.stock;
                                   if (num > maxLimit) {
                                     updateQuantity(item.cartItemId, maxLimit);
-                                    import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa cho phép là ${maxLimit}`));
+                                    import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa trong kho là ${maxLimit}`));
                                   } else {
                                     updateQuantity(item.cartItemId, num);
                                   }
                                 }
                               }}
                               onBlur={(e) => {
-                                if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                                const val = parseInt(e.target.value);
+                                if (isNaN(val) || val < 1) {
                                   updateQuantity(item.cartItemId, 1);
-                                  import('sonner').then(({ toast }) => toast.info("Số lượng tối thiểu là 1"));
                                 }
                               }}
-                              max={item.stock || 9999}
+                              max={item.stock}
                               min="1"
                               className="w-8 text-center text-xs font-semibold tabular-nums bg-transparent border-none focus:outline-none focus:ring-0 p-0 selection:bg-primary/20"
                               disabled={isLoading}
                             />
                             <button
                               onClick={() => {
-                                const maxLimit = item.stock || 9999;
+                                const maxLimit = item.stock;
                                 if (item.quantity >= maxLimit) {
-                                  import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tối đa (${maxLimit})`));
+                                  import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tồn kho (${maxLimit})`));
                                   return;
                                 }
                                 updateQuantity(item.cartItemId, item.quantity + 1);
                               }}
                               className="p-1 text-muted-foreground/60 hover:text-primary hover:bg-primary/5 rounded transition-colors disabled:opacity-30"
-                              disabled={isLoading}
+                              disabled={isLoading || item.quantity >= item.stock}
                             >
                               <Plus className="w-3 h-3" />
                             </button>

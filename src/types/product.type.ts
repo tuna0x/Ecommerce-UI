@@ -26,6 +26,7 @@ export interface IProduct {
   discountPrice?: number;
   finalPrice: number;
   stock: number;
+  costPrice?: number;
   weight?: number; // Legacy/Optional
   thumbnail?: string;
   image: string[] | string | null;

@@ -438,10 +438,10 @@ const ProductDetail: React.FC = () => {
                         const num = parseInt(val, 10);
                         if (!isNaN(num)) {
                           // Strict validation during typing
-                          const maxLimit = currentStock > 0 ? currentStock : 9999;
+                          const maxLimit = currentStock > 0 ? currentStock : 1;
                           if (num > maxLimit) {
                             setQuantity(maxLimit);
-                            import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa cho phép là ${maxLimit}`));
+                            import('sonner').then(({ toast }) => toast.warning(`Số lượng tối đa trong kho là ${maxLimit}`));
                           } else {
                             setQuantity(num);
                           }
@@ -451,22 +451,20 @@ const ProductDetail: React.FC = () => {
                     onBlur={() => {
                       let finalQty = quantity;
                       if (quantity < 1) finalQty = 1;
-                      const maxLimit = currentStock > 0 ? currentStock : 9999;
+                      const maxLimit = currentStock > 0 ? currentStock : 1;
                       if (quantity > maxLimit) {
                         finalQty = maxLimit;
-                        import('sonner').then(({ toast }) => toast.warning(`Đã tự động điều chỉnh về số lượng tối đa ${maxLimit}`));
+                        import('sonner').then(({ toast }) => toast.warning(`Đã tự động điều chỉnh về giới hạn kho (${maxLimit})`));
                       }
                       setQuantity(finalQty);
                     }}
-                    max={currentStock > 0 ? currentStock : 9999}
-                    min="1"
                     className="w-12 sm:w-16 text-center font-bold bg-transparent border-none focus:outline-none focus:ring-0 text-sm sm:text-base selection:bg-primary/20"
                   />
                   <button
                     onClick={() => {
-                      const maxLimit = currentStock > 0 ? currentStock : 9999;
+                      const maxLimit = currentStock > 0 ? currentStock : 1;
                       if (quantity >= maxLimit) {
-                        import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tối đa (${maxLimit})`));
+                        import('sonner').then(({ toast }) => toast.warning(`Đã đạt giới hạn tồn kho (${maxLimit})`));
                         return;
                       }
                       setQuantity(quantity + 1);

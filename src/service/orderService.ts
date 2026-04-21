@@ -26,6 +26,7 @@ export interface OrderRes {
     confirmedAt?: string;
     discountPrice?: number;
     createdAt?: string;
+    cancelReason?: string;
     items?: {
         productId: number;
         productName: string;
@@ -64,12 +65,13 @@ export const getAllOrdersAdminApi = async (page: number, size: number, status?: 
     return axiosInstance.get(`/order/admin/all?page=${page - 1}&size=${size}${statusParam}${startParam}${endParam}`);
 };
 
-export const updateOrderStatusApi = async (id: number, status: string) => {
-    return axiosInstance.put(`/order/${id}/status?status=${status}`);
+export const updateOrderStatusApi = async (id: number, status: string, reason?: string) => {
+    const reasonParam = reason ? `&reason=${encodeURIComponent(reason)}` : "";
+    return axiosInstance.put(`/order/${id}/status?status=${status}${reasonParam}`);
 };
 
-export const bulkUpdateOrderStatusApi = async (ids: number[], status: string) => {
-    return axiosInstance.post("/order/bulk-status", { ids, status });
+export const bulkUpdateOrderStatusApi = async (ids: number[], status: string, reason?: string) => {
+    return axiosInstance.post("/order/bulk-status", { ids, status, reason });
 };
 
 export const cancelOrderApi = async (id: number, reason: string) => {

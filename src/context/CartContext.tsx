@@ -65,11 +65,13 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
     // Function to map DB item to CartItem interface
     const mapDbItemToCartItem = useCallback((item: ICartItemResponse): CartItem => {
         const cartItemId = item.variantId ? `v-${item.variantId}` : `p-${item.product.id}`;
+
         return {
             ...item.product,
             id: item.product.id,
             name: item.product.name,
             finalPrice: item.unitPrice,
+            stock: item.product.stock, // Now reliably provided by backend
             cartItemId,
             dbItemId: item.id,
             quantity: item.quantity,
@@ -120,6 +122,27 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
 
     const addToCart = async (product: IProduct, variantId: number | null = null, variantAttributes: IVariantAttribute[] | null = null, quantity: number = 1) => {
         const cartItemId = variantId ? `v-${variantId}` : `p-${product.id}`;
+
+        // Stock validation
+        let availableStock = product.stock;
+        if (variantId && product.variants) {
+            const variant = product.variants.find(v => v.id === variantId);
+            if (variant) availableStock = variant.stock;
+        }
+
+        const existingItem = cartItems.find(item => item.cartItemId === cartItemId);
+        const totalPendingQuantity = (existingItem?.quantity || 0) + quantity;
+
+        if (totalPendingQuantity > availableStock) {
+            const remaining = availableStock - (existingItem?.quantity || 0);
+            if (remaining <= 0) {
+                toast.error(`Sản phẩm này đã đạt giới hạn tồn kho (${availableStock} sản phẩm).`);
+            } else {
+                toast.warning(`Bạn chỉ có thể thêm tối đa ${remaining} sản phẩm này vào giỏ hàng.`);
+            }
+            return;
+        }
+
         logActivity('ADD_CART', {
             productId: product.id,
             productName: product.name,
@@ -153,8 +176,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                             : item,
                     );
                 }
-                return [...prev, { ...product, cartItemId, quantity, selected: true, variantId, variantAttributes }];
+                return [...prev, { ...product, stock: availableStock, cartItemId, quantity, selected: true, variantId, variantAttributes }];
             });
+            toast.success("Đã thêm sản phẩm vào giỏ hàng");
         }
 
         setIsCartOpen(true);
@@ -201,14 +225,20 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
         }
 
         const itemToUpdate = cartItems.find(item => item.cartItemId === cartItemId);
-        if (itemToUpdate) {
-            logActivity('UPDATE_CART', {
-                productId: itemToUpdate.id,
-                productName: itemToUpdate.name,
-                oldQuantity: itemToUpdate.quantity,
-                newQuantity: quantity
-            });
+        if (!itemToUpdate) return;
+
+        // Stock validation
+        if (quantity > itemToUpdate.stock) {
+            toast.warning(`Số lượng tối đa trong kho là ${itemToUpdate.stock} sản phẩm.`);
+            return;
         }
+
+        logActivity('UPDATE_CART', {
+            productId: itemToUpdate.id,
+            productName: itemToUpdate.name,
+            oldQuantity: itemToUpdate.quantity,
+            newQuantity: quantity
+        });
 
         // 1. Optimistic UI update for instant feedback
         setCartItems((prev) =>
