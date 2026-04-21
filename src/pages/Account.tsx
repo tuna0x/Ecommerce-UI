@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useToast } from '../hooks/use-toast';
-import { User, Mail, Camera, Save, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Camera, Save, Eye, EyeOff, Phone } from 'lucide-react';
 import { UserService } from '../service/userService';
 import AddressManager from '../components/AddressManagement';
 import ConfirmModal from '../components/ConfirmModal';
@@ -25,6 +25,7 @@ const Account = () => {
     email: user?.email || '',
     age: user?.age || 0,
     gender: user?.gender || '',
+    phoneNumber: user?.phoneNumber || '',
   });
 
   const [passwords, setPasswords] = useState({
@@ -81,6 +82,7 @@ const Account = () => {
         name: formData.name,
         age: formData.age,
         gender: formData.gender,
+        phoneNumber: formData.phoneNumber,
         image: user.image,
       }, selectedFile || undefined);
 
@@ -289,6 +291,23 @@ const Account = () => {
                           </SelectContent>
                         </Select>
                       </div>
+ 
+                       <div className="space-y-2">
+                         <Label htmlFor="phoneNumber">Số điện thoại</Label>
+                         <div className="relative">
+                           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                           <Input
+                             id="phoneNumber"
+                             value={formData.phoneNumber}
+                             onChange={(e) => {
+                               const val = e.target.value.replace(/\D/g, "");
+                               if (val.length <= 10) setFormData({ ...formData, phoneNumber: val });
+                             }}
+                             className="pl-10"
+                             placeholder="0912345678"
+                           />
+                         </div>
+                       </div>
                     </div>
 
                     <Button 

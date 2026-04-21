@@ -60,9 +60,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchConversations = useCallback(async () => {
         if (!user) return;
         try {
-            console.log(">>> Fetching conversations for:", user.email);
             const res = await getConversations(); // res is RestResponse
-            console.log(">>> Received conversations response:", res);
             if (res && res.data) {
                 const mapped: Conversation[] = res.data.map((m: any) => {
                     const partner = m.senderEmail === user.email ? m.receiverEmail : m.senderEmail;
@@ -82,7 +80,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchHistory = useCallback(async (partner: string) => {
         try {
-            console.log(">>> Fetching history for partner:", partner);
             setIsLoadingHistory(true);
             const res = await getChatHistory(partner, 0); // res is RestResponse
             if (res && res.data) {
@@ -137,10 +134,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (isConnected && stompClient && user) {
-            console.log(">>> Subscribing to user messages queue (Standard path):", "/user/queue/messages");
             const sub = stompClient.subscribe("/user/queue/messages", (message) => {
                 const newMsg: ChatMessage = JSON.parse(message.body);
-                console.log(">>> Received real-time message:", newMsg);
                 
                 const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
                 const currentActive = activePartnerRef.current;
@@ -187,7 +182,6 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
 
             return () => {
-                console.log(">>> Unsubscribing from messages queue");
                 sub.unsubscribe();
             };
         }

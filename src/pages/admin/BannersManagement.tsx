@@ -61,7 +61,6 @@ const BannersManagement: React.FC = () => {
         "createdAt,desc",
       );
       if (!res.error) {
-        console.log("=== API Banner Resp:", res.data?.result);
         const allBanners = res.data?.result || [];
         setBannerList(allBanners);
         setTotalPages(res.data?.meta.pages || 0);
@@ -129,7 +128,6 @@ const BannersManagement: React.FC = () => {
   }, []);
 
   const openEditDialog = useCallback((banner: IBanner) => {
-    console.log("=== Opening Edit for Banner:", banner);
     setEditingBanner(banner);
     setFormData({
       title: banner.title || "",
@@ -169,7 +167,6 @@ const BannersManagement: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      console.log("=== Saving Data:", formData);
       if (editingBanner) {
         const updateData: IUpdateBanner = {
           ...formData,

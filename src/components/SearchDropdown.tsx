@@ -42,7 +42,6 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
     recognition.lang = 'vi-VN';
 
     recognition.onstart = () => {
-      console.log('🎤 Voice Search Started');
       setIsListening(true);
     };
 

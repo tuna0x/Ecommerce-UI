@@ -7,6 +7,7 @@ export interface IUser {
   id: number;
   name: string;
   email: string;
+  phoneNumber?: string;
   image?: string;
   age?: number;
   gender?: "MALE" | "FEMALE";
@@ -27,4 +28,5 @@ export interface IRegister {
   name: string;
   email: string;
   password: string;
+  phoneNumber?: string;
 }

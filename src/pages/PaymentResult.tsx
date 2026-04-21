@@ -93,6 +93,7 @@ const PaymentResult: React.FC = () => {
                             {isConfirmed ? 'Xác thực thành công!' : 
                              (isCod && isSuccess) ? 'Đang chờ xác nhận!' :
                              isSuccess ? 'Thanh toán thành công!' : 
+                             message === 'cancelled' ? 'Thanh toán đã hủy' :
                              'Thanh toán thất bại'}
                         </CardTitle>
                         {isSuccess && (
@@ -107,7 +108,9 @@ const PaymentResult: React.FC = () => {
                              isSuccess ? (isCod
                                     ? 'Đơn hàng đã được ghi nhận! Vui lòng kiểm tra email của bạn để bấm xác nhận đơn hàng trước khi chúng tôi giao đi.'
                                     : 'Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC. Giao dịch của bạn đã hoàn tất.')
-                                : message || 'Rất tiếc quá trình thanh toán của bạn không thành công. Vui lòng thử lại hoặc chọn phương thức khác.'
+                                : message === 'cancelled' 
+                                    ? 'Thanh toán đã bị hủy. Đơn hàng của bạn đã được chuyển sang trạng thái đã hủy. Bạn có thể thử đặt lại đơn hàng mới.'
+                                    : message || 'Rất tiếc quá trình thanh toán của bạn không thành công. Vui lòng thử lại hoặc chọn phương thức khác.'
                             }
                         </p>
                     </CardHeader>
