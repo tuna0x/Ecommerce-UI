@@ -11,8 +11,6 @@ import {
   Tag,
   Check,
   Wallet,
-  Building2,
-  Smartphone,
   Plus,
   Ticket,
   Loader2,
@@ -41,6 +39,8 @@ import { SearchableSelect } from '../components/SearchableSelect';
 
 import { AddressService } from '../service/addressService';
 import { checkoutApi } from '../service/orderService';
+import vnpayLogo from '../assets/Logo-VNPAY-QR.webp';
+import payosLogo from '../assets/payos.png';
 
 const Checkout: React.FC = () => {
   const { selectedItems, selectedTotal, selectedCount } = useCart();
@@ -719,20 +719,24 @@ const Checkout: React.FC = () => {
                   </label>
 
                   <label
-                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'banking'
+                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'vnpay'
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:border-primary/50'
                       }`}
                   >
-                    <RadioGroupItem value="banking" id="banking" />
-                    <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center">
-                      <Building2 className="w-5 h-5" />
+                    <RadioGroupItem value="vnpay" id="vnpay" />
+                    <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center p-1.5 grayscale-0">
+                      <img 
+                        src={vnpayLogo} 
+                        alt="VNPay" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">Chuyển khoản ngân hàng</p>
-                      <p className="text-sm text-muted-foreground">Chuyển khoản qua tài khoản ngân hàng</p>
+                      <p className="font-medium">Chuyển khoản qua VNPay</p>
+                      <p className="text-sm text-muted-foreground">Thanh toán qua cổng VNPAY-QR hoặc Ứng dụng ngân hàng</p>
                     </div>
-                    {paymentMethod === 'banking' && (
+                    {paymentMethod === 'vnpay' && (
                       <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>
@@ -740,20 +744,24 @@ const Checkout: React.FC = () => {
                   </label>
 
                   <label
-                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'momo'
+                    className={`flex items-center gap-4 p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'payos'
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:border-primary/50'
                       }`}
                   >
-                    <RadioGroupItem value="momo" id="momo" />
-                    <div className="w-10 h-10 bg-[#A50064] rounded-lg flex items-center justify-center">
-                      <Smartphone className="w-5 h-5 text-white" />
+                    <RadioGroupItem value="payos" id="payos" />
+                    <div className="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center p-1.5">
+                      <img 
+                        src={payosLogo} 
+                        alt="PayOS" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">Ví MoMo</p>
-                      <p className="text-sm text-muted-foreground">Thanh toán qua ví điện tử MoMo</p>
+                      <p className="font-medium">Cổng thanh toán PayOS</p>
+                      <p className="text-sm text-muted-foreground">Thanh toán qua QR-Code ngân hàng (VietQR)</p>
                     </div>
-                    {paymentMethod === 'momo' && (
+                    {paymentMethod === 'payos' && (
                       <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                         <Check className="w-4 h-4 text-primary-foreground" />
                       </div>

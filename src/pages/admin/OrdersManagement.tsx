@@ -112,6 +112,11 @@ const OrdersManagement: React.FC = () => {
   const [districts, setDistricts] = useState<LocationItem[]>([]);
   const [wards, setWards] = useState<LocationItem[]>([]);
 
+  // Cancellation Reason Dialog
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [pendingCancelData, setPendingCancelData] = useState<{ status: string, ids: number[] } | null>(null);
+
   // Filter orders for aggregate GHN dialog
   const confirmedOrdersForGhn = useMemo(() => {
     return orders.filter(o => o.status === 'CONFIRMED' && !o.shippingCode);
@@ -267,24 +272,52 @@ const OrdersManagement: React.FC = () => {
   const handleBulkUpdateStatus = async (newStatus: string, targetIds?: number[]) => {
     const idsToUpdate = targetIds || Array.from(selectedIds);
     if (idsToUpdate.length === 0) return;
+
+    // If status is CANCELLED, show reason dialog first
+    if (newStatus === "CANCELLED") {
+      setPendingCancelData({ status: newStatus, ids: idsToUpdate });
+      setCancelReason("");
+      setIsCancelDialogOpen(true);
+      return;
+    }
     
+    await executeUpdateStatus(newStatus, idsToUpdate);
+  };
+
+  const executeUpdateStatus = async (newStatus: string, ids: number[], reason?: string) => {
     try {
       setIsBulkUpdating(true);
-      await bulkUpdateOrderStatusApi(idsToUpdate, newStatus);
+      await bulkUpdateOrderStatusApi(ids, newStatus, reason);
       
-      const idSet = new Set(idsToUpdate);
+      const idSet = new Set(ids);
       setOrders(prev => prev.map(o => 
-        idSet.has(o.id) ? { ...o, status: newStatus } : o
+        idSet.has(o.id) ? { ...o, status: newStatus, cancelReason: reason || o.cancelReason } : o
       ));
       
-      toast.success(`Đã cập nhật ${idsToUpdate.length} đơn hàng sang ${getStatusConfig(newStatus).label}`);
-      if (!targetIds) setSelectedIds(new Set());
+      // Update selected order if it relates
+      if (selectedOrder && idSet.has(selectedOrder.id)) {
+        setSelectedOrder(prev => prev ? { ...prev, status: newStatus, cancelReason: reason || prev.cancelReason } : null);
+      }
+      
+      toast.success(`Đã cập nhật ${ids.length} đơn hàng sang ${getStatusConfig(newStatus).label}`);
+      setSelectedIds(new Set());
     } catch (err) {
       console.error("Update failed:", err);
       toast.error("Cập nhật thất bại");
     } finally {
       setIsBulkUpdating(false);
+      setIsCancelDialogOpen(false);
+      setPendingCancelData(null);
     }
+  };
+
+  const handleConfirmCancel = () => {
+    if (!pendingCancelData) return;
+    if (!cancelReason.trim()) {
+      toast.error("Vui lòng nhập lý do hủy đơn");
+      return;
+    }
+    executeUpdateStatus(pendingCancelData.status, pendingCancelData.ids, cancelReason);
   };
 
   const [isCreatingGhn, setIsCreatingGhn] = useState<number | null>(null);
@@ -1624,6 +1657,42 @@ const OrdersManagement: React.FC = () => {
                 Xác nhận tạo vận đơn
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Cancellation Reason Dialog */}
+      <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <X className="h-5 w-5" />
+              Xác nhận hủy đơn hàng
+            </DialogTitle>
+            <DialogDescription>
+              Vui lòng nhập lý do hủy cho {pendingCancelData?.ids.length || 1} đơn hàng đã chọn. 
+              Lý do này sẽ được gửi thông báo tới khách hàng.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <textarea
+              className="w-full h-32 p-3 text-sm border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-muted/20 resize-none"
+              placeholder="Nhập lý do chi tiết tại đây (ví dụ: Sản phẩm hết hàng, Khách hàng yêu cầu...)"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+              Quay lại
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmCancel}
+              disabled={isBulkUpdating || !cancelReason.trim()}
+            >
+              {isBulkUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận hủy"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
