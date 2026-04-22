@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, CheckCircle, Loader2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
+import { contactService } from '../service/contactService';
+import type { ContactFormData } from '../service/contactService';
 
 const contactInfo = [
     { icon: MapPin, title: 'Địa chỉ', lines: ['123 Nguyễn Huệ, Quận 1', 'TP. Hồ Chí Minh, Việt Nam'] },
@@ -21,11 +23,35 @@ const fadeUp = {
 
 const Contact = () => {
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState<ContactFormData>({
+        name: '',
+        email: '',
+        phone: '',
+        subject: '',
+        message: ''
+    });
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setSubmitted(true);
-        toast.success('Gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất.');
+        setLoading(true);
+        try {
+            await contactService.sendContactMessage(formData);
+            setSubmitted(true);
+            setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+            toast.success('Gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất.');
+        } catch (error: any) {
+            console.error("Contact error:", error);
+            const errorMsg = error.response?.data?.message || 'Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.';
+            toast.error(errorMsg);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -80,27 +106,33 @@ const Contact = () => {
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Họ và tên *</Label>
-                                        <Input id="name" placeholder="Nguyễn Văn A" required />
+                                        <Input id="name" placeholder="Nguyễn Văn A" required 
+                                            value={formData.name} onChange={handleChange} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="email">Email *</Label>
-                                        <Input id="email" type="email" placeholder="email@example.com" required />
+                                        <Input id="email" type="email" placeholder="email@example.com" required 
+                                            value={formData.email} onChange={handleChange} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Số điện thoại</Label>
-                                    <Input id="phone" placeholder="0901 234 567" />
+                                    <Input id="phone" placeholder="0901 234 567" 
+                                        value={formData.phone} onChange={handleChange} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="subject">Chủ đề *</Label>
-                                    <Input id="subject" placeholder="Tư vấn sản phẩm, hỗ trợ đơn hàng..." required />
+                                    <Input id="subject" placeholder="Tư vấn sản phẩm, hỗ trợ đơn hàng..." required 
+                                        value={formData.subject} onChange={handleChange} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="message">Nội dung *</Label>
-                                    <Textarea id="message" placeholder="Nhập nội dung tin nhắn của bạn..." rows={5} required />
+                                    <Textarea id="message" placeholder="Nhập nội dung tin nhắn của bạn..." rows={5} required 
+                                        value={formData.message} onChange={handleChange} />
                                 </div>
-                                <Button type="submit" className="w-full gap-2">
-                                    <Send className="w-4 h-4" /> Gửi tin nhắn
+                                <Button type="submit" className="w-full gap-2" disabled={loading}>
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    {loading ? 'Đang gửi...' : 'Gửi tin nhắn'}
                                 </Button>
                             </form>
                         )}
