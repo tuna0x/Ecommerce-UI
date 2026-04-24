@@ -19,7 +19,7 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // OTP States
   const [otp, setOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
@@ -136,7 +136,7 @@ const Register: React.FC = () => {
     try {
       // 1. Verify OTP
       await verifyOtpApi(email, otp);
-      
+
       // 2. Register
       const success = await register({ name, email, password, phoneNumber });
 
@@ -265,7 +265,7 @@ const Register: React.FC = () => {
                     />
                   </div>
                   {isEmailTaken && (
-                    <motion.p 
+                    <motion.p
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="text-[11px] text-destructive font-bold flex items-center gap-1 mt-1"
@@ -275,7 +275,7 @@ const Register: React.FC = () => {
                   )}
                   {isCheckingEmail && (
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
-                       Đang kiểm tra...
+                      Đang kiểm tra...
                     </p>
                   )}
                 </div>
@@ -378,8 +378,8 @@ const Register: React.FC = () => {
                       disabled={countdown > 0}
                       className="text-xs text-primary font-medium disabled:text-muted-foreground hover:underline"
                     >
-                      {countdown > 0 
-                        ? `Gửi lại sau ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}` 
+                      {countdown > 0
+                        ? `Gửi lại sau ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`
                         : "Gửi lại ngay"}
                     </button>
                   </div>
@@ -412,21 +412,21 @@ const Register: React.FC = () => {
           </div>
 
           {/* Social Register */}
-          <div className="flex flex-col gap-3">
-             <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => {
-                  toast({
-                    title: "Lỗi đăng ký",
-                    description: "Đăng ký Google thất bại.",
-                    variant: "destructive",
-                  });
-                }}
-                useOneTap
-                theme="outline"
-                size="large"
-                width="100%"
-              />
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                toast({
+                  title: "Lỗi đăng ký",
+                  description: "Đăng ký Google thất bại.",
+                  variant: "destructive",
+                });
+              }}
+              useOneTap
+              theme="outline"
+              size="large"
+              width="100%"
+            />
           </div>
 
           {/* Login Link */}

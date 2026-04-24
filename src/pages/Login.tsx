@@ -30,7 +30,7 @@ const Login: React.FC = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -202,21 +202,21 @@ const Login: React.FC = () => {
           </div>
 
           {/* Social Login */}
-          <div className="flex flex-col gap-3">
-             <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => {
-                  toast({
-                    title: "Lỗi đăng nhập",
-                    description: "Đăng nhập Google thất bại.",
-                    variant: "destructive",
-                  });
-                }}
-                useOneTap
-                theme="outline"
-                size="large"
-                width="100%"
-              />
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                toast({
+                  title: "Lỗi đăng nhập",
+                  description: "Đăng nhập Google thất bại.",
+                  variant: "destructive",
+                });
+              }}
+              useOneTap
+              theme="outline"
+              size="large"
+              width="100%"
+            />
           </div>
 
           {/* Register Link */}
