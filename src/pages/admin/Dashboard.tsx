@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { dashboardService, type StatisticsData } from '../../service/dashboardService';
 import { Button } from '../../components/ui/button';
+import { PremiumImage } from '../../components/ui/PremiumImage';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#6366f1'];
 
@@ -95,8 +96,8 @@ const Dashboard: React.FC = () => {
   const cancelledOrders = data.orderStatusDistribution['CANCELLED'] || 0;
   const validOrders = totalOrders - cancelledOrders;
   const pendingOrders = data.orderStatusDistribution['PENDING'] || 0;
-  
-  const conversionRate = validOrders > 0 
+
+  const conversionRate = validOrders > 0
     ? ((data.orderStatusDistribution['DELIVERED'] || 0) / validOrders * 100).toFixed(1)
     : "0.0";
 
@@ -143,15 +144,15 @@ const Dashboard: React.FC = () => {
               so với kỳ trước
             </p>
             <div className="mt-2 pt-2 border-t border-muted text-xs flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1">
-                    <Banknote className="h-3 w-3" /> AOV
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Banknote className="h-3 w-3" /> AOV
+              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-semibold">{formatCurrency(data.averageOrderValue)}</span>
+                <span className={`text-[10px] ${data.aovGrowthRate >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {data.aovGrowthRate >= 0 ? '+' : ''}{data.aovGrowthRate.toFixed(1)}%
                 </span>
-                <div className="flex flex-col items-end">
-                    <span className="font-semibold">{formatCurrency(data.averageOrderValue)}</span>
-                    <span className={`text-[10px] ${data.aovGrowthRate >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {data.aovGrowthRate >= 0 ? '+' : ''}{data.aovGrowthRate.toFixed(1)}%
-                    </span>
-                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -189,10 +190,10 @@ const Dashboard: React.FC = () => {
               <span className="text-primary">{data.newUsersCount}</span> khách mới kỳ này
             </p>
             <div className="mt-2 pt-2 border-t border-muted text-xs flex justify-between items-center">
-                <span className="text-muted-foreground flex items-center gap-1">
-                    <Repeat className="h-3 w-3" /> Khách quay lại
-                </span>
-                <span className="font-semibold text-blue-500">{data.returningUsersCount} ({data.totalOrders > 0 ? ((data.returningUsersCount / data.totalOrders) * 100).toFixed(1) : 0}%)</span>
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Repeat className="h-3 w-3" /> Khách quay lại
+              </span>
+              <span className="font-semibold text-blue-500">{data.returningUsersCount} ({data.totalOrders > 0 ? ((data.returningUsersCount / data.totalOrders) * 100).toFixed(1) : 0}%)</span>
             </div>
           </CardContent>
         </Card>
@@ -219,7 +220,7 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="month" className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <YAxis tickFormatter={formatShortCurrency} className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <Tooltip
-                    formatter={(value: any) => [formatCurrency(value), 'Doanh thu'] as [string, string]}
+                    formatter={(value: any) => [formatCurrency(Number(value) || 0), 'Doanh thu'] as [string, string]}
                     contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fill="url(#colorRevenue)" strokeWidth={2} />
@@ -243,17 +244,17 @@ const Dashboard: React.FC = () => {
                       <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: any, name: any) => {
                       const cat = data.categoryDistribution.find(c => c.category === name);
                       return [
                         <div key={name} className="flex flex-col gap-1">
-                          <div>{value} đơn hàng</div>
+                          <div>{Number(value) || 0} đơn hàng</div>
                           <div className="text-xs text-primary">AOV: {formatCurrency(cat?.aov || 0)}</div>
                         </div>,
                         name
                       ];
-                    }} 
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                 </PieChart>
@@ -281,7 +282,7 @@ const Dashboard: React.FC = () => {
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + '…' : v}
                   />
-                  <Tooltip formatter={(value: any) => [`${value} đã bán`, 'Số lượng'] as [string, string]} />
+                  <Tooltip formatter={(value: any) => [`${Number(value) || 0} đã bán`, 'Số lượng'] as [string, string]} />
                   <Bar dataKey="quantity" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -305,7 +306,13 @@ const Dashboard: React.FC = () => {
               <div className="space-y-3">
                 {data.lowStockProducts.map(p => (
                   <div key={p.id} className="flex items-center gap-3 p-2 rounded-lg bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800/30">
-                    <img src={p.image || '/placeholder.png'} alt={p.name} className="h-10 w-10 rounded object-cover" />
+                    <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0">
+                      <PremiumImage
+                        src={p.image || '/logo.jpg'}
+                        alt={p.name}
+                        showSkeleton={false}
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{p.name}</p>
                       <p className="text-xs text-orange-600 dark:text-orange-400">Còn {p.stock} sản phẩm</p>

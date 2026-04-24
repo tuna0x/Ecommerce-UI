@@ -57,9 +57,11 @@ import { categoryService } from "../../service/categoryService";
 import type { IAttributeValue } from "../../types/attribute.type";
 import { attributeValueService } from "../../service/attributeService";
 import { useDebounce } from "../../hooks/useDebounce";
+import { useSocket } from "../../context/SocketContext";
 
 const ProductsManagement: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
+  const [processingIds, setProcessingIds] = useState<number[]>([]);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 500);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +78,7 @@ const ProductsManagement: React.FC = () => {
   const [category, setCategory] = useState<ICategory[]>([]);
   const [value, setValue] = useState<IAttributeValue[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const { stompClient, isConnected } = useSocket();
   const [formData, setFormData] = useState<ICreateProduct>({
     name: "",
     originalPrice: 0,
@@ -101,8 +104,18 @@ const ProductsManagement: React.FC = () => {
         sort,
       );
       if (!res.error) {
-        setProducts(res.data?.result || []);
+        const productList = res.data?.result || [];
+        setProducts(productList);
         setTotalPages(res.data?.meta.pages || 0);
+
+        // Clean up processingIds if products now have images
+        setProcessingIds(prev => prev.filter(id => {
+          const product = productList.find((p: IProduct) => p.id === id);
+          // Only keep in processingIds if product wasn't found (maybe deleted/removed from page)
+          // or if it still has no images.
+          const hasImages = product && Array.isArray(product.image) && product.image.length > 0;
+          return !product || !hasImages;
+        }));
       }
     } catch {
       toast.error("Không thể tải danh sách sản phẩm");
@@ -275,6 +288,23 @@ const ProductsManagement: React.FC = () => {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Real-time refresh when background tasks complete
+  useEffect(() => {
+    if (isConnected && stompClient) {
+      console.log("Subscribing to /topic/product-updates...");
+      const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+        console.log("WebSocket message received:", message.body);
+        toast.info("Hệ thống: " + message.body);
+        // Delay fetching to ensure DB commit is visible to this client's request
+        setTimeout(() => {
+          console.log("Delayed refresh triggering...");
+          fetchProducts();
+        }, 1000);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [isConnected, stompClient, fetchProducts]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch]);
@@ -360,10 +390,16 @@ const ProductsManagement: React.FC = () => {
         };
 
         await ProductService.update(updateData, files);
-        toast.success("Cập nhật sản phẩm thành công");
+        if (files && files.length > 0) {
+          setProcessingIds(prev => [...new Set([...prev, editingProductId])]);
+        }
+        toast.success("Cập nhật sản phẩm thành công. Ảnh đang được xử lý...");
       } else {
-        await ProductService.create(payload, files);
-        toast.success("Thêm mới sản phẩm thành công");
+        const res = await ProductService.create(payload, files);
+        if (!res.error && res.data?.id && files && files.length > 0) {
+          setProcessingIds(prev => [...new Set([...prev, Number(res.data!.id)])]);
+        }
+        toast.success("Thêm mới sản phẩm thành công. Ảnh đang được xử lý...");
       }
       setFiles([]);
       setImagePreviews([]);
@@ -483,9 +519,20 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "image",
       header: "Hình ảnh",
       cell: ({ row }) => {
+        const isProcessing = processingIds.includes(row.original.id);
+        const hasImages = Array.isArray(row.original.image) && row.original.image.length > 0;
+
+        if (isProcessing && !hasImages) {
+          return (
+            <div className="flex flex-col items-center justify-center p-2 border rounded bg-muted/50 w-16 h-16">
+              <span className="text-[10px] text-center font-medium animate-pulse text-primary">Đang xử lý ảnh...</span>
+            </div>
+          );
+        }
+
         let image = "/logo.jpg";
-        if (Array.isArray(row.original.image) && row.original.image.length > 0) {
-          image = row.original.image[0];
+        if (hasImages) {
+          image = row.original.image![0];
         } else if (typeof row.original.image === 'string' && row.original.image) {
           image = row.original.image;
         }
@@ -555,14 +602,14 @@ const ProductsManagement: React.FC = () => {
               try {
                 // Determine if images is an array or string/null for the update payload
                 const existingImages = Array.isArray(product.image) ? product.image : (product.image ? [product.image as string] : []);
-                
+
                 await ProductService.update({
                   id: product.id,
                   name: product.name,
                   originalPrice: product.originalPrice,
                   stock: product.stock,
-                  categoryId: (product.category as any)?.id || null,
-                  brandId: (product.brand as any)?.id || null,
+                  categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
+                  brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
                   image: existingImages,
                   attributeValue: product.attributeValue?.map(av => av.id) || [],
                   active: newStatus
@@ -681,7 +728,7 @@ const ProductsManagement: React.FC = () => {
         </div>
       ),
     },
-  ], [formatCurrency, openDialog, handleDelete]);
+  ], [formatCurrency, openDialog, handleDelete, processingIds, fetchProducts]);
 
   return (
     <div className="space-y-6">

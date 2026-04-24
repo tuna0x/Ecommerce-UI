@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from './ProductCard';
@@ -7,38 +7,54 @@ import { ProductService } from '../service/productService';
 import { flashSaleService, type FlashSaleCampaign } from '../service/flashSaleService';
 import type { IProduct } from '../types/product.type';
 import { Button } from './ui/button';
+import { useSocket } from '../context/SocketContext';
 
 const FlashSale: React.FC = () => {
+  const { stompClient, isConnected } = useSocket();
   const [isLoading, setIsLoading] = useState(true);
   const [flashSaleProducts, setFlashSaleProducts] = useState<IProduct[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<FlashSaleCampaign | null>(null);
 
-  useEffect(() => {
-    const fetchFlashSales = async () => {
-      try {
-        // Fetch campaign info
-        const campaign = await flashSaleService.getActiveCampaign();
-        setActiveCampaign(campaign);
+  const fetchFlashSales = useCallback(async () => {
+    try {
+      // Fetch campaign info
+      const campaign = await flashSaleService.getActiveCampaign();
+      setActiveCampaign(campaign);
 
-        // Fetch products
-        const res = await ProductService.getFlashSaleProducts(0, 10);
-        if (res.data?.result) {
-          setFlashSaleProducts(res.data.result);
-        }
-      } catch (error) {
-        console.error("Failed to fetch flash sale products", error);
-      } finally {
-        setIsLoading(false);
+      // Fetch products
+      const res = await ProductService.getFlashSaleProducts(0, 10);
+      if (res.data?.result) {
+        setFlashSaleProducts(res.data.result);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch flash sale products", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchFlashSales();
-    
+
     // Polling every 30 seconds for real-time quantity/price updates
     const interval = setInterval(fetchFlashSales, 30000);
-    
+
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchFlashSales]);
+
+  // Real-time update subscription
+  useEffect(() => {
+    if (isConnected && stompClient) {
+      const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+        console.log("WebSocket message received in FlashSale:", message.body);
+        // Delay 1s to ensure DB consistency
+        setTimeout(() => {
+          fetchFlashSales();
+        }, 1000);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [isConnected, stompClient, fetchFlashSales]);
 
   const [timeLeft, setTimeLeft] = useState({
     hours: 0,
@@ -73,7 +89,7 @@ const FlashSale: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [flashSaleProducts]);
+  }, [flashSaleProducts, activeCampaign?.endAt]);
 
   const [scrollPosition, setScrollPosition] = useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -95,7 +111,7 @@ const FlashSale: React.FC = () => {
     return (
       <section className="py-12 md:py-20 bg-gradient-to-b from-background to-accent/5">
         <div className="container mx-auto">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="relative overflow-hidden rounded-[2rem] border border-pink-100 bg-white/50 backdrop-blur-xl p-8 md:p-12 text-center shadow-2xl shadow-pink-500/5"
@@ -103,10 +119,10 @@ const FlashSale: React.FC = () => {
             {/* Background Decorative Elements */}
             <div className="absolute top-0 left-0 w-64 h-64 bg-pink-100/50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3 pointer-events-none" />
-            
+
             <div className="relative z-10 flex flex-col items-center">
               <motion.div
-                animate={{ 
+                animate={{
                   y: [0, -10, 0],
                   rotate: [0, 5, -5, 0]
                 }}
@@ -115,22 +131,22 @@ const FlashSale: React.FC = () => {
               >
                 <Zap className="w-10 h-10 md:w-12 md:h-12 text-white fill-white/20" />
               </motion.div>
-              
+
               <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
                 Khung giờ Flash Sale đã kết thúc
               </h2>
               <p className="max-w-lg text-slate-500 text-lg leading-relaxed mb-8">
                 Hẹn gặp lại bạn vào khung giờ tiếp theo với danh sách sản phẩm giảm giá cực khủng. Đừng bỏ lỡ nhé!
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <Button 
+                <Button
                   className="bg-pink-600 hover:bg-pink-700 text-white px-8 h-12 rounded-full font-bold shadow-lg shadow-pink-200 transition-all hover:scale-105 active:scale-95"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 >
                   Tiếp tục mua sắm
                 </Button>
-                <Button 
+                <Button
                   variant="outline"
                   className="rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"
                   onClick={() => window.location.href = '/category/all'}

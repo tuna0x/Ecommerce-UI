@@ -39,6 +39,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { CheckCircle2, XCircle, MoreHorizontal, LayoutList, FlaskConical, BookOpen, Settings, Package, ImageIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useSocket } from '../../context/SocketContext';
 
 const ProductDetailManagement: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -52,6 +53,7 @@ const ProductDetailManagement: React.FC = () => {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [editingDetail, setEditingDetail] = useState<IProductDetail | null>(null);
     const [previewDetail, setPreviewDetail] = useState<IProductDetail | null>(null);
+    const { stompClient, isConnected } = useSocket();
 
 
     // Pagination state
@@ -106,6 +108,22 @@ const ProductDetailManagement: React.FC = () => {
         fetchDetails(1);
         fetchProducts();
     }, [fetchDetails]);
+
+    // Real-time refresh
+    useEffect(() => {
+        if (isConnected && stompClient) {
+            console.log("Subscribing to /topic/product-updates in Details...");
+            const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+                console.log("WebSocket message received in Details:", message.body);
+                toast.info("Dữ liệu sản phẩm vừa được cập nhật");
+                setTimeout(() => {
+                    fetchDetails(meta.current, searchTerm);
+                    fetchProducts();
+                }, 1000);
+            });
+            return () => subscription.unsubscribe();
+        }
+    }, [isConnected, stompClient, fetchDetails, meta, searchTerm]);
 
     const handleSearch = useCallback(() => {
         fetchDetails(1, searchTerm);
@@ -609,23 +627,35 @@ const ProductDetailManagement: React.FC = () => {
                         </div>
 
                         {/* Content Tabs */}
-                        <Tabs defaultValue="description" className="border rounded-xl overflow-hidden">
-                            <TabsList className="grid w-full grid-cols-4 bg-muted/50 rounded-none border-b h-12">
-                                <TabsTrigger value="description" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all">
-                                    <LayoutList className="h-4 w-4" />
-                                    Mô tả
+                        <Tabs defaultValue="description" className="border rounded-xl overflow-hidden bg-background">
+                            <TabsList className="flex w-full bg-muted/50 rounded-none border-b h-12 p-0">
+                                <TabsTrigger
+                                    value="description"
+                                    className="flex-1 flex items-center justify-center gap-2 h-full data-[state=active]:bg-background data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all px-2"
+                                >
+                                    <LayoutList className="h-4 w-4 shrink-0" />
+                                    <span className="text-sm font-medium">Mô tả</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="ingredient" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all">
-                                    <FlaskConical className="h-4 w-4" />
-                                    Thành phần
+                                <TabsTrigger
+                                    value="ingredient"
+                                    className="flex-1 flex items-center justify-center gap-2 h-full data-[state=active]:bg-background data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all px-2"
+                                >
+                                    <FlaskConical className="h-4 w-4 shrink-0" />
+                                    <span className="text-sm font-medium">Thành phần</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="usageGuide" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all">
-                                    <BookOpen className="h-4 w-4" />
-                                    Hướng dẫn
+                                <TabsTrigger
+                                    value="usageGuide"
+                                    className="flex-1 flex items-center justify-center gap-2 h-full data-[state=active]:bg-background data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all px-2"
+                                >
+                                    <BookOpen className="h-4 w-4 shrink-0" />
+                                    <span className="text-sm font-medium">Hướng dẫn</span>
                                 </TabsTrigger>
-                                <TabsTrigger value="specification" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all">
-                                    <Settings className="h-4 w-4" />
-                                    Thông số
+                                <TabsTrigger
+                                    value="specification"
+                                    className="flex-1 flex items-center justify-center gap-2 h-full data-[state=active]:bg-background data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all px-2"
+                                >
+                                    <Settings className="h-4 w-4 shrink-0" />
+                                    <span className="text-sm font-medium">Thông số</span>
                                 </TabsTrigger>
                             </TabsList>
                             <TabsContent value="description" className="space-y-3 p-5 mt-0">
@@ -751,22 +781,22 @@ const ProductDetailManagement: React.FC = () => {
                     {previewDetail && (
                         <div className="p-6">
                             <Tabs defaultValue="description">
-                                <TabsList className="grid w-full grid-cols-4 mb-6">
-                                    <TabsTrigger value="description" className="gap-2">
-                                        <LayoutList className="h-4 w-4" />
-                                        Mô tả
+                                <TabsList className="grid w-full grid-cols-4 bg-muted/50 h-11 mb-6 p-0 border overflow-hidden rounded-lg">
+                                    <TabsTrigger value="description" className="gap-2 h-full rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary transition-all px-1">
+                                        <LayoutList className="h-4 w-4 shrink-0" />
+                                        <span className="text-xs font-medium">Mô tả</span>
                                     </TabsTrigger>
-                                    <TabsTrigger value="ingredient" className="gap-2">
-                                        <FlaskConical className="h-4 w-4" />
-                                        Thành phần
+                                    <TabsTrigger value="ingredient" className="gap-2 h-full rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary transition-all px-1">
+                                        <FlaskConical className="h-4 w-4 shrink-0" />
+                                        <span className="text-xs font-medium">Thành phần</span>
                                     </TabsTrigger>
-                                    <TabsTrigger value="usageGuide" className="gap-2">
-                                        <BookOpen className="h-4 w-4" />
-                                        Hướng dẫn
+                                    <TabsTrigger value="usageGuide" className="gap-2 h-full rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary transition-all px-1">
+                                        <BookOpen className="h-4 w-4 shrink-0" />
+                                        <span className="text-xs font-medium">Hướng dẫn</span>
                                     </TabsTrigger>
-                                    <TabsTrigger value="specification" className="gap-2">
-                                        <Settings className="h-4 w-4" />
-                                        Thông số
+                                    <TabsTrigger value="specification" className="gap-2 h-full rounded-none data-[state=active]:bg-background data-[state=active]:text-primary border-b-2 border-transparent data-[state=active]:border-primary transition-all px-1">
+                                        <Settings className="h-4 w-4 shrink-0" />
+                                        <span className="text-xs font-medium">Thông số</span>
                                     </TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="description">
