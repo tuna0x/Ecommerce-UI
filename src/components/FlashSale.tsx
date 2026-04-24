@@ -15,8 +15,14 @@ const FlashSale: React.FC = () => {
   const [flashSaleProducts, setFlashSaleProducts] = useState<IProduct[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<FlashSaleCampaign | null>(null);
 
-  const fetchFlashSales = useCallback(async () => {
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const fetchFlashSales = useCallback(async (isSilent = false) => {
+    // Simple throttle: don't refetch more than once every 10 seconds unless forced
+    const now = Date.now();
+    if (isSilent && now - lastFetchTime < 10000) return;
+
     try {
+      if (!isSilent) setIsLoading(true);
       // Fetch campaign info
       const campaign = await flashSaleService.getActiveCampaign();
       setActiveCampaign(campaign);
@@ -25,32 +31,29 @@ const FlashSale: React.FC = () => {
       const res = await ProductService.getFlashSaleProducts(0, 10);
       if (res.data?.result) {
         setFlashSaleProducts(res.data.result);
+        setLastFetchTime(now);
       }
     } catch (error) {
       console.error("Failed to fetch flash sale products", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
   useEffect(() => {
     fetchFlashSales();
-
-    // Polling every 30 seconds for real-time quantity/price updates
-    const interval = setInterval(fetchFlashSales, 30000);
-
-    return () => clearInterval(interval);
   }, [fetchFlashSales]);
 
-  // Real-time update subscription
+  // Real-time update subscription with 2s debounce to prevent Thundering Herd problem
   useEffect(() => {
     if (isConnected && stompClient) {
       const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
         console.log("WebSocket message received in FlashSale:", message.body);
-        // Delay 1s to ensure DB consistency
+        // Using a random delay between 0-2s to jitter the requests from multiple clients
+        const jitter = Math.random() * 2000;
         setTimeout(() => {
-          fetchFlashSales();
-        }, 1000);
+          fetchFlashSales(true);
+        }, jitter);
       });
       return () => subscription.unsubscribe();
     }

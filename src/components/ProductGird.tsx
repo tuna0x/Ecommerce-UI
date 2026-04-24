@@ -13,35 +13,41 @@ const ProductGrid: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProducts = useCallback(async () => {
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const fetchProducts = useCallback(async (isSilent = false) => {
+    // Simple throttle: don't refetch more than once every 10 seconds unless forced
+    const now = Date.now();
+    if (isSilent && now - lastFetchTime < 10000) return;
+
     try {
-      setIsLoading(true);
-      // Fetch first page, 10 products, sorted by soldCount descending
+      if (!isSilent) setIsLoading(true);
       const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc", undefined, undefined, true);
       if (response && response.data) {
         setProducts(response.data.result);
+        setLastFetchTime(now);
       }
     } catch (error) {
       console.error("Error fetching products:", error);
-      toast.error("Không thể tải danh sách sản phẩm");
+      if (!isSilent) toast.error("Không thể tải danh sách sản phẩm");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Real-time update subscription
+  // Real-time update subscription with jitter to prevent Thundering Herd
   useEffect(() => {
     if (isConnected && stompClient) {
       const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
         console.log("WebSocket message received in ProductGrid:", message.body);
-        // Delay 1s to ensure DB consistency
+        // Using a random delay to jitter the requests
+        const jitter = Math.random() * 2000;
         setTimeout(() => {
-          fetchProducts();
-        }, 1000);
+          fetchProducts(true);
+        }, jitter);
       });
       return () => subscription.unsubscribe();
     }
