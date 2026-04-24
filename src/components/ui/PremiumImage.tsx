@@ -39,6 +39,7 @@ export const PremiumImage: React.FC<PremiumImageProps> = ({
         <motion.img
           src={src}
           alt={alt}
+          loading="lazy"
           initial={{ opacity: 0, scale: 1.05 }}
           animate={isLoaded ? {
             opacity: 1,

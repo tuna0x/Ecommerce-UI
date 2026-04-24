@@ -108,10 +108,11 @@ const Register: React.FC = () => {
         return;
       }
 
-      if (password.length < 6) {
+      const passwordRegex = /^(?=.*[0-9])(?=.*[a-zA-Z]).{8,}$/;
+      if (!passwordRegex.test(password)) {
         toast({
-          title: "Lỗi",
-          description: "Mật khẩu phải có ít nhất 6 ký tự.",
+          title: "Lỗi mật khẩu",
+          description: "Mật khẩu phải có ít nhất 8 ký tự, bao gồm cả chữ và số.",
           variant: "destructive",
         });
         return;
@@ -288,7 +289,7 @@ const Register: React.FC = () => {
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Tối thiểu 8 ký tự (chữ & số)"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="pl-10 pr-10"
@@ -311,7 +312,7 @@ const Register: React.FC = () => {
                       <Input
                         id="confirmPassword"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Tối thiểu 8 ký tự (chữ & số)"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="pl-10"
