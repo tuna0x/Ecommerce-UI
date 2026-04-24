@@ -34,6 +34,7 @@ import { ImageMagnifier } from "../components/ImageMagnifier";
 import { useInView } from "react-intersection-observer";
 import { PremiumImage } from "../components/ui/PremiumImage";
 import SEO from "../components/ui/SEO";
+import { Badge } from "../components/ui/badge";
 import { useWishlist } from "../hooks/useWishlist";
 import { usePersonalization } from "../context/PersonalizationContext";
 import { useSocket } from "../context/SocketContext";
@@ -386,6 +387,13 @@ const ProductDetail: React.FC = () => {
                 <span className="text-muted-foreground">|</span>
                 <span className="text-muted-foreground">Đã bán {product.soldCount || 0}</span>
               </div>
+              {product.skinType && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-medium">
+                    ✨ Phù hợp: {product.skinType}
+                  </Badge>
+                </div>
+              )}
             </div>
 
             <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-3 sm:p-4 rounded-xl">
@@ -628,6 +636,12 @@ const ProductDetail: React.FC = () => {
                     </h3>
                     {staticAttributes.length > 0 ? (
                       <div className="grid gap-4">
+                        {product.skinType && (
+                          <div className="flex justify-between py-3 border-b border-border/30">
+                            <span className="text-muted-foreground">Loại da phù hợp</span>
+                            <span className="font-medium text-primary">{product.skinType}</span>
+                          </div>
+                        )}
                         {staticAttributes.map((attr, idx) => (
                           <div key={attr.id || idx} className="flex justify-between py-3 border-b border-border/30 last:border-0">
                             <span className="text-muted-foreground">{attr.attributeValue}</span>

@@ -87,6 +87,7 @@ const ProductsManagement: React.FC = () => {
     image: null,
     brandId: null as number | null,
     categoryId: null as number | null,
+    skinType: "",
     attributeValue: [] as number[],
   });
 
@@ -171,6 +172,7 @@ const ProductsManagement: React.FC = () => {
         image: null,
         categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
         brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
+        skinType: product.skinType || "",
         attributeValue: attrValues.map((attr) => attr.id),
         active: product.active !== false,
         variants: product.variants?.map((v) => ({
@@ -208,6 +210,7 @@ const ProductsManagement: React.FC = () => {
         image: null,
         categoryId: null,
         brandId: null,
+        skinType: "",
         attributeValue: [],
         variants: [],
         active: true
@@ -293,11 +296,16 @@ const ProductsManagement: React.FC = () => {
     if (isConnected && stompClient) {
       console.log("Subscribing to /topic/product-updates...");
       const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
-        console.log("WebSocket message received:", message.body);
-        toast.info("Hệ thống: " + message.body);
-        // Delay fetching to ensure DB commit is visible to this client's request
+        const msg = message.body;
+        console.log("WebSocket message received:", msg);
+        
+        // Only show toast if it's about image processing (which takes time)
+        if (msg.includes("xử lý xong") || msg.includes("hoàn tất")) {
+          toast.success(msg);
+        }
+        
+        // Always refresh silently to keep data in sync
         setTimeout(() => {
-          console.log("Delayed refresh triggering...");
           fetchProducts();
         }, 1000);
       });
@@ -344,6 +352,7 @@ const ProductsManagement: React.FC = () => {
       image: null,
       categoryId: null,
       brandId: null,
+      skinType: "",
       attributeValue: [],
       variants: [],
       active: true
@@ -381,6 +390,7 @@ const ProductsManagement: React.FC = () => {
           costPrice: formData.costPrice || 0,
           stock: formData.stock,
           brandId: formData.brandId,
+          skinType: formData.skinType,
           categoryId: formData.categoryId,
           // Only send existing Cloudinary URLs to keep
           image: imagePreviews.filter(p => !p.startsWith('blob:')),
@@ -392,14 +402,20 @@ const ProductsManagement: React.FC = () => {
         await ProductService.update(updateData, files);
         if (files && files.length > 0) {
           setProcessingIds(prev => [...new Set([...prev, editingProductId])]);
+          toast.success("Cập nhật thông tin thành công. Ảnh đang được xử lý...");
+        } else {
+          toast.success("Cập nhật sản phẩm thành công!");
         }
-        toast.success("Cập nhật sản phẩm thành công. Ảnh đang được xử lý...");
       } else {
         const res = await ProductService.create(payload, files);
-        if (!res.error && res.data?.id && files && files.length > 0) {
-          setProcessingIds(prev => [...new Set([...prev, Number(res.data!.id)])]);
+        if (!res.error && res.data?.id) {
+          if (files && files.length > 0) {
+            setProcessingIds(prev => [...new Set([...prev, Number(res.data!.id)])]);
+            toast.success("Thêm sản phẩm thành công. Ảnh đang được xử lý...");
+          } else {
+            toast.success("Thêm mới sản phẩm thành công!");
+          }
         }
-        toast.success("Thêm mới sản phẩm thành công. Ảnh đang được xử lý...");
       }
       setFiles([]);
       setImagePreviews([]);
@@ -558,11 +574,20 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "name",
       header: "Tên sản phẩm",
       cell: ({ row }) => (
-        <div className="max-w-[200px]">
-          <p className="text-sm font-semibold text-foreground truncate" title={row.original.name}>
+        <div className="min-w-[220px] py-2">
+          <p className="text-sm font-bold text-foreground leading-snug mb-1 line-clamp-2" title={row.original.name}>
             {row.original.name}
           </p>
-          <p className="text-[10px] text-muted-foreground font-mono">ID: {row.original.id}</p>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] font-mono py-0 h-4 px-1.5 opacity-70">
+              ID: {row.original.id}
+            </Badge>
+            {row.original.skinType && (
+              <Badge variant="secondary" className="text-[10px] bg-pink-50 text-pink-600 border-none py-0 h-4">
+                {row.original.skinType}
+              </Badge>
+            )}
+          </div>
         </div>
       ),
     },
@@ -570,16 +595,20 @@ const ProductsManagement: React.FC = () => {
       accessorKey: "brand",
       header: "Thương hiệu",
       cell: ({ row }) => (
-        <span>{typeof row.original.brand === 'string' ? row.original.brand : row.original.brand?.name}</span>
+        <div className="min-w-[100px] py-1 text-muted-foreground">
+          {typeof row.original.brand === 'string' ? row.original.brand : row.original.brand?.name}
+        </div>
       )
     },
     {
       accessorKey: "category",
       header: "Danh mục",
       cell: ({ row }) => (
-        <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-normal text-[11px]">
-          {typeof row.original.category === 'string' ? row.original.category : row.original.category?.name}
-        </Badge>
+        <div className="min-w-[120px] py-1">
+          <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-semibold text-[11px] px-3 py-1">
+            {typeof row.original.category === 'string' ? row.original.category : row.original.category?.name}
+          </Badge>
+        </div>
       ),
     },
     {
@@ -590,39 +619,39 @@ const ProductsManagement: React.FC = () => {
         const isActive = product.active !== false;
 
         return (
-          <Badge
-            variant={isActive ? "secondary" : "outline"}
-            className={cn(
-              "cursor-pointer transition-all",
-              isActive ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-gray-50 text-gray-500"
-            )}
-            onClick={async (e) => {
-              e.stopPropagation();
-              const newStatus = !isActive;
-              try {
-                // Determine if images is an array or string/null for the update payload
-                const existingImages = Array.isArray(product.image) ? product.image : (product.image ? [product.image as string] : []);
-
-                await ProductService.update({
-                  id: product.id,
-                  name: product.name,
-                  originalPrice: product.originalPrice,
-                  stock: product.stock,
-                  categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
-                  brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
-                  image: existingImages,
-                  attributeValue: product.attributeValue?.map(av => av.id) || [],
-                  active: newStatus
-                });
-                toast.success(`Đã ${newStatus ? 'bật' : 'tắt'} sản phẩm`);
-                fetchProducts();
-              } catch {
-                toast.error("Không thể cập nhật trạng thái");
-              }
-            }}
-          >
-            {isActive ? "Đang bán" : "Ngừng bán"}
-          </Badge>
+          <div className="min-w-[100px] py-1">
+            <Badge
+              variant={isActive ? "secondary" : "outline"}
+              className={cn(
+                "cursor-pointer transition-all px-3 py-1",
+                isActive ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-gray-50 text-gray-500"
+              )}
+              onClick={async (e) => {
+                e.stopPropagation();
+                const newStatus = !isActive;
+                try {
+                  const existingImages = Array.isArray(product.image) ? product.image : (product.image ? [product.image as string] : []);
+                  await ProductService.update({
+                    id: product.id,
+                    name: product.name,
+                    originalPrice: product.originalPrice,
+                    stock: product.stock,
+                    categoryId: product.category && typeof product.category === 'object' ? product.category.id : null,
+                    brandId: product.brand && typeof product.brand === 'object' ? product.brand.id : null,
+                    image: existingImages,
+                    attributeValue: product.attributeValue?.map(av => av.id) || [],
+                    active: newStatus
+                  });
+                  toast.success(`Đã ${newStatus ? 'bật' : 'tắt'} sản phẩm`);
+                  fetchProducts();
+                } catch {
+                  toast.error("Không thể cập nhật trạng thái");
+                }
+              }}
+            >
+              {isActive ? "Đang bán" : "Ngừng bán"}
+            </Badge>
+          </div>
         );
       }
     },
@@ -630,7 +659,7 @@ const ProductsManagement: React.FC = () => {
       id: "attributes",
       header: "Thuộc tính",
       cell: ({ row }) => (
-        <div className="flex flex-wrap gap-1 max-w-[200px]">
+        <div className="flex flex-wrap gap-1 min-w-[120px] py-1">
           {row.original.attributeValue?.length ? (
             row.original.attributeValue.map((item, index) => {
               const value = (item as unknown as { attributeValue?: string }).attributeValue || "N/A";
@@ -638,14 +667,14 @@ const ProductsManagement: React.FC = () => {
                 <Badge
                   key={index}
                   variant="outline"
-                  className="text-[10px] px-1.5 h-5 font-normal bg-background shrink-0"
+                  className="text-[10px] px-2 h-5.5 font-medium bg-muted/30 border-muted-foreground/20 shrink-0"
                 >
                   {value}
                 </Badge>
               );
             })
           ) : (
-            <span className="text-[10px] text-muted-foreground italic">Trống</span>
+            <span className="text-[10px] text-muted-foreground italic opacity-50">Trống</span>
           )}
         </div>
       ),
@@ -653,20 +682,20 @@ const ProductsManagement: React.FC = () => {
     {
       accessorKey: "stock",
       header: "Kho",
-      cell: ({ row }) => <div className="text-center font-medium">{row.original.stock}</div>,
+      cell: ({ row }) => <div className="min-w-[60px] text-center font-bold text-slate-700">{row.original.stock}</div>,
     },
     {
       id: "price",
-      header: "Giá",
+      header: () => <div className="text-right pr-4">Giá</div>,
       cell: ({ row }) => {
         const product = row.original;
         return (
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-primary">
+          <div className="flex flex-col items-end min-w-[100px] pr-4 py-2">
+            <span className="text-sm font-bold text-pink-600">
               {formatCurrency(product.finalPrice || product.originalPrice)}
             </span>
             {(product.discountPrice ?? 0) > 0 && (
-              <span className="text-[10px] text-muted-foreground line-through">
+              <span className="text-[10px] text-muted-foreground line-through opacity-60">
                 {formatCurrency(product.originalPrice)}
               </span>
             )}
@@ -698,7 +727,7 @@ const ProductsManagement: React.FC = () => {
       id: "actions",
       header: () => <div className="text-right">Thao tác</div>,
       cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-2 py-2">
           <Button
             variant="ghost"
             size="icon"
@@ -1024,6 +1053,25 @@ const ProductsManagement: React.FC = () => {
                   placeholder="0"
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="skinType">Loại da phù hợp</Label>
+              <SearchableSelect
+                options={[
+                  { value: "Mọi loại da", label: "Mọi loại da" },
+                  { value: "Da dầu", label: "Da dầu" },
+                  { value: "Da khô", label: "Da khô" },
+                  { value: "Da hỗn hợp", label: "Da hỗn hợp" },
+                  { value: "Da nhạy cảm", label: "Da nhạy cảm" },
+                  { value: "Da mụn", label: "Da mụn" },
+                ]}
+                value={formData.skinType || "Mọi loại da"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, skinType: value })
+                }
+                placeholder="Chọn loại da"
+                searchPlaceholder="Tìm loại da..."
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="category">Danh mục</Label>

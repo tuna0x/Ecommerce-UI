@@ -42,7 +42,7 @@ export interface IProduct {
   soldCount?: number;
   hoverImage?: string;
   discount?: number;
-  skinType?: string[];
+  skinType?: string;
   concern?: string[];
   volume?: string;
   variants?: IVariant[];
@@ -94,6 +94,7 @@ export interface ICreateProduct {
   image: string[] | null;
   categoryId: number | null;
   brandId: number | null;
+  skinType?: string;
   attributeValue: number[] | undefined;
   variants?: IVariantCreate[];
   active?: boolean;
@@ -108,6 +109,7 @@ export interface IUpdateProduct {
   image: string[] | null;
   categoryId: number | null;
   brandId: number | null;
+  skinType?: string;
   attributeValue: number[] | null;
   variants?: IVariantCreate[];
   active?: boolean;

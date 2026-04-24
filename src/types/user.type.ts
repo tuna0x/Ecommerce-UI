@@ -6,6 +6,7 @@ export interface IUser {
   image?: string;
   age?: number;
   gender?: string;
+  skinType?: string;
   createdAt?: string;
   updatedAt?: string;
   createdBy?: string;

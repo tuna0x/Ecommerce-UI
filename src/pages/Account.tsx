@@ -10,13 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useToast } from '../hooks/use-toast';
-import { User, Mail, Camera, Save, Eye, EyeOff, Phone } from 'lucide-react';
+import { User, Mail, Camera, Save, Eye, EyeOff, Phone, Star } from 'lucide-react';
 import { UserService } from '../service/userService';
 import AddressManager from '../components/AddressManagement';
 import ConfirmModal from '../components/ConfirmModal';
 
+import type { IUser } from '../types/user.type';
+ 
 const Account = () => {
-  const { user, logout, setUser } = useAuth();
+  const { user, logout, setUser } = useAuth() as { user: IUser | null, logout: () => void, setUser: (user: IUser | null) => void };
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -26,6 +28,7 @@ const Account = () => {
     age: user?.age || 0,
     gender: user?.gender || '',
     phoneNumber: user?.phoneNumber || '',
+    skinType: user?.skinType || '',
   });
 
   const [passwords, setPasswords] = useState({
@@ -308,6 +311,20 @@ const Account = () => {
                            />
                          </div>
                        </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="skinType">Tình trạng da (AI Phân tích)</Label>
+                        <div className="relative">
+                          <Star className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+                          <Input
+                            id="skinType"
+                            value={formData.skinType || 'Chưa phân tích'}
+                            className="pl-10 bg-primary/5 border-primary/20 font-bold text-primary"
+                            disabled
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">* AI tự động cập nhật sau khi bạn trò chuyện tư vấn.</p>
+                        </div>
+                      </div>
                     </div>
 
                     <Button 
