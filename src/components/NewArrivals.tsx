@@ -5,30 +5,47 @@ import ProductCard from './ProductCard';
 import ScrollReveal from './ScrollReveal';
 import type { IProduct } from '../types/product.type';
 import { Skeleton } from './ui/skeleton';
+import { useSocket } from '../context/SocketContext';
+import { useCallback } from 'react';
 
 const NewArrivals: React.FC = () => {
+    const { stompClient, isConnected } = useSocket();
     const scrollRef = useRef<HTMLDivElement>(null);
     const [newProducts, setNewProducts] = useState<IProduct[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchNewArrivals = async () => {
-            try {
-                setIsLoading(true);
-                // Fetch first page, 8 products, sorted by createdAt descending
-                const response = await ProductService.getAll(0, 8, undefined, "createdAt,desc", undefined, undefined, true);
-                if (response && response.data) {
-                    setNewProducts(response.data.result);
-                }
-            } catch (error) {
-                console.error("Error fetching new arrivals:", error);
-            } finally {
-                setIsLoading(false);
+    const fetchNewArrivals = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            // Fetch first page, 8 products, sorted by createdAt descending
+            const response = await ProductService.getAll(0, 8, undefined, "createdAt,desc", undefined, undefined, true);
+            if (response && response.data) {
+                setNewProducts(response.data.result);
             }
-        };
-
-        fetchNewArrivals();
+        } catch (error) {
+            console.error("Error fetching new arrivals:", error);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchNewArrivals();
+    }, [fetchNewArrivals]);
+
+    // Real-time update subscription
+    useEffect(() => {
+        if (isConnected && stompClient) {
+            const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+                console.log("WebSocket message received in NewArrivals:", message.body);
+                // Delay 1s to ensure DB consistency
+                setTimeout(() => {
+                    fetchNewArrivals();
+                }, 1000);
+            });
+            return () => subscription.unsubscribe();
+        }
+    }, [isConnected, stompClient, fetchNewArrivals]);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {

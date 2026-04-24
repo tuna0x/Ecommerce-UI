@@ -35,22 +35,30 @@ export const PremiumImage: React.FC<PremiumImageProps> = ({
       </AnimatePresence>
 
       {/* Actual Image */}
-      <motion.img
-        src={src}
-        alt={alt}
-        initial={{ opacity: 0, scale: 1.05 }}
-        animate={isLoaded ? { 
-            opacity: 1, 
+      {src ? (
+        <motion.img
+          src={src}
+          alt={alt}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={isLoaded ? {
+            opacity: 1,
             scale: 1,
-            transition: { duration: 0.5, ease: "easeOut" } 
-        } : {}}
-        onLoad={() => setIsLoaded(true)}
-        className={cn(
-          "w-full h-full object-cover",
-          className
-        )}
-        {...props}
-      />
+            transition: { duration: 0.5, ease: "easeOut" }
+          } : {}}
+          onLoad={() => setIsLoaded(true)}
+          className={cn(
+            "w-full h-full object-cover",
+            className
+          )}
+          {...props}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-secondary/20">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-widest px-2 text-center">
+            No image
+          </span>
+        </div>
+      )}
     </div>
   );
 };

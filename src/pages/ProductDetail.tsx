@@ -36,6 +36,7 @@ import { PremiumImage } from "../components/ui/PremiumImage";
 import SEO from "../components/ui/SEO";
 import { useWishlist } from "../hooks/useWishlist";
 import { usePersonalization } from "../context/PersonalizationContext";
+import { useSocket } from "../context/SocketContext";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +56,8 @@ const ProductDetail: React.FC = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const [isAdding, setIsAdding] = useState(false);
-  
+
+  const { stompClient, isConnected } = useSocket();
   const { ref: mainButtonRef, inView: isMainButtonInView } = useInView({
     threshold: 0,
   });
@@ -75,7 +77,7 @@ const ProductDetail: React.FC = () => {
       if (prodRes?.data) {
         setProduct(prodRes.data);
         trackView(prodRes.data);
-        
+
         // Fetch category attributes and smart related products in parallel
         const categoryId = typeof prodRes.data.category === 'object' ? prodRes.data.category.id : null;
 
@@ -98,12 +100,26 @@ const ProductDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, trackView]);
 
   useEffect(() => {
     fetchData();
     window.scrollTo(0, 0);
   }, [fetchData]);
+
+  // Real-time update subscription
+  useEffect(() => {
+    if (isConnected && stompClient) {
+      const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+        console.log("WebSocket message received in ProductDetail:", message.body);
+        // Delay 1s to ensure DB consistency
+        setTimeout(() => {
+          fetchData();
+        }, 1000);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [isConnected, stompClient, fetchData]);
 
   useEffect(() => {
     if (product) {
@@ -115,7 +131,7 @@ const ProductDetail: React.FC = () => {
         price: product.finalPrice || product.price || product.originalPrice || 0
       });
     }
-  }, [product?.id]);
+  }, [product]);
 
   const images = useMemo(() => {
     if (!product) return [];
@@ -275,7 +291,7 @@ const ProductDetail: React.FC = () => {
 
   return (
     <>
-      <SEO 
+      <SEO
         title={product.name}
         description={(detailContent?.description || "").replace(/<[^>]*>?/gm, '').slice(0, 160) || product.name}
         image={product.thumbnail || (Array.isArray(product.image) ? product.image[0] : product.image)}
@@ -316,14 +332,14 @@ const ProductDetail: React.FC = () => {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <ImageMagnifier 
-                    src={images[selectedImage]} 
+                  <ImageMagnifier
+                    src={images[selectedImage]}
                     className="w-full h-full"
                   />
                 </motion.div>
               </AnimatePresence>
-              
-              <div 
+
+              <div
                 className="absolute top-3 right-3 p-2 bg-background/80 backdrop-blur-sm rounded-full hover:bg-background transition-all md:opacity-0 md:group-hover/magnifier:opacity-100"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -515,12 +531,12 @@ const ProductDetail: React.FC = () => {
                     : "hover:bg-secondary text-foreground"
                 )}
               >
-                <Heart 
+                <Heart
                   className={cn(
                     "w-4 h-4 sm:w-5 sm:h-5 transition-transform duration-300",
                     isToggling && "scale-75 opacity-50",
                     isInWishlist(product.id) && "fill-current scale-110"
-                  )} 
+                  )}
                 />
               </button>
               <button
@@ -671,9 +687,9 @@ const ProductDetail: React.FC = () => {
             <div className="flex items-center justify-between gap-4 max-w-lg mx-auto">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                  <PremiumImage 
-                    src={images[0]} 
-                    alt={product.name} 
+                  <PremiumImage
+                    src={images[0]}
+                    alt={product.name}
                     containerClassName="bg-secondary/30"
                   />
                 </div>

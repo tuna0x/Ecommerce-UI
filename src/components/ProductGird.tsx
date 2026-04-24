@@ -5,30 +5,47 @@ import ProductCard from "./ProductCard";
 import { ProductService } from "../service/productService";
 import type { IProduct } from "../types/product.type";
 import { toast } from "sonner";
+import { useSocket } from "../context/SocketContext";
+import { useCallback } from "react";
 
 const ProductGrid: React.FC = () => {
+  const { stompClient, isConnected } = useSocket();
   const [products, setProducts] = useState<IProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setIsLoading(true);
-        // Fetch first page, 10 products, sorted by soldCount descending
-        const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc", undefined, undefined, true);
-        if (response && response.data) {
-          setProducts(response.data.result);
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        toast.error("Không thể tải danh sách sản phẩm");
-      } finally {
-        setIsLoading(false);
+  const fetchProducts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      // Fetch first page, 10 products, sorted by soldCount descending
+      const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc", undefined, undefined, true);
+      if (response && response.data) {
+        setProducts(response.data.result);
       }
-    };
-
-    fetchProducts();
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast.error("Không thể tải danh sách sản phẩm");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  // Real-time update subscription
+  useEffect(() => {
+    if (isConnected && stompClient) {
+      const subscription = stompClient.subscribe('/topic/product-updates', (message) => {
+        console.log("WebSocket message received in ProductGrid:", message.body);
+        // Delay 1s to ensure DB consistency
+        setTimeout(() => {
+          fetchProducts();
+        }, 1000);
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [isConnected, stompClient, fetchProducts]);
 
   return (
     <section className="py-16 md:py-20">
