@@ -73,22 +73,24 @@ const FlashSale: React.FC = () => {
     seconds: 0,
   });
 
+  // Use startAt or endAt depending on whether the campaign has started
+  const isUpcoming = activeCampaign && new Date(activeCampaign.startAt).getTime() > new Date().getTime();
+  const targetTimeStr = isUpcoming ? activeCampaign.startAt : (activeCampaign?.endAt || flashSaleProducts[0]?.flashSale?.endAt);
+
   useEffect(() => {
-    if (flashSaleProducts.length === 0) return;
+    if (!targetTimeStr) return;
 
-    // Use endAt from the campaign if available
-    const endTimeStr = activeCampaign?.endAt || (flashSaleProducts[0]?.flashSale?.endAt);
-    if (!endTimeStr) return;
-
-    const endTime = new Date(endTimeStr).getTime();
+    const targetTime = new Date(targetTimeStr).getTime();
 
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const distance = endTime - now;
+      const distance = targetTime - now;
 
       if (distance < 0) {
         clearInterval(timer);
         setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        // Force refetch when timer hits zero
+        fetchFlashSales();
         return;
       }
 
@@ -100,7 +102,7 @@ const FlashSale: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [flashSaleProducts, activeCampaign?.endAt]);
+  }, [targetTimeStr, fetchFlashSales]);
 
   const [scrollPosition, setScrollPosition] = useState(0);
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -117,8 +119,8 @@ const FlashSale: React.FC = () => {
     }
   };
 
-  // If not loading and no campaign/products found, show premium Empty State
-  if (!isLoading && (!activeCampaign || flashSaleProducts.length === 0)) {
+  // If not loading and (no campaign OR upcoming campaign), show premium Empty State/Teaser
+  if (!isLoading && (!activeCampaign || isUpcoming)) {
     return (
       <section className="py-12 md:py-20 bg-gradient-to-b from-background to-accent/5">
         <div className="container mx-auto">
@@ -144,11 +146,35 @@ const FlashSale: React.FC = () => {
               </motion.div>
 
               <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
-                Khung giờ Flash Sale đã kết thúc
+                Khung giờ Flash Sale hiện tại đã kết thúc
               </h2>
               <p className="max-w-lg text-slate-500 text-lg leading-relaxed mb-8">
-                Hẹn gặp lại bạn vào khung giờ tiếp theo với danh sách sản phẩm giảm giá cực khủng. Đừng bỏ lỡ nhé!
+                {isUpcoming
+                  ? `Nhưng đừng lo! Chương trình "${activeCampaign?.name}" sắp được bắt đầu. Hãy cùng chờ đợi nhé!`
+                  : "Hẹn gặp lại bạn vào khung giờ tiếp theo với danh sách sản phẩm giảm giá cực khủng. Đừng bỏ lỡ nhé!"}
               </p>
+
+              {isUpcoming && (
+                <div className="mb-10 p-6 bg-pink-50/50 rounded-3xl border border-pink-100 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="text-sm font-bold text-pink-600 uppercase tracking-widest flex items-center gap-2">
+                      <motion.span
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ repeat: Infinity, duration: 2 }}
+                        className="w-2 h-2 bg-pink-500 rounded-full"
+                      />
+                      Đợt giảm giá tiếp theo bắt đầu sau:
+                    </span>
+                    <div className="flex gap-3">
+                      <TimeBox value={timeLeft.hours} label="Giờ" />
+                      <span className="text-2xl font-bold text-slate-800 mt-2">:</span>
+                      <TimeBox value={timeLeft.minutes} label="Phút" />
+                      <span className="text-2xl font-bold text-slate-800 mt-2">:</span>
+                      <TimeBox value={timeLeft.seconds} label="Giây" />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-4 items-center">
                 <Button
@@ -160,9 +186,9 @@ const FlashSale: React.FC = () => {
                 <Button
                   variant="outline"
                   className="rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"
-                  onClick={() => window.location.href = '/category/all'}
+                  onClick={() => window.location.href = '/flash-sale'}
                 >
-                  Xem tất cả sản phẩm
+                  Xem lịch hẹn Flash Sale
                 </Button>
               </div>
 
@@ -211,7 +237,7 @@ const FlashSale: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-muted-foreground">
-              Kết thúc trong:
+              {isUpcoming ? "Bắt đầu sau:" : "Kết thúc trong:"}
             </span>
             <div className="flex gap-1">
               <TimeBox value={timeLeft.hours} label="Giờ" />
