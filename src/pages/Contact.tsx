@@ -106,28 +106,28 @@ const Contact = () => {
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Họ và tên *</Label>
-                                        <Input id="name" placeholder="Nguyễn Văn A" required 
+                                        <Input id="name" placeholder="Nguyễn Văn A" required
                                             value={formData.name} onChange={handleChange} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="email">Email *</Label>
-                                        <Input id="email" type="email" placeholder="email@example.com" required 
+                                        <Input id="email" type="email" placeholder="email@example.com" required
                                             value={formData.email} onChange={handleChange} />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="phone">Số điện thoại</Label>
-                                    <Input id="phone" placeholder="0901 234 567" 
+                                    <Input id="phone" placeholder="0901 234 567"
                                         value={formData.phone} onChange={handleChange} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="subject">Chủ đề *</Label>
-                                    <Input id="subject" placeholder="Tư vấn sản phẩm, hỗ trợ đơn hàng..." required 
+                                    <Input id="subject" placeholder="Tư vấn sản phẩm, hỗ trợ đơn hàng..." required
                                         value={formData.subject} onChange={handleChange} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="message">Nội dung *</Label>
-                                    <Textarea id="message" placeholder="Nhập nội dung tin nhắn của bạn..." rows={5} required 
+                                    <Textarea id="message" placeholder="Nhập nội dung tin nhắn của bạn..." rows={5} required
                                         value={formData.message} onChange={handleChange} />
                                 </div>
                                 <Button type="submit" className="w-full gap-2" disabled={loading}>
@@ -143,7 +143,7 @@ const Contact = () => {
                         className="rounded-xl overflow-hidden shadow-sm min-h-[400px]">
                         <iframe
                             title="BÔNGCOSMETIC Store Location"
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.4461768733954!2d106.70142231533417!3d10.776889092321206!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f38f9ed887b%3A0x14aded5703768989!2zMTIzIE5ndXnhu4VuIEh14buHLCBC4bq_biBOZ2jDqSwgUXXhuq1uIDEsIFRow6BuaCBwaOG7kSBI4buTIENow60gTWluaCwgVmnhu4d0IE5hbQ!5e0!3m2!1svi!2s!4v1700000000000"
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d553.7679239380577!2d105.80072244705185!3d20.980941228938242!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ad0038042ebf%3A0xa1f0a93f3c26758c!2sB%C3%B4ng%20Cosmetic!5e0!3m2!1sen!2s!4v1777221439470!5m2!1sen!2s"
                             width="100%" height="100%" style={{ border: 0, minHeight: 400 }}
                             allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
                         />
