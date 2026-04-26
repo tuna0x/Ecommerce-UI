@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
@@ -13,13 +13,107 @@ import { cn } from '../lib/utils';
 type Message = { role: 'user' | 'assistant' | 'admin'; content: string; timestamp?: string };
 
 const quickQuestions = [
-    { label: '🔥 Đang Flashsale', value: 'Có sản phẩm nào đang flashsale hay giảm giá không?' },
+    { label: '🔥 Đang Flashsale', value: 'Có sản phẩm nào đang flashsale hay gỉảm giá không?' },
     { label: '🛒 Xem Giỏ Hàng', value: 'Trong giỏ hàng của tôi đang có những gì?' },
     { label: '📦 Tình trạng đơn', value: 'Đơn hàng của tôi bao giờ giao?' },
     { label: '🎟️ Lấy mã giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
 ];
 
 const ADMIN_EMAIL = 'admin@gmail.com';
+
+// --- Sub-components (outside for better memoization) ---
+
+const ProductMiniCard = ({ data, onNavigate }: { data: string, onNavigate: (id: string) => void }) => {
+    const [id, name, price, thumbnail] = data.split('|');
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={() => onNavigate(id)}
+            className="flex items-center gap-3 p-3 bg-white border border-pink-100 rounded-2xl my-2 cursor-pointer hover:border-pink-300 transition-all shadow-sm group text-left"
+        >
+            <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-50 shrink-0">
+                <img src={thumbnail || '/placeholder-product.png'} alt={name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-slate-800 truncate mb-0.5">{name}</p>
+                <p className="text-[12px] font-extrabold text-pink-600">{price} VNĐ</p>
+                <div className="flex items-center gap-1 mt-1">
+                    <span className="text-[10px] text-slate-400 font-medium">Xem chi tiết</span>
+                    <Sparkles className="h-2.5 w-2.5 text-pink-400" />
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+const MessageItem = React.memo(({ msg, shouldType, onNavigate }: { msg: Message, shouldType: boolean, onNavigate: (id: string) => void }) => {
+    const [displayedText, setDisplayedText] = useState(shouldType ? '' : msg.content);
+
+    useEffect(() => {
+        if (shouldType && displayedText.length < msg.content.length) {
+            const timeout = setTimeout(() => {
+                setDisplayedText(msg.content.slice(0, displayedText.length + 1));
+            }, 15);
+            return () => clearTimeout(timeout);
+        }
+    }, [shouldType, displayedText, msg.content]);
+
+    const contentToRender = shouldType ? displayedText : msg.content;
+
+    const cleanedContent = useMemo(() =>
+        contentToRender.replace(/\[PRODUCT_CARD:.*?\]/g, '').replace(/\[QUICK_REPLY:.*?\]/g, ''),
+        [contentToRender]);
+
+    const productCards = useMemo(() =>
+        contentToRender.match(/\[PRODUCT_CARD:(.*?)\]/g),
+        [contentToRender]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}
+        >
+            {msg.role === 'assistant' && (
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-md">
+                    <Bot className="h-4 w-4 text-white" />
+                </div>
+            )}
+            <div className={cn(
+                "max-w-[78%] flex flex-col gap-1",
+                msg.role === 'user' ? "items-end" : "items-start"
+            )}>
+                <div className={cn(
+                    "px-4 py-3 rounded-[20px] shadow-sm text-[13px] leading-relaxed",
+                    msg.role === 'user'
+                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none text-right"
+                        : "bg-white border border-border/50 text-foreground rounded-bl-none prose prose-sm prose-pink text-left"
+                )}>
+                    {msg.role === 'assistant' ? (
+                        <ReactMarkdown
+                            components={{
+                                a: ({ ...props }) => (
+                                    <Link to={props.href || "#"} className="text-pink-600 underline hover:text-pink-700 font-bold">
+                                        {props.children}
+                                    </Link>
+                                )
+                            }}
+                        >
+                            {cleanedContent}
+                        </ReactMarkdown>
+                    ) : msg.content}
+                </div>
+
+                {msg.role === 'assistant' && productCards?.map((match, i) => (
+                    <ProductMiniCard key={i} data={match.replace('[PRODUCT_CARD:', '').replace(']', '')} onNavigate={onNavigate} />
+                ))}
+            </div>
+        </motion.div>
+    );
+});
+
+// --- Main Component ---
 
 const ChatBot: React.FC = () => {
     const { isAuthenticated, user } = useAuth();
@@ -42,10 +136,9 @@ const ChatBot: React.FC = () => {
         },
     ]);
     const [isLoading, setIsLoading] = useState(false);
-    const [displayContent, setDisplayContent] = useState<Record<number, string>>({});
+    const [contextQuickReplies, setContextQuickReplies] = useState<string[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const typingIntervals = useRef<Record<number, any>>({});
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +154,7 @@ const ChatBot: React.FC = () => {
                 scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
             }
         }
-    }, [messages, displayContent, activeMessages, mode]);
+    }, [messages, activeMessages, mode]);
 
     const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
         if (mode !== 'admin') return;
@@ -71,30 +164,6 @@ const ChatBot: React.FC = () => {
             await loadMoreHistory();
         }
     };
-
-    useEffect(() => {
-        if (mode === 'ai') {
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg?.role === 'assistant' && !displayContent[messages.length - 1]) {
-                let i = 0;
-                const fullContent = lastMsg.content;
-                const msgIdx = messages.length - 1;
-
-                if (typingIntervals.current[msgIdx]) clearInterval(typingIntervals.current[msgIdx]);
-
-                typingIntervals.current[msgIdx] = setInterval(() => {
-                    setDisplayContent(prev => ({
-                        ...prev,
-                        [msgIdx]: fullContent.slice(0, i + 1)
-                    }));
-                    i++;
-                    if (i >= fullContent.length) {
-                        clearInterval(typingIntervals.current[msgIdx]);
-                    }
-                }, 15);
-            }
-        }
-    }, [messages, mode]);
 
     useEffect(() => {
         if (isOpen) inputRef.current?.focus();
@@ -121,13 +190,18 @@ const ChatBot: React.FC = () => {
             setIsLoading(true);
 
             try {
-                // Send up to last 10 messages for context
                 const historyStr = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
                 const data = await sendChatAPI(content, historyStr);
-                const assistantMsg: Message = {
-                    role: 'assistant',
-                    content: data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.'
-                };
+                const rawResponse = data.data?.response || data.response || 'Xin lỗi, tôi không nhận được phản hồi.';
+
+                const quickReplyMatch = rawResponse.match(/\[QUICK_REPLY:(.*?)\]/);
+                if (quickReplyMatch) {
+                    setContextQuickReplies(quickReplyMatch[1].split('|'));
+                } else {
+                    setContextQuickReplies([]);
+                }
+
+                const assistantMsg: Message = { role: 'assistant', content: rawResponse };
                 setMessages(prev => [...prev, assistantMsg]);
             } catch (error) {
                 console.error('Chat error:', error);
@@ -139,6 +213,10 @@ const ChatBot: React.FC = () => {
             sendP2PMessage(content.trim());
             setInput('');
         }
+    };
+
+    const handleNavigateProduct = (id: string) => {
+        navigate(`/product/${id}`);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -246,59 +324,36 @@ const ChatBot: React.FC = () => {
                             </div>
                         </div>
 
-                        <div
-                            ref={scrollRef}
-                            onScroll={handleScroll}
-                            className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20"
-                        >
+                        <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-transparent to-pink-50/20">
                             {mode === 'ai' ? (
                                 <>
                                     {messages.map((msg, idx) => (
-                                        <motion.div
+                                        <MessageItem
                                             key={idx}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}
-                                        >
-                                            {msg.role === 'assistant' && (
-                                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-md">
-                                                    <Bot className="h-4 w-4 text-white" />
-                                                </div>
-                                            )}
-                                            <div className={cn(
-                                                "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px] leading-relaxed",
-                                                msg.role === 'user'
-                                                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
-                                                    : "bg-white border border-border/50 text-foreground rounded-bl-none prose prose-sm prose-pink"
-                                            )}>
-                                                {msg.role === 'assistant' ? (
-                                                    <ReactMarkdown
-                                                        components={{
-                                                            a: ({ node, ...props }) => (
-                                                                <Link
-                                                                    to={props.href || "#"}
-                                                                    className="text-pink-600 underline hover:text-pink-700 font-bold"
-                                                                >
-                                                                    {props.children}
-                                                                </Link>
-                                                            )
-                                                        }}
-                                                    >
-                                                        {displayContent[idx] || (idx === 0 ? msg.content : '')}
-                                                    </ReactMarkdown>
-                                                ) : msg.content}
-                                            </div>
-                                        </motion.div>
+                                            msg={msg}
+                                            shouldType={idx === messages.length - 1 && msg.role === 'assistant' && idx > 0}
+                                            onNavigate={handleNavigateProduct}
+                                        />
                                     ))}
                                     {isLoading && <TypingIndicator />}
 
+                                    {messages.length > 1 && contextQuickReplies.length > 0 && !isLoading && (
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap gap-2 mt-4">
+                                            {contextQuickReplies.map((q, idx) => (
+                                                <Button
+                                                    key={idx}
+                                                    variant="outline"
+                                                    onClick={() => handleSendMessage(q)}
+                                                    className="h-auto py-2 px-4 rounded-xl text-[11px] font-bold border-pink-200 text-pink-600 hover:bg-pink-50 transition-all bg-white/50"
+                                                >
+                                                    {q}
+                                                </Button>
+                                            ))}
+                                        </motion.div>
+                                    )}
+
                                     {messages.length === 1 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.3 }}
-                                            className="space-y-2 mt-6"
-                                        >
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-2 mt-6">
                                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest px-1">Gợi ý câu hỏi</p>
                                             {quickQuestions.map((q) => (
                                                 <Button
@@ -348,8 +403,8 @@ const ChatBot: React.FC = () => {
                                                 <div className={cn(
                                                     "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px]",
                                                     isMine
-                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
-                                                        : "bg-white border border-border/50 text-foreground rounded-bl-none"
+                                                        ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none text-right"
+                                                        : "bg-white border border-border/50 text-foreground rounded-bl-none text-left"
                                                 )}>
                                                     <p>{msg.content}</p>
                                                     <p className={cn("text-[9px] mt-1.5 font-medium opacity-70", isMine ? "text-right" : "text-left")}>
