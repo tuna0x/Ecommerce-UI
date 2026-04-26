@@ -15,14 +15,18 @@ const FlashSale: React.FC = () => {
   const [flashSaleProducts, setFlashSaleProducts] = useState<IProduct[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<FlashSaleCampaign | null>(null);
 
-  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const lastFetchTimeRef = React.useRef(0);
+  const isInitialLoadRef = React.useRef(true);
   const fetchFlashSales = useCallback(async (isSilent = false) => {
     // Simple throttle: don't refetch more than once every 10 seconds unless forced
     const now = Date.now();
-    if (isSilent && now - lastFetchTime < 10000) return;
+    if (isSilent && now - lastFetchTimeRef.current < 10000) return;
 
     try {
-      if (flashSaleProducts.length === 0) setIsLoading(true);
+      if (isInitialLoadRef.current) {
+        setIsLoading(true);
+        isInitialLoadRef.current = false;
+      }
       // Fetch campaign info
       const campaign = await flashSaleService.getActiveCampaign();
       setActiveCampaign(campaign);
@@ -31,14 +35,14 @@ const FlashSale: React.FC = () => {
       const res = await ProductService.getFlashSaleProducts(0, 10);
       if (res.data?.result) {
         setFlashSaleProducts(res.data.result);
-        setLastFetchTime(now);
+        lastFetchTimeRef.current = now;
       }
     } catch (error) {
       console.error("Failed to fetch flash sale products", error);
     } finally {
       setIsLoading(false);
     }
-  }, [lastFetchTime]);
+  }, []);
 
   useEffect(() => {
     fetchFlashSales();
