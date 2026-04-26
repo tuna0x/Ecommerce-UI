@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProductCard from "./ProductCard";
@@ -6,25 +6,27 @@ import { ProductService } from "../service/productService";
 import type { IProduct } from "../types/product.type";
 import { toast } from "sonner";
 import { useSocket } from "../context/SocketContext";
-import { useCallback } from "react";
-
 const ProductGrid: React.FC = () => {
   const { stompClient, isConnected } = useSocket();
   const [products, setProducts] = useState<IProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const lastFetchTimeRef = useRef(0);
+  const isInitialLoadRef = useRef(true);
   const fetchProducts = useCallback(async (isSilent = false) => {
     // Simple throttle: don't refetch more than once every 10 seconds unless forced
     const now = Date.now();
-    if (isSilent && now - lastFetchTime < 10000) return;
+    if (isSilent && now - lastFetchTimeRef.current < 10000) return;
 
     try {
-      if (!isSilent) setIsLoading(true);
+      if (isInitialLoadRef.current) {
+        setIsLoading(true);
+        isInitialLoadRef.current = false;
+      }
       const response = await ProductService.getAll(0, 10, undefined, "soldCount,desc", undefined, undefined, true);
       if (response && response.data) {
         setProducts(response.data.result);
-        setLastFetchTime(now);
+        lastFetchTimeRef.current = now;
       }
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -32,7 +34,7 @@ const ProductGrid: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [lastFetchTime]);
+  }, []);
 
   useEffect(() => {
     fetchProducts();
