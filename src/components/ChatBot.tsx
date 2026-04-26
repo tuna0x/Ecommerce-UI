@@ -48,26 +48,26 @@ const ProductMiniCard = ({ data, onNavigate }: { data: string, onNavigate: (id: 
 };
 
 const MessageItem = React.memo(({ msg, shouldType, onNavigate }: { msg: Message, shouldType: boolean, onNavigate: (id: string) => void }) => {
-    const [displayedText, setDisplayedText] = useState(shouldType ? '' : msg.content);
+    const { cleanText, tags } = useMemo(() => {
+        const text = msg.content.replace(/\[PRODUCT_CARD:.*?\]/g, '').replace(/\[QUICK_REPLY:.*?\]/g, '');
+        const cards = msg.content.match(/\[PRODUCT_CARD:(.*?)\]/g) || [];
+        return { cleanText: text, tags: cards };
+    }, [msg.content]);
+
+    const [typingProgress, setTypingProgress] = useState(shouldType ? 0 : cleanText.length);
 
     useEffect(() => {
-        if (shouldType && displayedText.length < msg.content.length) {
+        if (shouldType && typingProgress < cleanText.length) {
             const timeout = setTimeout(() => {
-                setDisplayedText(msg.content.slice(0, displayedText.length + 1));
-            }, 15);
+                setTypingProgress(prev => prev + 1);
+            }, 10);
             return () => clearTimeout(timeout);
         }
-    }, [shouldType, displayedText, msg.content]);
+    }, [shouldType, typingProgress, cleanText.length]);
 
-    const contentToRender = shouldType ? displayedText : msg.content;
-
-    const cleanedContent = useMemo(() =>
-        contentToRender.replace(/\[PRODUCT_CARD:.*?\]/g, '').replace(/\[QUICK_REPLY:.*?\]/g, ''),
-        [contentToRender]);
-
-    const productCards = useMemo(() =>
-        contentToRender.match(/\[PRODUCT_CARD:(.*?)\]/g),
-        [contentToRender]);
+    const actualProgress = shouldType ? typingProgress : cleanText.length;
+    const displayedText = cleanText.slice(0, actualProgress);
+    const isTypingDone = actualProgress >= cleanText.length;
 
     return (
         <motion.div
@@ -100,12 +100,12 @@ const MessageItem = React.memo(({ msg, shouldType, onNavigate }: { msg: Message,
                                 )
                             }}
                         >
-                            {cleanedContent}
+                            {displayedText}
                         </ReactMarkdown>
                     ) : msg.content}
                 </div>
 
-                {msg.role === 'assistant' && productCards?.map((match, i) => (
+                {msg.role === 'assistant' && isTypingDone && tags.map((match, i) => (
                     <ProductMiniCard key={i} data={match.replace('[PRODUCT_CARD:', '').replace(']', '')} onNavigate={onNavigate} />
                 ))}
             </div>
