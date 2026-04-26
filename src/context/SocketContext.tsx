@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { useAuth } from './AuthContext';
@@ -13,7 +13,7 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
-    const stompClientRef = useRef<Client | null>(null);
+    const [stompClient, setStompClient] = useState<Client | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -31,29 +31,33 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 onDisconnect: () => {
                     setIsConnected(false);
                 },
-                onStompError: (_frame) => {
+                onStompError: () => {
                 },
             });
 
             client.activate();
-            stompClientRef.current = client;
+            setStompClient(client);
 
             return () => {
-                if (stompClientRef.current) {
-                    stompClientRef.current.deactivate();
-                }
+                client.deactivate();
+                setStompClient(null);
             };
         } else {
             setIsConnected(false);
-            if (stompClientRef.current) {
-                stompClientRef.current.deactivate();
-                stompClientRef.current = null;
+            if (stompClient) {
+                stompClient.deactivate();
+                setStompClient(null);
             }
         }
     }, [user]);
 
+    const value = useMemo(() => ({
+        stompClient,
+        isConnected
+    }), [stompClient, isConnected]);
+
     return (
-        <SocketContext.Provider value={{ stompClient: stompClientRef.current, isConnected }}>
+        <SocketContext.Provider value={value}>
             {children}
         </SocketContext.Provider>
     );
