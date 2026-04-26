@@ -22,7 +22,7 @@ const FlashSale: React.FC = () => {
     if (isSilent && now - lastFetchTime < 10000) return;
 
     try {
-      if (!isSilent) setIsLoading(true);
+      if (flashSaleProducts.length === 0) setIsLoading(true);
       // Fetch campaign info
       const campaign = await flashSaleService.getActiveCampaign();
       setActiveCampaign(campaign);
@@ -42,6 +42,10 @@ const FlashSale: React.FC = () => {
 
   useEffect(() => {
     fetchFlashSales();
+
+    // Polling every 30 seconds for real-time updates
+    const interval = setInterval(() => fetchFlashSales(true), 30000);
+    return () => clearInterval(interval);
   }, [fetchFlashSales]);
 
   // Real-time update subscription with 2s debounce to prevent Thundering Herd problem
