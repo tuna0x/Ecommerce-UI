@@ -5,42 +5,74 @@ import { Zap } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ProductService } from '../service/productService';
+import { flashSaleService, type FlashSaleCampaign } from '../service/flashSaleService';
 import type { IProduct } from '../types/product.type';
 
 const FlashSalePage: React.FC = () => {
     const [flashSaleProducts, setFlashSaleProducts] = useState<IProduct[]>([]);
+    const [activeCampaign, setActiveCampaign] = useState<FlashSaleCampaign | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchFlashSales = async () => {
+        const fetchData = async () => {
+            setLoading(true);
             try {
-                const res = await ProductService.getFlashSaleProducts(0, 100);
-                if (res.data?.result) {
-                    setFlashSaleProducts(res.data.result);
+                const [campaignRes, productsRes] = await Promise.all([
+                    flashSaleService.getActiveCampaign(),
+                    ProductService.getFlashSaleProducts(0, 100)
+                ]);
+
+                if (campaignRes) {
+                    setActiveCampaign(campaignRes);
+                }
+
+                if (productsRes.data?.result) {
+                    setFlashSaleProducts(productsRes.data.result);
                 }
             } catch (error) {
-                console.error("Failed to fetch flash sale products", error);
+                console.error("Failed to fetch flash sale data", error);
+            } finally {
+                setLoading(false);
             }
         };
-        fetchFlashSales();
+        fetchData();
     }, []);
 
     const [sortBy, setSortBy] = useState('discount');
-    const [timeLeft, setTimeLeft] = useState({ hours: 6, minutes: 0, seconds: 0 });
+    const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0 });
+
+    const isUpcoming = useMemo(() => {
+        return activeCampaign && new Date(activeCampaign.startAt).getTime() > new Date().getTime();
+    }, [activeCampaign]);
 
     useEffect(() => {
+        if (!activeCampaign) return;
+
+        const calculateTimeLeft = () => {
+            const targetTime = isUpcoming ? activeCampaign.startAt : activeCampaign.endAt;
+            const end = new Date(targetTime).getTime();
+            const now = new Date().getTime();
+            const difference = end - now;
+
+            if (difference <= 0) {
+                return { hours: 0, minutes: 0, seconds: 0 };
+            }
+
+            return {
+                hours: Math.floor((difference / (1000 * 60 * 60))),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60)
+            };
+        };
+
         const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                const totalSeconds = prev.hours * 3600 + prev.minutes * 60 + prev.seconds - 1;
-                if (totalSeconds <= 0) return { hours: 6, minutes: 0, seconds: 0 };
-                return {
-                    hours: Math.floor(totalSeconds / 3600),
-                    minutes: Math.floor((totalSeconds % 3600) / 60),
-                    seconds: totalSeconds % 60,
-                };
-            });
+            setTimeLeft(calculateTimeLeft());
         }, 1000);
+
+        setTimeLeft(calculateTimeLeft());
+
         return () => clearInterval(timer);
-    }, []);
+    }, [activeCampaign, isUpcoming]);
 
     const sortedProducts = useMemo(() => {
         const sorted = [...flashSaleProducts];
@@ -69,14 +101,22 @@ const FlashSalePage: React.FC = () => {
                                     <Zap className="w-7 h-7 text-primary-foreground" />
                                 </motion.div>
                                 <div>
-                                    <h1 className="text-3xl md:text-4xl font-bold">Flash Sale</h1>
-                                    <p className="text-muted-foreground mt-1">Giảm sốc - Số lượng có hạn</p>
+                                    <h1 className="text-3xl md:text-4xl font-bold">
+                                        {isUpcoming ? "Sắp diễn ra Flash Sale" : (activeCampaign ? activeCampaign.name : "Flash Sale")}
+                                    </h1>
+                                    <p className="text-muted-foreground mt-1 text-lg">
+                                        {isUpcoming
+                                            ? `Đừng bỏ lỡ: "${activeCampaign?.name}" sắp bắt đầu rồi!`
+                                            : (activeCampaign ? activeCampaign.description : "Giảm sốc - Số lượng có hạn")}
+                                    </p>
                                 </div>
                             </div>
 
                             {/* Countdown */}
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-medium text-muted-foreground">Kết thúc trong:</span>
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    {isUpcoming ? "Bắt đầu sau:" : "Kết thúc trong:"}
+                                </span>
                                 <div className="flex gap-1.5">
                                     <TimeBox value={timeLeft.hours} label="Giờ" />
                                     <span className="text-2xl font-bold text-primary self-start mt-2">:</span>
@@ -121,10 +161,20 @@ const FlashSalePage: React.FC = () => {
                         ))}
                     </div>
 
-                    {flashSaleProducts.length === 0 && (
+                    {!loading && flashSaleProducts.length === 0 && (
                         <div className="text-center py-16">
                             <Zap className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                            <p className="text-lg text-muted-foreground">Hiện chưa có sản phẩm Flash Sale nào</p>
+                            <p className="text-lg text-muted-foreground">
+                                {isUpcoming
+                                    ? "Sản phẩm sẽ xuất hiện ngay khi chương trình bắt đầu. Hãy quay lại sau nhé!"
+                                    : (activeCampaign ? "Sản phẩm đang được cập nhật..." : "Hiện chưa có chiến dịch Flash Sale nào")}
+                            </p>
+                        </div>
+                    )}
+
+                    {loading && (
+                        <div className="flex justify-center py-20">
+                            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                         </div>
                     )}
                 </section>
