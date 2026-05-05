@@ -41,7 +41,6 @@ const SearchResults: React.FC = () => {
       let filter = "";
       const conditions: string[] = ["active:true"];
 
-      if (query) conditions.push(`name~'${query}'`);
       if (brandParam) conditions.push(`brand.name:'${brandParam}'`);
       if (categoryParam) conditions.push(`category.name:'${categoryParam}'`);
       if (selectedCategory !== "all" && !categoryParam) conditions.push(`category.name:'${selectedCategory}'`);
