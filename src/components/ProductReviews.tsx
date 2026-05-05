@@ -57,11 +57,11 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
     setLoading(true);
     try {
       const res = await reviewService.getReviewsByProduct(productId, currentPage, pageSize);
-      if (res.data && res.data.data) {
-        setReviews(res.data.data.result || []);
-        if (res.data.data.meta) {
-          setTotalPages(res.data.data.meta.pages);
-          setTotalReviews(res.data.data.meta.total);
+      if (res && res.data) {
+        setReviews(res.data.result || []);
+        if (res.data.meta) {
+          setTotalPages(res.data.meta.pages);
+          setTotalReviews(res.data.meta.total);
         }
       }
     } catch (error) {

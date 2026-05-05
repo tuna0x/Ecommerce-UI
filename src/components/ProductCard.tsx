@@ -78,6 +78,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <PremiumImage
             src={mainImage}
             alt={product.name}
+            width={400}
             className={cn(
               "transition-transform duration-500 group-hover:scale-105",
               product.stock === 0 && "grayscale opacity-60"
@@ -88,6 +89,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             <PremiumImage
               src={hoverImage}
               alt={product.name}
+              width={400}
               showSkeleton={false}
               containerClassName={cn(
                 "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",

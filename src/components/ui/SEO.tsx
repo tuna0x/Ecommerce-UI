@@ -8,6 +8,19 @@ interface SEOProps {
   image?: string | null;
   url?: string | null;
   type?: "website" | "article" | "product";
+  productData?: {
+    name: string;
+    description: string;
+    images: string[];
+    price: number;
+    currency: string;
+    sku: string;
+    brand: string;
+    availability: string;
+    ratingValue?: number;
+    reviewCount?: number;
+    category?: string;
+  };
 }
 
 const SEO: React.FC<SEOProps> = ({
@@ -17,6 +30,7 @@ const SEO: React.FC<SEOProps> = ({
   image,
   url,
   type = "website",
+  productData,
 }) => {
   const siteTitle = "Bông Cosmetic - Mỹ phẩm chính hãng & Chăm sóc sắc đẹp";
   const defaultDescription = "Bông Cosmetic chuyên cung cấp các dòng mỹ phẩm chính hãng, chăm sóc da, makeup từ các thương hiệu hàng đầu thế giới. Giao hàng nhanh, cam kết chất lượng.";
@@ -37,7 +51,6 @@ const SEO: React.FC<SEOProps> = ({
   ];
 
   useEffect(() => {
-    // Chỉ cập nhật activeTitle khi tab đang hiện diện
     if (!isHiddenRef.current) {
       setActiveTitle(displayTitle);
     }
@@ -47,7 +60,6 @@ const SEO: React.FC<SEOProps> = ({
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         isHiddenRef.current = true;
-        // Bắt đầu chạy ngay lập tức, không chờ 1.5s
         const showNextMessage = () => {
           const randomMessage = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
           setActiveTitle(randomMessage);
@@ -80,6 +92,36 @@ const SEO: React.FC<SEOProps> = ({
     keywords: keywords ? `${keywords}, ${defaultKeywords}` : defaultKeywords,
   };
 
+  // Structured Data (JSON-LD) for Products
+  const jsonLd = type === "product" && productData ? {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": productData.name,
+    "image": productData.images,
+    "description": productData.description,
+    "sku": productData.sku,
+    "brand": {
+      "@type": "Brand",
+      "name": productData.brand
+    },
+    "category": productData.category,
+    "offers": {
+      "@type": "Offer",
+      "url": seo.url,
+      "priceCurrency": productData.currency,
+      "price": productData.price,
+      "availability": productData.availability === "InStock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      "itemCondition": "https://schema.org/NewCondition"
+    },
+    ...(productData.ratingValue && productData.reviewCount ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": productData.ratingValue,
+        "reviewCount": productData.reviewCount
+      }
+    } : {})
+  } : null;
+
   return (
     <Helmet>
       {/* Standard metadata tags */}
@@ -101,6 +143,13 @@ const SEO: React.FC<SEOProps> = ({
       <meta name="twitter:title" content={title ? `${title} | Bông Cosmetic` : siteTitle} />
       <meta name="twitter:description" content={seo.description} />
       <meta name="twitter:image" content={seo.image} />
+
+      {/* Structured Data */}
+      {jsonLd && (
+        <script type="application/ld+json">
+          {JSON.stringify(jsonLd)}
+        </script>
+      )}
     </Helmet>
   );
 };

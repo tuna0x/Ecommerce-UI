@@ -67,7 +67,7 @@ const SuggestedForYou: React.FC = () => {
                         <div className="space-y-3">
                             <span className="inline-flex items-center gap-2 text-primary font-semibold text-[10px] tracking-[0.2em] uppercase">
                                 <Sparkles className="w-3.5 h-3.5 fill-current" />
-                                Personalization
+                                Dành riêng cho bạn
                             </span>
                             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground leading-[1.2]">
                                 {title}
