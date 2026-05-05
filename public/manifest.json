@@ -1,0 +1,20 @@
+{
+  "short_name": "Bông Cosmetic",
+  "name": "Bông Cosmetic - Mỹ phẩm chính hãng",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#ec4899",
+  "background_color": "#ffffff"
+}
