@@ -299,6 +299,19 @@ const ProductDetail: React.FC = () => {
         type="product"
         url={`/product/${product.id}`}
         keywords={`${product.name}, ${brandName}, ${categoryName}`}
+        productData={{
+          name: product.name,
+          description: (detailContent?.description || "").replace(/<[^>]*>?/gm, '').slice(0, 200) || product.name,
+          images: images,
+          price: displayPrice,
+          currency: "VND",
+          sku: `PROD-${product.id}`,
+          brand: brandName,
+          availability: currentStock > 0 ? "InStock" : "OutOfStock",
+          ratingValue: ratingValue,
+          reviewCount: reviewsCount,
+          category: categoryName
+        }}
       />
 
       <main className="container mx-auto px-4 py-4 md:py-8">

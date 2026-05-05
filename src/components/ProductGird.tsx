@@ -61,14 +61,13 @@ const ProductGrid: React.FC = () => {
         {/* Section Header */}
         <div className="text-center mb-10 md:mb-14">
           <span className="text-primary font-semibold text-[10px] tracking-[0.2em] uppercase mb-2 block">
-            Featured
+            Nổi bật
           </span>
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 text-foreground">
-            Our Best Sellers
+            Sản phẩm bán chạy
           </h2>
           <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-            Handpicked products that our customers love. Premium quality, timeless
-            design.
+            Những sản phẩm được yêu thích nhất. Chất lượng cao cấp, thiết kế vượt thời gian.
           </p>
         </div>
 
@@ -90,7 +89,7 @@ const ProductGrid: React.FC = () => {
                 className="relative animate-fade-in"
                 style={{ animationDelay: `${index * 80}ms` }}
               >
-                {/* Top 3 rank badge */}
+                {/* Huy hiệu xếp hạng */}
                 {index < 3 && (
                   <span className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-foreground/5 flex items-center justify-center text-[10px] font-bold text-muted-foreground/40">
                     {String(index + 1).padStart(2, "0")}

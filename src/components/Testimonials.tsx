@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
+import { reviewService, type IReview } from '../service/reviewService';
 
-const testimonials = [
+const mockTestimonials = [
     {
         id: 1,
         name: 'Nguyễn Thị Minh Anh',
@@ -44,6 +45,38 @@ const testimonials = [
 
 const Testimonials: React.FC = () => {
     const [current, setCurrent] = useState(0);
+    const [testimonials, setTestimonials] = useState<any[]>(mockTestimonials);
+
+    useEffect(() => {
+        const fetchReviews = async () => {
+            try {
+                const res = await reviewService.getFeaturedReviews(5, 1, 10);
+                if (res.data?.result && res.data.result.length > 0) {
+                    const realReviews = res.data.result.map((rev: IReview) => ({
+                        id: rev.id,
+                        name: rev.userName,
+                        avatar: rev.userImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(rev.userName)}&background=random`,
+                        rating: rev.rating,
+                        text: rev.comment,
+                        product: rev.productName || 'Sản phẩm tại Bông Cosmetic',
+                        verified: true
+                    }));
+                    
+                    // Mix real reviews with mock if real reviews are few
+                    if (realReviews.length < 3) {
+                        setTestimonials([...realReviews, ...mockTestimonials.slice(0, 4 - realReviews.length)]);
+                    } else {
+                        setTestimonials(realReviews);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch testimonials", error);
+                // Fallback to mock data already handled in useState
+            }
+        };
+
+        fetchReviews();
+    }, []);
 
     const goToPrev = () => {
         setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length);
@@ -52,6 +85,8 @@ const Testimonials: React.FC = () => {
     const goToNext = () => {
         setCurrent((prev) => (prev + 1) % testimonials.length);
     };
+
+    if (testimonials.length === 0) return null;
 
     return (
         <section className="py-16 md:py-20 bg-secondary/30">
@@ -71,7 +106,7 @@ const Testimonials: React.FC = () => {
                 </ScrollReveal>
 
                 <ScrollReveal delay={0.15}>
-                    <div className="relative">
+                    <div className="relative min-h-[400px] flex flex-col justify-center">
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={current}
@@ -86,7 +121,7 @@ const Testimonials: React.FC = () => {
 
                                 {/* Review text */}
                                 <p className="text-foreground text-base md:text-lg leading-relaxed mb-8 max-w-2xl mx-auto italic">
-                                    "{testimonials[current].text}"
+                                    "{testimonials[current]?.text}"
                                 </p>
 
                                 {/* Stars */}
@@ -94,7 +129,7 @@ const Testimonials: React.FC = () => {
                                     {Array.from({ length: 5 }).map((_, i) => (
                                         <Star
                                             key={i}
-                                            className={`w-4 h-4 ${i < testimonials[current].rating
+                                            className={`w-4 h-4 ${i < (testimonials[current]?.rating || 5)
                                                 ? 'fill-yellow-400 text-yellow-400'
                                                 : 'text-muted-foreground/30'
                                                 }`}
@@ -105,17 +140,20 @@ const Testimonials: React.FC = () => {
                                 {/* Avatar & Name */}
                                 <div className="flex items-center justify-center gap-3">
                                     <img
-                                        src={testimonials[current].avatar}
-                                        alt={testimonials[current].name}
+                                        src={testimonials[current]?.avatar}
+                                        alt={testimonials[current]?.name}
                                         className="w-11 h-11 rounded-full object-cover ring-2 ring-primary/20"
+                                        onError={(e) => {
+                                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(testimonials[current]?.name)}&background=random`;
+                                        }}
                                     />
                                     <div className="text-left">
                                         <p className="font-semibold text-sm text-foreground">
-                                            {testimonials[current].name}
+                                            {testimonials[current]?.name}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            Đã mua: {testimonials[current].product}
-                                            {testimonials[current].verified && (
+                                            Đã mua: {testimonials[current]?.product}
+                                            {testimonials[current]?.verified && (
                                                 <span className="text-primary ml-1">✓ Đã xác nhận</span>
                                             )}
                                         </p>

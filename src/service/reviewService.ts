@@ -1,4 +1,3 @@
-import type { AxiosResponse } from "axios";
 import axiosInstance from "./axiosInstance";
 import type { IApiResponse, IPagination } from "../types/api.type";
 
@@ -10,10 +9,11 @@ export interface IReview {
   userImage?: string;
   createdAt: string;
   images?: string[];
+  productName?: string;
 }
 
 export const reviewService = {
-  createReview: async (productId: number, rating: number, comment: string, files?: File[]): Promise<AxiosResponse<IApiResponse<IReview>>> => {
+  createReview: async (productId: number, rating: number, comment: string, files?: File[]): Promise<IApiResponse<IReview>> => {
     const formData = new FormData();
     formData.append("productId", productId.toString());
     formData.append("rating", rating.toString());
@@ -25,23 +25,37 @@ export const reviewService = {
       });
     }
 
-    return axiosInstance.post("/reviews", formData, {
+    const res = await axiosInstance.post("/reviews", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
     });
+    return res.data;
   },
 
-  getReviewsByProduct: async (productId: number, page: number = 1, size: number = 10): Promise<AxiosResponse<IApiResponse<IPagination<IReview>>>> => {
-    return axiosInstance.get(`/reviews/product/${productId}`, {
+  getReviewsByProduct: async (productId: number, page: number = 1, size: number = 10): Promise<IApiResponse<IPagination<IReview>>> => {
+    const res = await axiosInstance.get(`/reviews/product/${productId}`, {
       params: {
         page: page - 1,
         size: size,
       },
     });
+    return res.data;
   },
 
-  deleteReview: async (id: number): Promise<AxiosResponse<IApiResponse<void>>> => {
-    return axiosInstance.delete(`/reviews/${id}`);
+  getFeaturedReviews: async (minRating: number = 5, page: number = 1, size: number = 10): Promise<IApiResponse<IPagination<IReview>>> => {
+    const res = await axiosInstance.get("/reviews/featured", {
+      params: {
+        minRating,
+        page: page - 1,
+        size,
+      },
+    });
+    return res.data;
+  },
+
+  deleteReview: async (id: number): Promise<IApiResponse<void>> => {
+    const res = await axiosInstance.delete(`/reviews/${id}`);
+    return res.data;
   },
 };
