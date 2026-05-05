@@ -8,6 +8,85 @@ import { flashSaleService, type FlashSaleCampaign } from '../service/flashSaleSe
 import type { IProduct } from '../types/product.type';
 import { Button } from './ui/button';
 import { useSocket } from '../context/SocketContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+
+const ScheduleModal: React.FC<{ size?: 'default' | 'sm' }> = ({ size = 'default' }) => {
+  const [campaigns, setCampaigns] = useState<FlashSaleCampaign[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchCampaigns = async () => {
+    setLoading(true);
+    try {
+      const data = await flashSaleService.getAllCampaigns();
+      const upcoming = data.filter(c => new Date(c.startAt).getTime() > new Date().getTime());
+      setCampaigns(upcoming.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()));
+    } catch (error) {
+      console.error('Failed to fetch campaigns', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog onOpenChange={(open) => { if (open) fetchCampaigns(); }}>
+      <DialogTrigger asChild>
+        <Button
+          variant={size === 'sm' ? "link" : "outline"}
+          className={size === 'sm' 
+            ? "text-pink-600 font-bold p-0 h-auto hover:text-pink-700" 
+            : "rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"}
+        >
+          {size === 'sm' ? "Xem lịch hẹn →" : "Xem lịch hẹn Flash Sale"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] rounded-2xl overflow-hidden p-0 gap-0">
+        <DialogHeader className="bg-pink-50 p-6 pb-4 border-b border-pink-100">
+          <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-pink-700">
+            <Zap className="w-6 h-6 fill-pink-500" />
+            Lịch hẹn Flash Sale
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-6 max-h-[60vh] overflow-y-auto">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : campaigns.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <Zap className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="text-slate-500 font-medium">Hiện chưa có lịch hẹn Flash Sale nào sắp tới.</p>
+              <p className="text-sm text-slate-400 mt-1">Vui lòng quay lại sau nhé!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {campaigns.map((c) => {
+                const startDate = new Date(c.startAt);
+                return (
+                  <div key={c.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-pink-50/50 hover:border-pink-200 transition-colors">
+                    <h4 className="font-bold text-slate-800 mb-1">{c.name}</h4>
+                    <p className="text-sm text-slate-500 mb-2 line-clamp-2">{c.description}</p>
+                    <div className="flex items-center gap-2 text-pink-600 font-bold text-sm">
+                      <div className="w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
+                      {startDate.toLocaleDateString('vi-VN')} - {startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const FlashSale: React.FC = () => {
   const { stompClient, isConnected } = useSocket();
@@ -183,13 +262,7 @@ const FlashSale: React.FC = () => {
                 >
                   Tiếp tục mua sắm
                 </Button>
-                <Button
-                  variant="outline"
-                  className="rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"
-                  onClick={() => window.location.href = '/flash-sale'}
-                >
-                  Xem lịch hẹn Flash Sale
-                </Button>
+                <ScheduleModal />
               </div>
 
               <div className="mt-12 flex items-center gap-6 grayscale opacity-50">
@@ -216,7 +289,7 @@ const FlashSale: React.FC = () => {
   return (
     <section className="py-8 md:py-12 bg-gradient-to-r from-primary/5 via-background to-accent/5">
       <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
@@ -226,25 +299,35 @@ const FlashSale: React.FC = () => {
               <Zap className="w-5 h-5 text-primary-foreground" />
             </motion.div>
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight">
-                {activeCampaign?.name || "Flash Sale"}
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-tight">
+                  {activeCampaign?.name || "Flash Sale"}
+                </h2>
+                <div className="hidden md:block">
+                  <ScheduleModal size="sm" />
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {activeCampaign?.description || "Giảm sốc - Số lượng có hạn"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              {isUpcoming ? "Bắt đầu sau:" : "Kết thúc trong:"}
-            </span>
-            <div className="flex gap-1">
-              <TimeBox value={timeLeft.hours} label="Giờ" />
-              <span className="text-xl font-bold text-primary">:</span>
-              <TimeBox value={timeLeft.minutes} label="Phút" />
-              <span className="text-xl font-bold text-primary">:</span>
-              <TimeBox value={timeLeft.seconds} label="Giây" />
+          <div className="flex items-center gap-4">
+            <div className="md:hidden">
+               <ScheduleModal size="sm" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                {isUpcoming ? "Bắt đầu sau:" : "Kết thúc trong:"}
+              </span>
+              <div className="flex gap-1">
+                <TimeBox value={timeLeft.hours} label="Giờ" />
+                <span className="text-xl font-bold text-primary">:</span>
+                <TimeBox value={timeLeft.minutes} label="Phút" />
+                <span className="text-xl font-bold text-primary">:</span>
+                <TimeBox value={timeLeft.seconds} label="Giây" />
+              </div>
             </div>
           </div>
         </div>
