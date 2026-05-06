@@ -83,43 +83,60 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, [user, fetchNotifications]);
 
     useEffect(() => {
-        if (isConnected && stompClient && user) {
+        if (isConnected && stompClient && stompClient.connected && user) {
+            let subNotifications: any = null;
+            let subTopic: any = null;
+
             // Subscribe to personal queue
-            const subNotifications = stompClient.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
-                const newNotif = JSON.parse(message.body);
-                const mapped = mapBackendToFrontend(newNotif);
-                
-                setNotifications(prev => [mapped, ...prev]);
-                setUnreadCount(prev => prev + 1);
-                
-                toast(mapped.title, {
-                    description: mapped.message,
-                    duration: 5000,
-                    action: mapped.link ? {
-                        label: 'Xem ngay',
-                        onClick: () => window.location.href = mapped.link!
-                    } : undefined
+            try {
+                subNotifications = stompClient.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
+                    const newNotif = JSON.parse(message.body);
+                    const mapped = mapBackendToFrontend(newNotif);
+                    
+                    setNotifications(prev => [mapped, ...prev]);
+                    setUnreadCount(prev => prev + 1);
+                    
+                    toast(mapped.title, {
+                        description: mapped.message,
+                        duration: 5000,
+                        action: mapped.link ? {
+                            label: 'Xem ngay',
+                            onClick: () => window.location.href = mapped.link!
+                        } : undefined
+                    });
                 });
-            });
+            } catch (e) {
+                console.error("Failed to subscribe to personal notifications", e);
+            }
 
             // Subscribe to common topic
-            const subTopic = stompClient.subscribe('/topic/notifications', (message) => {
-                // Backend sends raw string or simple object for topics
-                let title = 'Thông báo hệ thống';
-                let body = message.body;
-                try {
-                    const parsed = JSON.parse(message.body);
-                    title = parsed.title || title;
-                    body = parsed.message || body;
-                } catch (e) { /* use raw body */ }
+            try {
+                subTopic = stompClient.subscribe('/topic/notifications', (message) => {
+                    // Backend sends raw string or simple object for topics
+                    let title = 'Thông báo hệ thống';
+                    let body = message.body;
+                    try {
+                        const parsed = JSON.parse(message.body);
+                        title = parsed.title || title;
+                        body = parsed.message || body;
+                    } catch (e) { /* use raw body */ }
 
-                toast.info(title, { description: body });
-                fetchNotifications(); // Refresh list for global notifications
-            });
+                    toast.info(title, { description: body });
+                    fetchNotifications(); // Refresh list for global notifications
+                });
+            } catch (e) {
+                console.error("Failed to subscribe to global topic notifications", e);
+            }
 
             return () => {
-                subNotifications.unsubscribe();
-                subTopic.unsubscribe();
+                try {
+                    if (stompClient && stompClient.connected) {
+                        if (subNotifications) subNotifications.unsubscribe();
+                        if (subTopic) subTopic.unsubscribe();
+                    }
+                } catch (e) {
+                    console.warn("Failed to unsubscribe in NotificationContext", e);
+                }
             };
         }
     }, [isConnected, stompClient, user, fetchNotifications]);

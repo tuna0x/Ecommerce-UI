@@ -14,6 +14,7 @@ import { User, Mail, Camera, Save, Eye, EyeOff, Phone, Star } from 'lucide-react
 import { UserService } from '../service/userService';
 import AddressManager from '../components/AddressManagement';
 import ConfirmModal from '../components/ConfirmModal';
+import { compressImage } from '../lib/utils';
 
 import type { IUser } from '../types/user.type';
  
@@ -80,6 +81,15 @@ const Account = () => {
     if (!user) return;
 
     try {
+      let fileToUpload = selectedFile || undefined;
+      if (selectedFile) {
+        try {
+          fileToUpload = await compressImage(selectedFile, 800, 800, 0.7);
+        } catch (err) {
+          console.warn("Failed to compress image on client, using original", err);
+        }
+      }
+
       const res = await UserService.updateProfile({
         id: user.id,
         name: formData.name,
@@ -87,7 +97,7 @@ const Account = () => {
         gender: formData.gender,
         phoneNumber: formData.phoneNumber,
         image: user.image,
-      }, selectedFile || undefined);
+      }, fileToUpload);
 
       if (res.data) {
         const updatedUser = { ...user, ...res.data };

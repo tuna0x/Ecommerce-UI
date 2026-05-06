@@ -31,7 +31,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 onDisconnect: () => {
                     setIsConnected(false);
                 },
-                onStompError: () => {
+                onStompError: (frame) => {
+                    console.error("STOMP error in SocketContext", frame);
+                    setIsConnected(false);
+                },
+                onWebSocketClose: () => {
+                    setIsConnected(false);
+                },
+                onWebSocketError: (error) => {
+                    console.error("WebSocket error in SocketContext", error);
+                    setIsConnected(false);
                 },
             });
 
