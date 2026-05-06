@@ -41,6 +41,9 @@ const InventoryManagement: React.FC = () => {
     const [filter, setFilter] = useState<StockFilter>('all');
     const [inventoryData, setInventoryData] = useState<Inventory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [invPage, setInvPage] = useState(1);
+    const [invTotal, setInvTotal] = useState(0);
+    const invPageSize = 10;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [categories, setCategories] = useState<ICategory[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -107,6 +110,9 @@ const InventoryManagement: React.FC = () => {
 
     useEffect(() => {
         fetchInventory();
+    }, [invPage, search, filter, selectedCategory]);
+
+    useEffect(() => {
         fetchCategories();
     }, []);
 
@@ -230,12 +236,25 @@ const InventoryManagement: React.FC = () => {
     const fetchInventory = async (silent: boolean = false) => {
         if (!silent) setLoading(true);
         try {
-            const data = await inventoryService.getAllInventory();
-            if (Array.isArray(data)) {
-                setInventoryData(data);
-            } else {
-                setInventoryData([]);
+            let query = "";
+            if (search) {
+                query += `&filter=(productVariant.product.name~'*${search}*' or productVariant.sku~'*${search}*')`;
             }
+            if (selectedCategory !== 'all') {
+                query += `&filter=productVariant.product.category.name:'${selectedCategory}'`;
+            }
+            
+            if (filter === 'low') {
+                query += `&filter=stock > 0 and stock < minStockThreshold`;
+            } else if (filter === 'out') {
+                query += `&filter=stock:0`;
+            } else if (filter === 'ok') {
+                query += `&filter=stock >= minStockThreshold`;
+            }
+
+            const data = await inventoryService.getAllInventory(invPage, invPageSize, query);
+            setInventoryData(data.result || []);
+            setInvTotal(data.meta.total || 0);
         } catch {
             toast.error('Không thể tải dữ liệu kho hàng');
             setInventoryData([]);
@@ -418,30 +437,9 @@ const InventoryManagement: React.FC = () => {
     ).slice(0, 5);
 
     const filtered = useMemo(() => {
-        if (!Array.isArray(inventoryData)) return [];
-        let data = [...inventoryData];
-        if (search) {
-            const s = search.toLowerCase();
-            data = data.filter(p =>
-                p.productVariant?.product?.name?.toLowerCase()?.includes(s) ||
-                (p.productVariant?.sku && p.productVariant.sku.toLowerCase().includes(s))
-            );
-        }
-
-        // Final safety filter to remove items without product/variant info
-        data = data.filter(p => p.productVariant && p.productVariant.product);
-
-
-
-        if (selectedCategory !== 'all') {
-            data = data.filter(p => p.productVariant?.product?.categoryName === selectedCategory);
-        }
-
-        if (filter === 'low') data = data.filter(p => (p.stock || 0) > 0 && (p.stock || 0) < (p.minStockThreshold || 0));
-        if (filter === 'out') data = data.filter(p => (p.stock || 0) === 0);
-        if (filter === 'ok') data = data.filter(p => (p.stock || 0) >= (p.minStockThreshold || 0));
-        return data;
-    }, [inventoryData, search, filter]);
+        // Backend now handles filtering and pagination
+        return inventoryData;
+    }, [inventoryData]);
 
     const getStockStatus = (item: Inventory) => {
         const total = item.stock + item.reservedStock;
@@ -719,7 +717,7 @@ const InventoryManagement: React.FC = () => {
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-4">{getStockBadge(item)}</td>
-                                                        <td className="py-4 px-6">
+                                                         <td className="py-4 px-6">
                                                             <div className="flex items-center justify-end gap-2 transition-opacity">
                                                                 <Button
                                                                     variant="outline"
@@ -764,6 +762,38 @@ const InventoryManagement: React.FC = () => {
                                     </motion.div>
                                 )}
                             </div>
+
+                            {/* Inventory Pagination */}
+                            {invTotal > 0 && (
+                                <div className="flex items-center justify-between p-6 border-t bg-muted/5">
+                                    <p className="text-xs text-muted-foreground font-medium">
+                                        Hiển thị {((invPage - 1) * invPageSize) + 1} - {Math.min(invPage * invPageSize, invTotal)} của {invTotal} sản phẩm
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 shadow-sm"
+                                            disabled={invPage === 1 || loading}
+                                            onClick={() => setInvPage(p => Math.max(1, p - 1))}
+                                        >
+                                            Trước
+                                        </Button>
+                                        <div className="flex items-center px-4 text-xs font-bold bg-muted/50 rounded-md border">
+                                            Trang {invPage} / {Math.ceil(invTotal / invPageSize)}
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 shadow-sm"
+                                            disabled={invPage >= Math.ceil(invTotal / invPageSize) || loading}
+                                            onClick={() => setInvPage(p => p + 1)}
+                                        >
+                                            Tiếp theo
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>
