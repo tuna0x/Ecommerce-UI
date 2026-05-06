@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Search, Loader2, Eye, EyeOff, TrendingUp, History, ShieldCheck, Mail, Calendar, MapPin, Activity, Clock, X, UserX, Users, Globe, Timer, ShoppingBag, CreditCard, CheckCircle2, AlertCircle, Fingerprint, FileText, ChartBar, Save, UserPlus, Pencil, Trash2, Camera, Lock, Unlock, Phone } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn, compressImage } from "../../lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
   Card,
@@ -260,7 +260,15 @@ const UsersManagement: React.FC = () => {
           phoneNumber: formData.phoneNumber,
           role: { id: parseInt(formData.roleId) }
         };
-        await UserService.updateProfile(updateData, imageFile || undefined);
+        let fileToUpload = imageFile || undefined;
+        if (imageFile) {
+          try {
+            fileToUpload = await compressImage(imageFile, 800, 800, 0.7);
+          } catch (err) {
+            console.warn("Failed to compress image on client, using original", err);
+          }
+        }
+        await UserService.updateProfile(updateData, fileToUpload);
         toast.success("Cập nhật người dùng thành công");
       } else {
         // Create
