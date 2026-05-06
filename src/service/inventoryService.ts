@@ -48,19 +48,21 @@ export interface APIResponse<T> {
     message?: string;
 }
 
-export interface ResultPaginationDTO {
+export interface ResultPaginationDTO<T> {
     meta: {
         page: number;
         pageSize: number;
         total: number;
         pages: number;
     };
-    result: InventoryLog[];
+    result: T[];
 }
 
 export const inventoryService = {
-    getAllInventory: async () => {
-        const res = await axiosInstance.get<APIResponse<Inventory[]>>("/inventory");
+    getAllInventory: async (page: number = 1, pageSize: number = 20, query: string = "") => {
+        const res = await axiosInstance.get<APIResponse<ResultPaginationDTO<Inventory>>>(
+            `/inventory?page=${page - 1}&size=${pageSize}${query}`
+        );
         return res.data.data;
     },
 
@@ -80,7 +82,7 @@ export const inventoryService = {
     },
 
     getInventoryLogsAll: async (page: number = 1, pageSize: number = 20, query: string = "") => {
-        const res = await axiosInstance.get<APIResponse<ResultPaginationDTO>>(
+        const res = await axiosInstance.get<APIResponse<ResultPaginationDTO<InventoryLog>>>(
             `/inventory/logs?page=${page - 1}&size=${pageSize}${query}`
         );
         return res.data.data;
