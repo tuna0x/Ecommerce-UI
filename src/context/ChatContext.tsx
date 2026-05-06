@@ -133,56 +133,69 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [activePartner, fetchHistory, resetUnreadCount]);
 
     useEffect(() => {
-        if (isConnected && stompClient && user) {
-            const sub = stompClient.subscribe("/user/queue/messages", (message) => {
-                const newMsg: ChatMessage = JSON.parse(message.body);
-                
-                const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
-                const currentActive = activePartnerRef.current;
-                
-                // Fallback for missing/invalid timestamp from server
-                if (!newMsg.timestamp || new Date(newMsg.timestamp).getFullYear() < 2000) {
-                    newMsg.timestamp = new Date().toISOString();
-                }
+        if (isConnected && stompClient && stompClient.connected && user) {
+            let sub: any = null;
+            try {
+                sub = stompClient.subscribe("/user/queue/messages", (message) => {
+                    const newMsg: ChatMessage = JSON.parse(message.body);
+                    
+                    const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
+                    const currentActive = activePartnerRef.current;
+                    
+                    // Fallback for missing/invalid timestamp from server
+                    if (!newMsg.timestamp || new Date(newMsg.timestamp).getFullYear() < 2000) {
+                        newMsg.timestamp = new Date().toISOString();
+                    }
 
-                if (currentActive === partnerOfNewMsg) {
-                    setActiveMessages(prev => {
-                        // Improved duplicate detection: 
-                        // If content and sender match, and timestamps are either close OR one is very old (faulty echo)
-                        const isDuplicate = prev.some(m => 
-                            m.content === newMsg.content && 
-                            m.senderEmail === newMsg.senderEmail &&
-                            (
-                                Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000 ||
-                                new Date(m.timestamp).getFullYear() < 2000 || 
-                                new Date(newMsg.timestamp).getFullYear() < 2000
-                            )
-                        );
-                        return isDuplicate ? prev : [...prev, newMsg];
+                    if (currentActive === partnerOfNewMsg) {
+                        setActiveMessages(prev => {
+                            // Improved duplicate detection: 
+                            // If content and sender match, and timestamps are either close OR one is very old (faulty echo)
+                            const isDuplicate = prev.some(m => 
+                                m.content === newMsg.content && 
+                                m.senderEmail === newMsg.senderEmail &&
+                                (
+                                    Math.abs(new Date(m.timestamp).getTime() - new Date(newMsg.timestamp).getTime()) < 5000 ||
+                                    new Date(m.timestamp).getFullYear() < 2000 || 
+                                    new Date(newMsg.timestamp).getFullYear() < 2000
+                                )
+                            );
+                            return isDuplicate ? prev : [...prev, newMsg];
+                        });
+                    }
+
+                    setConversations(prev => {
+                        const existing = prev.find(c => c.partnerEmail === partnerOfNewMsg);
+                        const isFocusing = currentActive === partnerOfNewMsg;
+                        const isFromPartner = newMsg.senderEmail === partnerOfNewMsg;
+
+                        const updatedConv: Conversation = {
+                            partnerEmail: partnerOfNewMsg,
+                            lastMessage: newMsg.content,
+                            lastMessageTime: newMsg.timestamp,
+                            unreadCount: (isFromPartner && !isFocusing) 
+                                ? (existing ? existing.unreadCount + 1 : 1) 
+                                : 0
+                        };
+
+                        const filtered = prev.filter(c => c.partnerEmail !== partnerOfNewMsg);
+                        return [updatedConv, ...filtered];
                     });
-                }
-
-                setConversations(prev => {
-                    const existing = prev.find(c => c.partnerEmail === partnerOfNewMsg);
-                    const isFocusing = currentActive === partnerOfNewMsg;
-                    const isFromPartner = newMsg.senderEmail === partnerOfNewMsg;
-
-                    const updatedConv: Conversation = {
-                        partnerEmail: partnerOfNewMsg,
-                        lastMessage: newMsg.content,
-                        lastMessageTime: newMsg.timestamp,
-                        unreadCount: (isFromPartner && !isFocusing) 
-                            ? (existing ? existing.unreadCount + 1 : 1) 
-                            : 0
-                    };
-
-                    const filtered = prev.filter(c => c.partnerEmail !== partnerOfNewMsg);
-                    return [updatedConv, ...filtered];
                 });
-            });
+            } catch (e) {
+                console.error("Failed to subscribe in ChatContext", e);
+            }
 
             return () => {
-                sub.unsubscribe();
+                if (sub) {
+                    try {
+                        if (stompClient && stompClient.connected) {
+                            sub.unsubscribe();
+                        }
+                    } catch (e) {
+                        console.warn("Failed to unsubscribe in ChatContext", e);
+                    }
+                }
             };
         }
     }, [isConnected, stompClient, user]);
