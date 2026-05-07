@@ -33,6 +33,17 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
+const sortConversations = (list: Conversation[]): Conversation[] => {
+    return [...list].sort((a, b) => {
+        const aHasUnread = a.unreadCount > 0 ? 1 : 0;
+        const bHasUnread = b.unreadCount > 0 ? 1 : 0;
+        if (aHasUnread !== bHasUnread) {
+            return bHasUnread - aHasUnread;
+        }
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+    });
+};
+
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const { stompClient, isConnected } = useSocket();
@@ -52,9 +63,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const totalUnreadCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
     const resetUnreadCount = useCallback((partner: string) => {
-        setConversations(prev => prev.map(c => 
-            c.partnerEmail === partner ? { ...c, unreadCount: 0 } : c
-        ));
+        setConversations(prev => {
+            const updated = prev.map(c => 
+                c.partnerEmail === partner ? { ...c, unreadCount: 0 } : c
+            );
+            return sortConversations(updated);
+        });
         markMessagesAsRead(partner).catch(err => {
             console.error("Failed to mark messages as read in backend", err);
         });
@@ -74,7 +88,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         unreadCount: m.unreadCount || 0 
                     };
                 });
-                setConversations(mapped);
+                setConversations(sortConversations(mapped));
             }
         } catch (err) {
             console.error("Failed to fetch conversations", err);
@@ -182,7 +196,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         };
 
                         const filtered = prev.filter(c => c.partnerEmail !== partnerOfNewMsg);
-                        return [updatedConv, ...filtered];
+                        return sortConversations([updatedConv, ...filtered]);
                     });
                 });
             } catch (e) {
@@ -218,12 +232,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveMessages(prev => [...prev, optimisticMsg]);
         setConversations(prev => {
             const filtered = prev.filter(c => c.partnerEmail !== activePartner);
-            return [{
+            return sortConversations([{
                 partnerEmail: activePartner,
                 lastMessage: content,
                 lastMessageTime: timestamp,
                 unreadCount: 0
-            }, ...filtered];
+            }, ...filtered]);
         });
 
         const chatMessageDTO = {
