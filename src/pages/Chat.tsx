@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ArrowLeft, Phone, Video, Bot, Sparkles, MessageSquare, Send } from 'lucide-react';
+import { ArrowLeft, Phone, Video, Bot, Sparkles, MessageSquare, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { cn } from '../lib/utils';
 import { useNavigate, Link } from 'react-router-dom';
@@ -7,7 +7,7 @@ import ChatBubble from '../components/chat/ChatBubble';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import { useChat } from '../context/ChatContext';
 import { useAuth } from '../context/AuthContext';
-import { sendMessage as sendChatAPI } from '../service/chatService';
+import { sendMessage as sendChatAPI, uploadChatImage } from '../service/chatService';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -42,6 +42,25 @@ const Chat: React.FC = () => {
     const [displayContent, setDisplayContent] = useState<Record<number, string>>({});
     const typingIntervals = useRef<Record<number, any>>({});
     const [input, setInput] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploading(true);
+        try {
+            const res = await uploadChatImage(file);
+            if (res && res.url) {
+                sendP2PMessage(res.url);
+            }
+        } catch (err) {
+            console.error("Lỗi upload ảnh", err);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     // Initialize partner on mount
     useEffect(() => {
@@ -306,6 +325,31 @@ const Chat: React.FC = () => {
                 <div className="p-3 md:p-6 bg-white border-t border-border shrink-0 pb-[calc(80px+env(safe-area-inset-bottom))] md:pb-6">
                     <form onSubmit={handleSend} className="relative group">
                         <div className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200/70 focus-within:bg-white focus-within:ring-2 focus-within:ring-pink-500/10 focus-within:border-pink-500/30 rounded-[24px] border border-transparent px-4 py-1.5 transition-all duration-300 shadow-inner">
+                            {mode === 'admin' && (
+                                <>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleImageUpload}
+                                        accept="image/*"
+                                        className="hidden"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={isUploading}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="h-9 w-9 rounded-full text-slate-400 hover:text-pink-500 hover:bg-pink-50 shrink-0"
+                                    >
+                                        {isUploading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
+                                        ) : (
+                                            <ImageIcon className="h-4 w-4" />
+                                        )}
+                                    </Button>
+                                </>
+                            )}
                             <input
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}

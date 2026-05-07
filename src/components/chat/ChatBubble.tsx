@@ -12,6 +12,16 @@ interface ChatBubbleProps {
     avatarFallback?: string;
 }
 
+const isImageUrl = (url: string) => {
+    if (typeof url !== 'string') return false;
+    return (
+        url.startsWith('http://') || url.startsWith('https://')
+    ) && (
+        url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) !== null || 
+        url.includes('res.cloudinary.com')
+    );
+};
+
 const ChatBubble: React.FC<ChatBubbleProps> = ({
     content,
     isOwn,
@@ -51,10 +61,20 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                         'px-4 py-2.5 text-sm leading-relaxed shadow-sm',
                         isOwn
                             ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl rounded-br-md'
-                            : 'bg-card text-foreground rounded-2xl rounded-bl-md border border-border'
+                            : 'bg-card text-foreground rounded-2xl rounded-bl-md border border-border',
+                        isImageUrl(content) && 'p-1.5 bg-white border border-slate-100'
                     )}
                 >
-                    {content}
+                    {isImageUrl(content) ? (
+                        <img 
+                            src={content} 
+                            alt="Chat Attachment" 
+                            className="max-w-full max-h-[220px] object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity shadow-inner"
+                            onClick={() => window.open(content, '_blank')}
+                        />
+                    ) : (
+                        content
+                    )}
                 </div>
                 <div
                     className={cn(

@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
-import { X, Bot, Sparkles, Send, MessageSquare, ShieldCheck } from 'lucide-react';
+import { X, Bot, Sparkles, Send, MessageSquare, ShieldCheck, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import { sendMessage as sendChatAPI } from '../service/chatService';
+import { sendMessage as sendChatAPI, uploadChatImage } from '../service/chatService';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import { cn } from '../lib/utils';
 
@@ -113,6 +113,16 @@ const MessageItem = React.memo(({ msg, shouldType, onNavigate }: { msg: Message,
     );
 });
 
+const isImageUrl = (url: string) => {
+    if (typeof url !== 'string') return false;
+    return (
+        url.startsWith('http://') || url.startsWith('https://')
+    ) && (
+        url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) !== null || 
+        url.includes('res.cloudinary.com')
+    );
+};
+
 // --- Main Component ---
 
 const ChatBot: React.FC = () => {
@@ -128,6 +138,26 @@ const ChatBot: React.FC = () => {
     const navigate = useNavigate();
 
     const [isOpen, setIsOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploading(true);
+        try {
+            const res = await uploadChatImage(file);
+            if (res && res.url) {
+                sendP2PMessage(res.url);
+            }
+        } catch (err) {
+            console.error("Lỗi upload ảnh", err);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const [mode, setMode] = useState<'ai' | 'admin'>('ai');
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -414,9 +444,19 @@ const ChatBot: React.FC = () => {
                                                     "max-w-[78%] px-4 py-3 rounded-[20px] shadow-sm text-[13px]",
                                                     isMine
                                                         ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none text-right"
-                                                        : "bg-white border border-border/50 text-foreground rounded-bl-none text-left"
+                                                        : "bg-white border border-border/50 text-foreground rounded-bl-none text-left",
+                                                    isImageUrl(msg.content) && "p-1 bg-white border border-slate-100"
                                                 )}>
-                                                    <p>{msg.content}</p>
+                                                    {isImageUrl(msg.content) ? (
+                                                        <img 
+                                                            src={msg.content} 
+                                                            alt="Chat Attachment" 
+                                                            className="max-w-full max-h-[180px] object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity"
+                                                            onClick={() => window.open(msg.content, '_blank')}
+                                                        />
+                                                    ) : (
+                                                        <p>{msg.content}</p>
+                                                    )}
                                                     <p className={cn("text-[9px] mt-1.5 font-medium opacity-70", isMine ? "text-right" : "text-left")}>
                                                         {new Date(msg.timestamp || Date.now()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                     </p>
@@ -438,6 +478,31 @@ const ChatBot: React.FC = () => {
                         <div className="p-5 bg-white border-t border-border/50">
                             <form onSubmit={handleSubmit} className="relative group">
                                 <div className="flex items-center gap-2 bg-secondary/40 hover:bg-secondary/60 focus-within:bg-background focus-within:ring-2 focus-within:ring-pink-500/10 focus-within:border-pink-500/30 rounded-[20px] border border-transparent px-4 py-1.5 transition-all duration-300">
+                                    {mode === 'admin' && (
+                                        <>
+                                            <input
+                                                type="file"
+                                                ref={fileInputRef}
+                                                onChange={handleImageUpload}
+                                                accept="image/*"
+                                                className="hidden"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                disabled={isUploading}
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="h-8 w-8 rounded-full text-slate-400 hover:text-pink-500 hover:bg-pink-50 shrink-0"
+                                            >
+                                                {isUploading ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
+                                                ) : (
+                                                    <ImageIcon className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                        </>
+                                    )}
                                     <input
                                         ref={inputRef}
                                         value={input}
