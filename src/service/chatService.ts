@@ -26,3 +26,14 @@ export const markMessagesAsRead = async (participant: string) => {
     const res = await axiosInstance.post(`/chat/read?participant=${participant}`);
     return res.data;
 };
+
+export const uploadChatImage = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosInstance.post("/chat/upload", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data"
+        }
+    });
+    return res.data;
+};

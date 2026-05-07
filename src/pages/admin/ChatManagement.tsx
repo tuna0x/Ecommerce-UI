@@ -1,9 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Send, Image as ImageIcon, MoreVertical, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, MoreVertical, MessageSquare, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/utils';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
+import { uploadChatImage } from '../../service/chatService';
+
+const isImageUrl = (url: string) => {
+    if (typeof url !== 'string') return false;
+    return (
+        url.startsWith('http://') || url.startsWith('https://')
+    ) && (
+        url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) !== null || 
+        url.includes('res.cloudinary.com')
+    );
+};
 
 const QUICK_REPLIES = [
     { label: "👋 Chào khách", text: "Xin chào bạn! Bông Cosmetic có thể giúp gì cho bạn hôm nay ạ? 🌸" },
@@ -31,6 +42,25 @@ const ChatManagement: React.FC = () => {
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !activePartner) return;
+        setIsUploading(true);
+        try {
+            const res = await uploadChatImage(file);
+            if (res && res.url) {
+                sendMessage(res.url);
+            }
+        } catch (err) {
+            console.error("Lỗi upload ảnh", err);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     const prevScrollHeightRef = useRef<number | null>(null);
 
@@ -301,9 +331,19 @@ const ChatManagement: React.FC = () => {
                                                 'px-3.5 py-2 md:px-4 md:py-2.5 text-[13px] md:text-sm shadow-sm transition-all relative',
                                                 isMine
                                                     ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white rounded-2xl rounded-tr-sm'
-                                                    : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm'
+                                                    : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm',
+                                                isImageUrl(msg.content) && 'p-1.5 bg-white border border-slate-100'
                                             )}>
-                                                <p className="leading-relaxed">{msg.content}</p>
+                                                {isImageUrl(msg.content) ? (
+                                                    <img 
+                                                        src={msg.content} 
+                                                        alt="Chat Attachment" 
+                                                        className="max-w-full max-h-[220px] object-cover rounded-xl cursor-pointer hover:opacity-95 transition-opacity"
+                                                        onClick={() => window.open(msg.content, '_blank')}
+                                                    />
+                                                ) : (
+                                                    <p className="leading-relaxed">{msg.content}</p>
+                                                )}
                                             </div>
                                             <span className="text-[9px] mt-1 font-bold text-slate-400 px-1">
                                                 {new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -334,8 +374,26 @@ const ChatManagement: React.FC = () => {
                                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                 className="flex items-center gap-2 md:gap-3 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-1 md:p-1.5 focus-within:bg-white focus-within:ring-4 focus-within:ring-pink-500/5 focus-within:border-pink-200 transition-all duration-300"
                             >
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 md:h-9 md:w-9 text-slate-400 hover:text-pink-500 hover:bg-pink-50 rounded-xl">
-                                    <ImageIcon className="h-4 w-4" />
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImageUpload}
+                                    accept="image/*"
+                                    className="hidden"
+                                />
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    disabled={isUploading}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="h-8 w-8 md:h-9 md:w-9 text-slate-400 hover:text-pink-500 hover:bg-pink-50 rounded-xl shrink-0"
+                                >
+                                    {isUploading ? (
+                                        <Loader2 className="h-4 w-4 animate-spin text-pink-500" />
+                                    ) : (
+                                        <ImageIcon className="h-4 w-4" />
+                                    )}
                                 </Button>
                                 <input
                                     type="text"
