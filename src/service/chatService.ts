@@ -21,3 +21,8 @@ export const getConversations = async () => {
     const res = await axiosInstance.get('/chat/conversations');
     return res.data;
 };
+
+export const markMessagesAsRead = async (participant: string) => {
+    const res = await axiosInstance.post(`/chat/read?participant=${participant}`);
+    return res.data;
+};

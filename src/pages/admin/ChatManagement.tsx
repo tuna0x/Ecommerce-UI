@@ -5,6 +5,14 @@ import { cn } from '../../lib/utils';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
 
+const QUICK_REPLIES = [
+    { label: "👋 Chào khách", text: "Xin chào bạn! Bông Cosmetic có thể giúp gì cho bạn hôm nay ạ? 🌸" },
+    { label: "🧴 Tư vấn da", text: "Để bên mình tư vấn chuẩn nhất cho bạn, bạn có thể cho mình biết da bạn đang thuộc dòng da nào (da dầu, da khô hay da nhạy cảm) ạ? ✨" },
+    { label: "🏷️ Mã ưu đãi", text: "Bông Cosmetic thân gửi bạn mã [BONGNEW] để giảm giá 10% cho đơn hàng đầu tiên của bạn nha! 💝" },
+    { label: "📦 Phí vận chuyển", text: "Dạ, bên mình miễn phí giao hàng cho mọi đơn hàng từ 500k trở lên trên toàn quốc nha! 🚚" },
+    { label: "💖 Cảm ơn", text: "Cảm ơn bạn đã tin dùng và lựa chọn Bông Cosmetic! Chúc bạn có một ngày rực rỡ và xinh đẹp! ✨" },
+];
+
 const ChatManagement: React.FC = () => {
     const { user } = useAuth();
     const { 
@@ -20,18 +28,23 @@ const ChatManagement: React.FC = () => {
     } = useChat();
     
     const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState<'all' | 'unread'>('all');
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const prevScrollHeightRef = useRef<number | null>(null);
 
-    const filtered = conversations.filter((c) =>
-        c.partnerEmail.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = conversations.filter((c) => {
+        const matchesSearch = c.partnerEmail.toLowerCase().includes(search.toLowerCase());
+        if (filter === 'unread') {
+            return matchesSearch && c.unreadCount > 0;
+        }
+        return matchesSearch;
+    });
 
     const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
         const target = e.target as HTMLDivElement;
-        if (target.scrollTop === 0 && hasMoreHistory && !isLoadingHistory) {
+        if (target.scrollTop <= 15 && hasMoreHistory && !isLoadingHistory) {
             prevScrollHeightRef.current = target.scrollHeight;
             await loadMoreHistory();
         }
@@ -83,13 +96,46 @@ const ChatManagement: React.FC = () => {
                 "w-full md:w-[320px] flex-col border-r border-border/40 bg-slate-50/30",
                 activePartner ? "hidden md:flex" : "flex"
             )}>
-                <div className="p-4 md:p-5 space-y-4">
+                <div className="p-4 md:p-5 space-y-3 shrink-0 border-b border-slate-100">
                     <div className="flex items-center justify-between px-2">
                         <h2 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">Tin nhắn</h2>
                         <div className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-full bg-pink-500 text-[10px] font-bold text-white shadow-lg shadow-pink-200">
                             {conversations.length}
                         </div>
                     </div>
+
+                    {/* Filter Tabs */}
+                    <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl">
+                        <button
+                            onClick={() => setFilter('all')}
+                            className={cn(
+                                "flex-1 py-1.5 text-[10px] md:text-xs font-bold rounded-lg transition-all",
+                                filter === 'all' 
+                                    ? "bg-white text-slate-800 shadow-sm" 
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Tất cả
+                        </button>
+                        <button
+                            onClick={() => setFilter('unread')}
+                            className={cn(
+                                "flex-1 py-1.5 text-[10px] md:text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                                filter === 'unread' 
+                                    ? "bg-pink-500 text-white shadow-sm shadow-pink-200" 
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            Chưa đọc
+                            {conversations.filter(c => c.unreadCount > 0).length > 0 && (
+                                <span className={cn(
+                                    "h-1.5 w-1.5 rounded-full",
+                                    filter === 'unread' ? "bg-white animate-pulse" : "bg-pink-500 animate-pulse"
+                                )} />
+                            )}
+                        </button>
+                    </div>
+
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 group-focus-within:text-pink-500 transition-colors" />
                         <input
@@ -207,9 +253,20 @@ const ChatManagement: React.FC = () => {
                         >
                             {isLoadingHistory && (
                                 <div className="flex justify-center py-2">
-                                    <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải biểu mẫu cũ...</span>
+                                    <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải tin nhắn cũ...</span>
                                 </div>
                             )}
+
+                            {!hasMoreHistory && activeMessages.length > 0 && (
+                                <div className="flex flex-col items-center justify-center py-6 border-b border-dashed border-slate-200/60 mb-4 text-center">
+                                    <div className="h-10 w-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center mb-2 shadow-sm shadow-slate-100">
+                                        <MessageSquare className="h-5 w-5 text-pink-500 animate-pulse" />
+                                    </div>
+                                    <p className="text-[11px] font-bold text-slate-700">Khởi đầu cuộc trò chuyện ✨</p>
+                                    <p className="text-[10px] text-slate-400 mt-1 max-w-[220px] leading-relaxed font-medium">Đây là bắt đầu lịch sử trò chuyện giữa bạn và khách hàng.</p>
+                                </div>
+                            )}
+
                             {activeMessages.map((msg, i) => {
                                 const isMine = msg.senderEmail === user?.email;
                                 const msgDate = new Date(msg.timestamp);
@@ -256,7 +313,21 @@ const ChatManagement: React.FC = () => {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-3 md:p-5 bg-white border-t border-slate-100">
+                        <div className="p-3 md:p-5 bg-white border-t border-slate-100 space-y-3">
+                            {/* Quick Replies */}
+                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
+                                {QUICK_REPLIES.map((reply, idx) => (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => setInput(reply.text)}
+                                        className="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-pink-50 hover:text-pink-600 border border-slate-200 hover:border-pink-200 rounded-full text-[10px] font-bold text-slate-600 transition-all active:scale-95 shadow-sm"
+                                    >
+                                        {reply.label}
+                                    </button>
+                                ))}
+                            </div>
+
                             <form
                                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                 className="flex items-center gap-2 md:gap-3 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-1 md:p-1.5 focus-within:bg-white focus-within:ring-4 focus-within:ring-pink-500/5 focus-within:border-pink-200 transition-all duration-300"

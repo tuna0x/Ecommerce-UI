@@ -92,7 +92,7 @@ const Chat: React.FC = () => {
     const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
         if (mode !== 'admin') return;
         const target = e.target as HTMLDivElement;
-        if (target.scrollTop === 0 && hasMoreHistory && !isLoadingHistory) {
+        if (target.scrollTop <= 15 && hasMoreHistory && !isLoadingHistory) {
             prevScrollHeightRef.current = target.scrollHeight;
             await loadMoreHistory();
         }
@@ -269,6 +269,15 @@ const Chat: React.FC = () => {
                                         {isLoadingHistory && mode === 'admin' && (
                                             <div className="flex justify-center py-2">
                                                 <span className="text-[10px] text-slate-400 font-bold loading-dots">Đang tải tin nhắn cũ...</span>
+                                            </div>
+                                        )}
+                                        {!hasMoreHistory && activeMessages.length > 0 && (
+                                            <div className="flex flex-col items-center justify-center py-6 border-b border-dashed border-slate-200 mb-4 text-center">
+                                                <div className="h-10 w-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center mb-2 shadow-sm shadow-slate-100">
+                                                    <MessageSquare className="h-5 w-5 text-pink-500 animate-pulse" />
+                                                </div>
+                                                <p className="text-[11px] font-bold text-slate-700">Khởi đầu cuộc trò chuyện ✨</p>
+                                                <p className="text-[10px] text-slate-400 mt-1 max-w-[220px] leading-relaxed font-medium">Đây là bắt đầu lịch sử trò chuyện giữa bạn và chúng tôi.</p>
                                             </div>
                                         )}
                                         {activeMessages.map((msg, i) => {
