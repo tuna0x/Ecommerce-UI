@@ -35,5 +35,9 @@ export const uploadChatImage = async (file: File) => {
             "Content-Type": "multipart/form-data"
         }
     });
+    // Trả về đối tượng chứa url từ wrapper response.data.data, hoặc fallback về response.data
+    if (res.data && res.data.data) {
+        return res.data.data;
+    }
     return res.data;
 };
