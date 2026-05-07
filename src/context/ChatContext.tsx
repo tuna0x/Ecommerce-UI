@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
-import { getChatHistory, getConversations } from '../service/chatService';
+import { getChatHistory, getConversations, markMessagesAsRead } from '../service/chatService';
 
 export interface ChatMessage {
     senderEmail: string;
@@ -55,6 +55,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setConversations(prev => prev.map(c => 
             c.partnerEmail === partner ? { ...c, unreadCount: 0 } : c
         ));
+        markMessagesAsRead(partner).catch(err => {
+            console.error("Failed to mark messages as read in backend", err);
+        });
     }, []);
 
     const fetchConversations = useCallback(async () => {
@@ -68,7 +71,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         partnerEmail: partner,
                         lastMessage: m.content,
                         lastMessageTime: m.timestamp,
-                        unreadCount: 0 
+                        unreadCount: m.unreadCount || 0 
                     };
                 });
                 setConversations(mapped);
