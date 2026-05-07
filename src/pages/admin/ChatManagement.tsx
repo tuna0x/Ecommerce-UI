@@ -99,9 +99,11 @@ const ChatManagement: React.FC = () => {
                 <div className="p-4 md:p-5 space-y-3 shrink-0 border-b border-slate-100">
                     <div className="flex items-center justify-between px-2">
                         <h2 className="text-lg md:text-xl font-extrabold text-slate-800 tracking-tight">Tin nhắn</h2>
-                        <div className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-full bg-pink-500 text-[10px] font-bold text-white shadow-lg shadow-pink-200">
-                            {conversations.length}
-                        </div>
+                        {conversations.filter(c => c.unreadCount > 0).length > 0 && (
+                            <div className="flex items-center justify-center h-5 w-5 md:h-6 md:w-6 rounded-full bg-pink-500 text-[10px] font-bold text-white shadow-lg shadow-pink-200 animate-pulse">
+                                {conversations.filter(c => c.unreadCount > 0).length}
+                            </div>
+                        )}
                     </div>
 
                     {/* Filter Tabs */}
