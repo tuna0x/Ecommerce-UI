@@ -25,6 +25,11 @@ export const categoryService = {
     return res.data;
   },
 
+  getAllNoPagination: async (): Promise<IApiResponse<ICategory[]>> => {
+    const res = await axiosInstance.get(`${BASE_URL}/all`);
+    return res.data;
+  },
+
   getById: async (id: number): Promise<IApiResponse<ICategory>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}`);
     return res.data;
