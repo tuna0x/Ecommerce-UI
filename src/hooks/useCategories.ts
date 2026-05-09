@@ -14,9 +14,8 @@ export const useCategories = () => {
   return useQuery<FrontendCategory[]>({
     queryKey: ['categories-tree'],
     queryFn: async () => {
-      // Fetch up to 1000 categories to ensure we get the whole tree (0-indexed)
-      const res = await categoryService.getAll(0, 1000);
-      const rawCategories = res.data?.result || [];
+      const res = await categoryService.getAllNoPagination();
+      const rawCategories = res.data || [];
 
       // Filter active only (defensive check for null)
       const activeCategories = rawCategories.filter(c => c.active !== false);
