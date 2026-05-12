@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationDropdown from './NotificationDropdown';
-import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package, Heart } from 'lucide-react';
+import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package, Heart, CalendarCheck } from 'lucide-react';
+import SkincareCheckIn from './SkincareCheckIn';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -24,6 +25,7 @@ const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
   const { user, logout, isAuthenticated } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSkincareOpen, setIsSkincareOpen] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { data: categories = [] } = useCategories();
@@ -143,6 +145,15 @@ const Header: React.FC = () => {
                 <span className="text-sm font-medium">Tài khoản</span>
               </Link>
             )}
+
+            {/* Daily Skincare Check-in */}
+            <button
+              onClick={() => setIsSkincareOpen(true)}
+              className="relative p-2 hover:bg-secondary rounded-lg transition-colors group"
+              title="Điểm danh Skincare hằng ngày 🌸"
+            >
+              <CalendarCheck className="w-5 h-5 group-hover:text-primary transition-colors text-pink-500 animate-pulse" />
+            </button>
 
             {/* Notifications */}
             <NotificationDropdown />
@@ -306,6 +317,9 @@ const Header: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Skincare Check-in Right Drawer */}
+      <SkincareCheckIn isOpen={isSkincareOpen} onClose={() => setIsSkincareOpen(false)} />
     </header>
   );
 };
