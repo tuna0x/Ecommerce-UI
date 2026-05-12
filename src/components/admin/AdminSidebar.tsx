@@ -23,6 +23,7 @@ import {
   Lock,
   BookOpen,
   Zap,
+  Activity,
   type LucideIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -92,6 +93,7 @@ const menuGroups: MenuGroup[] = [
       { title: 'Quyền hạn', url: '/admin/permissions', icon: Lock },
       { title: 'Hoạt động', url: '/admin/user-activities', icon: MousePointer2 },
       { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
+      { title: 'Giám sát hệ thống', url: '/admin/monitoring', icon: Activity },
     ],
   },
 ];
