@@ -139,7 +139,7 @@ const HeroSlider: React.FC = () => {
                   <img
                     src={currentSlide?.image}
                     alt={currentSlide?.title}
-                    className="w-full max-w-lg mx-auto h-[260px] md:h-[420px] object-cover rounded-2xl shadow-2xl"
+                    className="w-full max-w-xl mx-auto h-[260px] md:h-[420px] object-contain rounded-2xl shadow-2xl"
                   />
                 </motion.div>
               </div>

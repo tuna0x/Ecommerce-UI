@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Gift, Flame, Sparkles, Check, Copy, Trophy, Lock } from 'lucide-react';
+import { X, Calendar, Gift, Flame, Sparkles, Check, Copy, Trophy, Lock, ChevronRight } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../context/AuthContext';
 import { skincareCheckInService } from '../service/skincareCheckInService';
+import { Link } from 'react-router-dom';
 
 interface SkincareCheckInProps {
     isOpen: boolean;
@@ -33,6 +34,170 @@ const MILESTONES: Milestone[] = [
     { id: 'streak_30', days: 30, title: '👑 Siêu Voucher Giảm 50K', description: 'Giảm trực tiếp 50,000đ cho đơn hàng tiếp theo', code: 'BONGVIP50K', rewardType: 'discount' },
 ];
 
+interface BeautyTip {
+    tip: string;
+    productCategory: string;
+    link: string;
+}
+
+const BEAUTY_TIPS: BeautyTip[] = [
+    {
+        tip: "Dù không trang điểm và chỉ bôi kem chống nắng, bạn vẫn bắt buộc phải tẩy trang vào cuối ngày để bẻ gãy các liên kết gốc dầu của bã nhờn sâu trong lỗ chân lông. 🧼",
+        productCategory: "Sản phẩm Tẩy trang & Sữa rửa mặt",
+        link: "/category/sua-rua-mat"
+    },
+    {
+        tip: "Serum Hyaluronic Acid (HA) hoạt động như một miếng bọt biển hút nước. Hãy thoa HA ngay khi da còn hơi ẩm sau khi rửa mặt để tránh hiện tượng hút ẩm ngược làm khô da. 💧",
+        productCategory: "Serum cấp ẩm chuyên sâu",
+        link: "/category/serum"
+    },
+    {
+        tip: "Để đạt hiệu quả bảo vệ SPF tối đa của kem chống nắng, hãy bôi đủ lượng tương đương 2 đốt ngón tay cho toàn mặt. Việc bôi quá mỏng sẽ làm giảm màng bảo vệ tới 70%! ☀️",
+        productCategory: "Kem chống nắng bảo vệ da",
+        link: "/category/kem-chong-nang"
+    },
+    {
+        tip: "Serum Vitamin C rất dễ bị oxy hóa khi tiếp xúc với ánh sáng và không khí. Hãy cất serum trong hộp kín, ngăn mát tủ lạnh và sử dụng đều đặn ban ngày dưới lớp kem chống nắng để nhân đôi hiệu quả bảo vệ da. 🍋",
+        productCategory: "Serum Vitamin C dưỡng sáng da",
+        link: "/category/serum"
+    },
+    {
+        tip: "Tế bào chết tích tụ làm da xỉn màu và cản trở dưỡng chất hấp thụ. Hãy tẩy tế bào chết hóa học (AHA/BHA) đều đặn 1-2 lần/tuần vào buổi tối để sở hữu làn da căng bóng mịn màng. ✨",
+        productCategory: "Tẩy tế bào chết chính hãng",
+        link: "/category/tay-da-chet"
+    },
+    {
+        tip: "Niacinamide (Vitamin B3) là hoạt chất đa năng tuyệt vời giúp kiểm soát bã nhờn, làm dịu da đỏ, se khít lỗ chân lông và làm mờ thâm mụn vô cùng hiệu quả. 🧪",
+        productCategory: "Mỹ phẩm chứa Niacinamide",
+        link: "/category/serum"
+    },
+    {
+        tip: "Vùng da quanh mắt mỏng gấp 10 lần da mặt và không có tuyến bã nhờn, dễ xuất hiện nếp nhăn nhất. Hãy bắt đầu sử dụng kem mắt từ tuổi 20 để giữ gìn nét thanh xuân của đôi mắt. 👁️",
+        productCategory: "Kem mắt chống lão hóa",
+        link: "/category/kem-duong-mat"
+    },
+    {
+        tip: "Khi sử dụng các hoạt chất treatment mạnh như Retinol, AHA/BHA, da sẽ trở nên mỏng manh và nhạy cảm hơn. Hãy luôn bổ sung kem dưỡng phục hồi chứa Ceramide hoặc B5 để củng cố hàng rào bảo vệ da. 🛡️",
+        productCategory: "Kem dưỡng phục hồi B5/Ceramide",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Uống đủ 2 lít nước mỗi ngày giúp thải độc da từ bên trong, giữ cho các tế bào da ngậm nước đầy đủ, mang lại vẻ bóng khỏe tự nhiên tựa sương mai. 💦",
+        productCategory: "Xịt khoáng cấp nước tức thì",
+        link: "/category/toner"
+    },
+    {
+        tip: "Mụn sưng viêm tuyệt đối không nên tự ý nặn bằng tay vì sẽ gây tổn thương sâu, tạo vết thâm sẹo và lây lan vi khuẩn. Hãy dùng miếng dán mụn hoặc chấm mụn chứa tràm trà/salicylic acid để xẹp mụn nhanh chóng. 🌿",
+        productCategory: "Sản phẩm giảm mụn hiệu quả",
+        link: "/category/serum"
+    },
+    {
+        tip: "Hãy thay vỏ gối định kỳ 1 tuần/lần. Vỏ gối tích tụ tế bào chết, mồ hôi và bụi bẩn là môi trường lý tưởng cho vi khuẩn phát triển, gián tiếp gây ra mụn ẩn dai dẳng trên má. 🛌",
+        productCategory: "Sản phẩm làm sạch sâu ngừa mụn",
+        link: "/category/sua-rua-mat"
+    },
+    {
+        tip: "Kem chống nắng cần được bôi lại sau mỗi 2-3 tiếng nếu bạn hoạt động ngoài trời, đổ mồ hôi nhiều hoặc bơi lội để duy trì màng lọc bảo vệ tối ưu nhất. 🏊‍♀️",
+        productCategory: "Xịt chống nắng & Kem chống nắng",
+        link: "/category/kem-chong-nang"
+    },
+    {
+        tip: "Ngủ đủ giấc (từ 7-8 tiếng) và ngủ trước 11h đêm giúp kích hoạt cơ chế tự phục hồi tự nhiên của làn da, thúc đẩy sản sinh collagen và hạn chế quầng thâm mắt mệt mỏi. 😴",
+        productCategory: "Mặt nạ ngủ dưỡng ẩm sâu",
+        link: "/category/mat-na"
+    },
+    {
+        tip: "Tránh rửa mặt bằng nước quá nóng vì nhiệt độ cao sẽ làm mất đi lớp dầu tự nhiên bảo vệ da, khiến da bị khô ráp, bong tróc và kích thích tuyến bã nhờn hoạt động mạnh hơn. 🚿",
+        productCategory: "Sữa rửa mặt dịu nhẹ lành tính",
+        link: "/category/sua-rua-mat"
+    },
+    {
+        tip: "Một làn da đủ ẩm sẽ ít tiết dầu hơn. Nếu bạn có làn da dầu, đừng bỏ qua bước dưỡng ẩm, hãy chọn các loại kem dưỡng dạng gel/lotion mỏng nhẹ, thấm nhanh để cấp nước mà không gây bí tắc. 🧴",
+        productCategory: "Kem dưỡng dạng gel mỏng nhẹ",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Đắp mặt nạ giấy 2-3 lần/tuần là cách tuyệt vời để 'truyền nước' tức thì cho làn da sau những ngày làm việc căng thẳng, giúp da căng mọng và rạng rỡ ngay lập tức. 🎭",
+        productCategory: "Mặt nạ giấy dưỡng da chuyên sâu",
+        link: "/category/mat-na"
+    },
+    {
+        tip: "Khi thoa các sản phẩm dưỡng da, hãy vuốt nhẹ nhàng theo hướng từ dưới lên trên và từ trong ra ngoài để tránh tác động lực kéo xệ cơ mặt, giúp da luôn săn chắc đàn hồi. 💆‍♀️",
+        productCategory: "Kem dưỡng nâng cơ trẻ hóa",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Retinol là 'vua' trong việc chống lão hóa và tái tạo da. Hãy bắt đầu sử dụng Retinol với nồng độ thấp (0.1% - 0.5%) và tần suất 1 lần/tuần để da làm quen, tránh hiện tượng kích ứng đỏ rát. 👑",
+        productCategory: "Tinh chất Retinol tái tạo da",
+        link: "/category/serum"
+    },
+    {
+        tip: "Môi là vùng da cực kỳ mỏng và không có tuyến dầu tự nhiên, rất dễ bong tróc nứt nẻ. Hãy thoa son dưỡng chứa sáp ong hoặc bơ hạt mỡ trước khi đi ngủ để sở hữu đôi môi hồng hào mềm mịn. 💋",
+        productCategory: "Son dưỡng môi ẩm mịn",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Lỗ chân lông to là do di truyền và bã nhờn tích tụ kéo giãn. Việc sử dụng mặt nạ đất sét 1-2 lần/tuần sẽ hút sạch dầu thừa, bụi bẩn ẩn sâu, giúp lỗ chân lông se khít tự nhiên. 🧱",
+        productCategory: "Mặt nạ đất sét hút dầu se khít",
+        link: "/category/mat-na"
+    },
+    {
+        tip: "Hãy luôn thoa kem chống nắng và kem dưỡng cho cả vùng cổ. Da cổ mỏng và rất dễ tố cáo dấu hiệu tuổi tác của bạn nếu không được chăm sóc đồng đều với khuôn mặt. 🧣",
+        productCategory: "Kem dưỡng ẩm toàn diện",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Nếu da bạn đột ngột bị kích ứng, đỏ rát hoặc nổi mẩn đỏ, hãy ngưng ngay các hoạt chất treatment mạnh và chỉ tập trung vào chu trình tối giản: Tẩy trang dịu nhẹ -> Sữa rửa mặt pH 5.5 -> Kem dưỡng phục hồi B5. 🩺",
+        productCategory: "Kem phục hồi da kích ứng B5",
+        link: "/category/kem-duong"
+    },
+    {
+        tip: "Sau khi rửa mặt, da sẽ bị mất cân bằng pH tạm thời. Hãy sử dụng nước hoa hồng (Toner) ngay sau đó để cân bằng lại độ pH lý tưởng cho da, tạo tiền đề cho các dưỡng chất tiếp theo thấm sâu hơn. 🧪",
+        productCategory: "Nước hoa hồng cân bằng da",
+        link: "/category/toner"
+    },
+    {
+        tip: "Chế độ ăn nhiều đường, đồ ngọt và sữa bò là một trong những nguyên nhân hàng đầu kích thích tuyến bã nhờn tiết dầu nhiều hơn và gây viêm mụn dai dẳng. Hãy bổ sung nhiều rau xanh và trái cây mọng nước nhé! 🥦",
+        productCategory: "Sản phẩm chăm sóc da dầu mụn",
+        link: "/category/serum"
+    },
+    {
+        tip: "Để các hoạt chất thẩm thấu tốt nhất, hãy áp dụng nguyên tắc bôi sản phẩm theo thứ tự: từ lỏng nhất đến đặc nhất (Toner -> Serum lỏng -> Serum đặc -> Gel dưỡng -> Kem dưỡng -> Dầu dưỡng). 📐",
+        productCategory: "Trọn bộ chu trình dưỡng da",
+        link: "/category/all"
+    },
+    {
+        tip: "Massage da mặt nhẹ nhàng với dầu tẩy trang trong khoảng 2-3 phút giúp hòa tan hoàn toàn mụn đầu đen, sợi bã nhờn ở vùng mũi. Nhớ nhũ hóa thật kỹ bằng nước ấm để tránh gây mụn ngược nhé! 💆‍♂️",
+        productCategory: "Dầu tẩy trang nhũ hóa sâu",
+        link: "/category/sua-rua-mat"
+    },
+    {
+        tip: "Căng thẳng (Stress) sản sinh ra cortisol - hormone kích thích dầu thừa hoạt động mạnh và gây mụn. Hãy dành ra 15 phút mỗi tối để nghe nhạc thư giãn và đắp mặt nạ chăm sóc bản thân nhé! 🧘‍♀️",
+        productCategory: "Mặt nạ thư giãn phục hồi da",
+        link: "/category/mat-na"
+    },
+    {
+        tip: "Da xỉn màu thiếu sức sống? Hãy tìm kiếm các sản phẩm chứa chiết xuất từ nhân sâm, trà xanh hoặc lựu đỏ để bổ sung chất chống oxy hóa mạnh mẽ, giúp da hồng hào và tràn đầy sinh khí. 🔋",
+        productCategory: "Mỹ phẩm chống lão hóa cao cấp",
+        link: "/category/serum"
+    },
+    {
+        tip: "Màng bảo vệ da tự nhiên (skin barrier) khỏe mạnh có tính axit nhẹ (pH khoảng 5.5). Hãy chọn các sản phẩm sữa rửa mặt có độ pH tương đương để bảo vệ màng ẩm tự nhiên, tránh da bị khô căng kít sau khi rửa. ⚖️",
+        productCategory: "Sữa rửa mặt pH chuẩn 5.5",
+        link: "/category/sua-rua-mat"
+    },
+    {
+        tip: "Kem chống nắng dạng gel hoặc sữa lỏng cực kỳ thích hợp cho mùa hè vì độ mỏng nhẹ, ráo nhanh, không nâng tông quá đà và không gây bết dính dưới thời tiết oi nóng. 🏄",
+        productCategory: "Sữa chống nắng mỏng nhẹ ráo mịn",
+        link: "/category/kem-chong-nang"
+    },
+    {
+        tip: "Hãy luôn mỉm cười và tự tin với làn da của mình! Một tinh thần lạc quan, yêu đời chính là 'liều thuốc' tuyệt vời nhất giúp nuôi dưỡng làn da rạng rỡ từ sâu bên trong cơ thể. 🥰",
+        productCategory: "Xem tất cả sản phẩm chăm sóc da",
+        link: "/category/all"
+    }
+];
+
 interface ConfettiItem {
     id: number;
     x: number;
@@ -52,6 +217,13 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
     });
     const [confettis, setConfettis] = useState<ConfettiItem[]>([]);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+    const currentDayTip = useMemo(() => {
+        const today = new Date();
+        const dayOfMonth = today.getDate(); // 1 to 31
+        const index = (dayOfMonth - 1) % BEAUTY_TIPS.length;
+        return BEAUTY_TIPS[index];
+    }, []);
 
     const storageKey = useMemo(() => {
         return user?.email ? `BONGCOSMETIC-checkin-${user.email}` : 'BONGCOSMETIC-checkin-guest';
@@ -114,7 +286,7 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
     }, [storageKey, isOpen, user]);
 
     const todayStr = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
-    const hasCheckedInToday = checkInState.lastCheckIn === todayStr;
+    const hasCheckedInToday = checkInState?.lastCheckIn === todayStr;
 
     // Generate week status (Mon to Sun)
     const weekDays = useMemo(() => {
@@ -126,6 +298,8 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
         const monday = new Date(current);
         monday.setDate(current.getDate() + mondayOffset);
 
+        const history = checkInState?.history || [];
+
         for (let i = 0; i < 7; i++) {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
@@ -136,25 +310,27 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
                 dateStr,
                 label: formattedLabel,
                 isToday: dateStr === todayStr,
-                checkedIn: checkInState.history.includes(dateStr),
+                checkedIn: history.includes(dateStr),
                 dayNum: date.getDate()
             });
         }
         return days;
-    }, [checkInState.history, todayStr]);
+    }, [checkInState?.history, todayStr]);
 
     // Handle check in button
     const handleCheckIn = async () => {
         if (hasCheckedInToday) return;
 
         // Optimistic UI updates
-        const newHistory = [...checkInState.history, todayStr];
-        const newStreak = checkInState.streak + 1;
+        const history = checkInState?.history || [];
+        const streak = checkInState?.streak || 0;
+        const newHistory = [...history, todayStr];
+        const newStreak = streak + 1;
         const newState: CheckInState = {
-            ...checkInState,
             streak: newStreak,
             lastCheckIn: todayStr,
-            history: newHistory
+            history: newHistory,
+            claimedMilestones: checkInState?.claimedMilestones || []
         };
 
         // Save to state & local storage
@@ -203,12 +379,15 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
 
     // Handle claim reward
     const handleClaimMilestone = async (milestoneId: string) => {
-        if (checkInState.claimedMilestones.includes(milestoneId)) return;
+        const claimedMilestones = checkInState?.claimedMilestones || [];
+        if (claimedMilestones.includes(milestoneId)) return;
         
         // Optimistic UI updates
         const newState = {
-            ...checkInState,
-            claimedMilestones: [...checkInState.claimedMilestones, milestoneId]
+            streak: checkInState?.streak || 0,
+            lastCheckIn: checkInState?.lastCheckIn || null,
+            history: checkInState?.history || [],
+            claimedMilestones: [...claimedMilestones, milestoneId]
         };
         setCheckInState(newState);
         localStorage.setItem(storageKey, JSON.stringify(newState));
@@ -310,7 +489,7 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
                                             <span className="text-[10px] uppercase font-extrabold tracking-wider">Streak chuỗi ngày</span>
                                         </div>
                                         <div className="flex items-baseline gap-1 pt-1">
-                                            <span className="text-4xl font-extrabold tracking-tight">{checkInState.streak}</span>
+                                            <span className="text-4xl font-extrabold tracking-tight">{checkInState?.streak || 0}</span>
                                             <span className="text-sm font-semibold opacity-90">Ngày liên tiếp</span>
                                         </div>
                                         <p className="text-[11px] opacity-85 leading-relaxed font-medium pt-1">
@@ -386,6 +565,42 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
                                 </div>
                             </div>
 
+                            {/* Curated Daily Beauty Tip Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="p-4 rounded-2xl border border-pink-100 dark:border-pink-950/60 bg-gradient-to-br from-pink-500/10 to-rose-500/5 dark:from-pink-950/20 dark:to-slate-950/10 backdrop-blur-sm relative overflow-hidden"
+                            >
+                                <div className="absolute right-[-10px] top-[-10px] opacity-10 dark:opacity-5 animate-pulse">
+                                    <Sparkles className="w-20 h-20 text-pink-500" />
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-pink-100 dark:bg-pink-950/60 text-pink-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                        <Sparkles className="h-4 w-4 animate-pulse text-pink-500" />
+                                    </div>
+                                    <div className="space-y-1 flex-1">
+                                        <h4 className="text-xs font-bold text-pink-600 dark:text-pink-400 uppercase tracking-wider">Mẹo Chăm Da Hôm Nay ✨</h4>
+                                        <p className="text-xs text-foreground/85 leading-relaxed font-medium">
+                                            {currentDayTip.tip}
+                                        </p>
+                                        <div className="pt-2 flex items-center justify-between gap-2 border-t border-pink-100/40 dark:border-pink-950/40 mt-1">
+                                            <span className="text-[10px] text-muted-foreground font-semibold truncate">
+                                                Gợi ý: {currentDayTip.productCategory}
+                                            </span>
+                                            <Link
+                                                to={currentDayTip.link}
+                                                onClick={onClose}
+                                                className="text-[10px] text-pink-500 dark:text-pink-400 font-bold hover:underline flex items-center gap-0.5 shrink-0 group"
+                                            >
+                                                Xem ngay 🛍️
+                                                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+
                             {/* Dynamic Check In Action Button */}
                             <div className="pt-2">
                                 <Button
@@ -420,8 +635,10 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
 
                                 <div className="space-y-3">
                                     {MILESTONES.map((m) => {
-                                        const isLocked = checkInState.streak < m.days;
-                                        const isClaimed = checkInState.claimedMilestones.includes(m.id);
+                                        const streak = checkInState?.streak || 0;
+                                        const claimedMilestones = checkInState?.claimedMilestones || [];
+                                        const isLocked = streak < m.days;
+                                        const isClaimed = claimedMilestones.includes(m.id);
                                         const isClaimable = !isLocked && !isClaimed;
 
                                         return (
