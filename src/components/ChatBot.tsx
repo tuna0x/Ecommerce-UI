@@ -138,6 +138,22 @@ const ChatBot: React.FC = () => {
     const navigate = useNavigate();
 
     const [isOpen, setIsOpen] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragConstraints, setDragConstraints] = useState({ top: 0, left: 0, right: 0, bottom: 0 });
+
+    useEffect(() => {
+        const updateConstraints = () => {
+            setDragConstraints({
+                top: -window.innerHeight + 120,
+                bottom: 16,
+                left: -window.innerWidth + 100,
+                right: 16
+            });
+        };
+        updateConstraints();
+        window.addEventListener('resize', updateConstraints);
+        return () => window.removeEventListener('resize', updateConstraints);
+    }, []);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -259,14 +275,24 @@ const ChatBot: React.FC = () => {
             <AnimatePresence>
                 {!isOpen && (
                     <motion.div
+                        drag
+                        dragConstraints={dragConstraints}
+                        dragElastic={0.15}
+                        dragMomentum={true}
+                        dragTransition={{ bounceStiffness: 200, bounceDamping: 18 }}
+                        whileDrag={{ scale: 1.1, cursor: 'grabbing' }}
+                        whileHover={{ scale: 1.05 }}
+                        onDragStart={() => setIsDragging(true)}
+                        onDragEnd={() => setIsDragging(false)}
                         initial={{ scale: 0, rotate: -180 }}
                         animate={{ scale: 1, rotate: 0 }}
                         exit={{ scale: 0, rotate: 180 }}
                         transition={{ type: 'spring', damping: 15, stiffness: 200 }}
-                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 px-2"
+                        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 px-2 cursor-grab touch-none"
                     >
                         <Button
                             onClick={() => {
+                                if (isDragging) return; // Prevent clicking during drag
                                 if (!isAuthenticated) {
                                     navigate('/login');
                                 } else {
@@ -280,15 +306,17 @@ const ChatBot: React.FC = () => {
                             <Sparkles className="h-6 w-6 text-white relative z-10 animate-pulse" />
                         </Button>
                         <span className="absolute inset-0 rounded-full animate-ping bg-pink-400/25 pointer-events-none" />
-                        <motion.div
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.5 }}
-                            className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg hidden md:block"
-                        >
-                            Chat với Bông ✨
-                            <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-foreground" />
-                        </motion.div>
+                        {!isDragging && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.5 }}
+                                className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg hidden md:block pointer-events-none"
+                            >
+                                Chat với Bông ✨
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-foreground" />
+                            </motion.div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
