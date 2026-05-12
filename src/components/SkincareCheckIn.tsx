@@ -678,7 +678,7 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
                                                         {/* Target Progress Indicator */}
                                                         {isLocked && (
                                                             <p className="text-[9px] text-pink-500 font-extrabold">
-                                                                Cần duy trì chuỗi {m.days} ngày (Còn {m.days - checkInState.streak} ngày)
+                                                                Cần duy trì chuỗi {m.days} ngày (Còn {m.days - streak} ngày)
                                                             </p>
                                                         )}
                                                     </div>

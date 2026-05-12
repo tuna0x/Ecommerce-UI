@@ -11,17 +11,17 @@ export interface SkincareCheckInState {
 export const skincareCheckInService = {
   getCheckInState: async (): Promise<SkincareCheckInState> => {
     const response = await axiosInstance.get("/skincare-checkin");
-    return response.data;
+    return response.data.data;
   },
 
   checkIn: async (): Promise<SkincareCheckInState> => {
     const response = await axiosInstance.post("/skincare-checkin");
-    return response.data;
+    return response.data.data;
   },
 
   claimMilestone: async (milestoneId: string): Promise<SkincareCheckInState> => {
     const response = await axiosInstance.post(`/skincare-checkin/claim/${milestoneId}`);
-    return response.data;
+    return response.data.data;
   }
 };
 export default skincareCheckInService;
