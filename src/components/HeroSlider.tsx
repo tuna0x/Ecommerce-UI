@@ -58,6 +58,13 @@ const HeroSlider: React.FC = () => {
     exit: (dir: number) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0 }),
   };
 
+  const currentSlide = slides[current];
+  const hasContent = !!(
+    (currentSlide?.title && currentSlide.title.trim() !== '') ||
+    (currentSlide?.subtitle && currentSlide.subtitle.trim() !== '') ||
+    (currentSlide?.description && currentSlide.description.trim() !== '')
+  );
+
   return (
     <section className="relative overflow-hidden bg-secondary/30">
       <AnimatePresence mode="wait" custom={direction}>
@@ -71,70 +78,87 @@ const HeroSlider: React.FC = () => {
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
           {slides.length > 0 && (
-          <div className="container mx-auto max-w-7xl">
-            <div className="flex flex-col md:flex-row items-center min-h-[420px] md:min-h-[520px] py-10 md:py-0 gap-8">
-              {/* Content */}
-              <div className="flex-1 text-center md:text-left space-y-5 order-2 md:order-1">
-                <motion.span
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.5 }}
-                  className="inline-block text-xs font-semibold text-primary bg-primary/10 px-4 py-1.5 rounded-full tracking-wide"
-                >
-                  {slides[current]?.subtitle}
-                </motion.span>
-
-                <motion.h2
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.5 }}
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
-                >
-                  {slides[current]?.title?.split(' ').map((word, i) => (
-                    <span key={i} className={i === slides[current].title.split(' ').length - 1 ? 'text-primary' : ''}>
-                      {word}{' '}
-                    </span>
-                  ))}
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5, duration: 0.5 }}
-                  className="text-muted-foreground text-base md:text-lg max-w-md mx-auto md:mx-0 leading-relaxed"
-                >
-                  {slides[current]?.description}
-                </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.65, duration: 0.5 }}
-                >
-                  <Link
-                    to={slides[current]?.link || '#'}
-                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-full font-semibold text-sm hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+          <div className="container mx-auto max-w-7xl px-4 md:px-0 py-6 md:py-10">
+            {hasContent ? (
+              <div className="flex flex-col md:flex-row items-center min-h-[420px] md:min-h-[520px] py-10 md:py-0 gap-8">
+                {/* Content */}
+                <div className="flex-1 text-center md:text-left space-y-5 order-2 md:order-1">
+                  <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.5 }}
+                    className="inline-block text-xs font-semibold text-primary bg-primary/10 px-4 py-1.5 rounded-full tracking-wide"
                   >
-                    Khám phá ngay
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
+                    {currentSlide?.subtitle}
+                  </motion.span>
+
+                  <motion.h2
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35, duration: 0.5 }}
+                    className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.1]"
+                  >
+                    {currentSlide?.title?.split(' ').map((word, i) => (
+                      <span key={i} className={i === currentSlide.title.split(' ').length - 1 ? 'text-primary' : ''}>
+                        {word}{' '}
+                      </span>
+                    ))}
+                  </motion.h2>
+
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                    className="text-muted-foreground text-base md:text-lg max-w-md mx-auto md:mx-0 leading-relaxed"
+                  >
+                    {currentSlide?.description}
+                  </motion.p>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.65, duration: 0.5 }}
+                  >
+                    <Link
+                      to={currentSlide?.link || '#'}
+                      className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-full font-semibold text-sm hover:bg-primary/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    >
+                      Khám phá ngay
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </motion.div>
+                </div>
+
+                {/* Image */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="flex-1 order-1 md:order-2 w-full"
+                >
+                  <img
+                    src={currentSlide?.image}
+                    alt={currentSlide?.title}
+                    className="w-full max-w-lg mx-auto h-[260px] md:h-[420px] object-cover rounded-2xl shadow-2xl"
+                  />
                 </motion.div>
               </div>
-
-              {/* Image */}
+            ) : (
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="flex-1 order-1 md:order-2"
+                transition={{ duration: 0.5 }}
+                className="w-full flex justify-center"
               >
-                <img
-                  src={slides[current]?.image}
-                  alt={slides[current]?.title}
-                  className="w-full max-w-lg mx-auto h-[260px] md:h-[420px] object-cover rounded-2xl shadow-2xl"
-                />
+                <Link to={currentSlide?.link || '#'} className="w-full block">
+                  <img
+                    src={currentSlide?.image}
+                    alt="Banner"
+                    className="w-full h-auto max-h-[520px] object-contain rounded-2xl shadow-xl mx-auto"
+                  />
+                </Link>
               </motion.div>
-            </div>
+            )}
           </div>
           )}
         </motion.div>

@@ -81,7 +81,7 @@ const Header: React.FC = () => {
                         {user.name.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-sm font-medium max-w-[100px] truncate">{user.name}</span>
+                    <span className="text-sm font-medium max-w-[180px] truncate">{user.name}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
