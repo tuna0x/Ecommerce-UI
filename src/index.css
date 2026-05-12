@@ -222,3 +222,48 @@
 .animate-marquee {
   animation: marquee 20s linear infinite;
 }
+
+/* Custom circular expanding dark/light mode transition via View Transitions API */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@keyframes clip-in {
+  from {
+    clip-path: circle(0px at var(--x) var(--y));
+  }
+  to {
+    clip-path: circle(var(--r) at var(--x) var(--y));
+  }
+}
+
+@keyframes clip-out {
+  from {
+    clip-path: circle(var(--r) at var(--x) var(--y));
+  }
+  to {
+    clip-path: circle(0px at var(--x) var(--y));
+  }
+}
+
+/* Going to dark: old light screen shrinks to 0, revealing dark screen underneath */
+.dark::view-transition-old(root) {
+  z-index: 9999;
+  animation: clip-out 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* Going to light: new light screen expands from 0, covering dark screen underneath */
+html:not(.dark)::view-transition-old(root) {
+  z-index: 1;
+}
+
+html:not(.dark)::view-transition-new(root) {
+  z-index: 9999;
+  animation: clip-in 450ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
