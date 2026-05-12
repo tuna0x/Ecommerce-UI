@@ -50,6 +50,7 @@ const RolesManagement = lazy(() => import("../pages/admin/RolesManagement"));
 const PermissionsManagement = lazy(() => import("../pages/admin/PermissionsManagement"));
 const FlashSaleManagement = lazy(() => import("../pages/admin/FlashSaleManagement"));
 const TransactionsManagement = lazy(() => import("../pages/admin/TransactionsManagement"));
+const SystemMonitoring = lazy(() => import("../pages/admin/SystemMonitoring"));
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
@@ -144,6 +145,7 @@ const AnimatedRoutes = () => {
             <Route path="permissions" element={<PermissionsManagement />} />
             <Route path="flash-sales" element={<FlashSaleManagement />} />
             <Route path="transactions" element={<TransactionsManagement />} />
+            <Route path="monitoring" element={<SystemMonitoring />} />
           </Route>
         </Route>
 
