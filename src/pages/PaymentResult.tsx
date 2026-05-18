@@ -127,7 +127,7 @@ const PaymentResult: React.FC = () => {
                                 <div className="flex justify-between items-center text-sm pt-2 border-t border-border/50">
                                     <span className="text-muted-foreground">Phương thức:</span>
                                     <span className="font-semibold text-foreground">
-                                        {isCod ? 'Thanh toán khi nhận hàng (COD)' : 'Thanh toán qua VNPay'}
+                                        {isCod ? 'Thanh toán khi nhận hàng (COD)' : method === 'payos' ? 'Thanh toán qua PayOS' : 'Thanh toán qua VNPay'}
                                     </span>
                                 </div>
                             </div>
