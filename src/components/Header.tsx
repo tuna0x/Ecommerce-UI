@@ -5,6 +5,7 @@ import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, C
 import SkincareCheckIn from './SkincareCheckIn';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermission } from '../context/PermissionContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
 import { Link, useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { getCategoryIcon } from '../lib/icons';
 const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
   const { user, logout, isAuthenticated } = useAuth();
+  const { canAccessAdmin } = usePermission();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSkincareOpen, setIsSkincareOpen] = useState(false);
   const navigate = useNavigate();
@@ -90,7 +92,7 @@ const Header: React.FC = () => {
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                    <DropdownMenuSeparator />
-                  {['SUPER_ADMIN', 'ADMIN'].includes(user?.role?.name?.toUpperCase()) && (
+                  {canAccessAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="flex items-center cursor-pointer text-primary font-medium">
                         <ShoppingBag className="w-4 h-4 mr-2" />

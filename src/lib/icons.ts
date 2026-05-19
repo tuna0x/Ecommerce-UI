@@ -2,7 +2,6 @@ import {
     Palette, 
     Sparkles, 
     UserCircle, 
-    Wind, 
     ShoppingBag, 
     Heart, 
     Zap, 
@@ -15,7 +14,6 @@ import {
     Bath,
     Flower2,
     Smile,
-    Pill,
     Baby,
     HeartPulse,
     Wand2

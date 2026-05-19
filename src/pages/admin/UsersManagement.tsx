@@ -250,6 +250,12 @@ const UsersManagement: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const selectedRoleId = parseInt(formData.roleId);
+      if (!selectedRoleId) {
+        toast.error("Vui lòng chọn vai trò hợp lệ");
+        return;
+      }
+
       if (editingUser) {
         // Update
         const updateData = {
@@ -257,8 +263,7 @@ const UsersManagement: React.FC = () => {
           name: formData.name,
           age: formData.age,
           gender: formData.gender,
-          phoneNumber: formData.phoneNumber,
-          role: { id: parseInt(formData.roleId) }
+          phoneNumber: formData.phoneNumber
         };
         let fileToUpload = imageFile || undefined;
         if (imageFile) {
@@ -269,6 +274,9 @@ const UsersManagement: React.FC = () => {
           }
         }
         await UserService.updateProfile(updateData, fileToUpload);
+        if (editingUser.role?.id !== selectedRoleId) {
+          await UserService.updateRole(editingUser.id, selectedRoleId);
+        }
         toast.success("Cập nhật người dùng thành công");
       } else {
         // Create
@@ -281,7 +289,7 @@ const UsersManagement: React.FC = () => {
             age: formData.age,
             gender: formData.gender
           },
-          role: { id: parseInt(formData.roleId) }
+          role: { id: selectedRoleId }
         };
         await UserService.create(createData);
         toast.success("Tạo người dùng thành công");
