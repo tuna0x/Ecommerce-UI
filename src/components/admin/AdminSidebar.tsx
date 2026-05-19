@@ -30,6 +30,7 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { ScrollArea } from '../ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { usePermission } from '../../context/PermissionContext';
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -42,6 +43,8 @@ interface MenuItem {
   title: string;
   url: string;
   icon: LucideIcon;
+  module?: string | string[];
+  action?: string | string[];
 }
 
 interface MenuGroup {
@@ -59,41 +62,41 @@ const menuGroups: MenuGroup[] = [
   {
     label: 'Quản lý sản phẩm',
     items: [
-      { title: 'Sản phẩm', url: '/admin/products', icon: Package },
-      { title: 'Thể loại', url: '/admin/categories', icon: FolderTree },
-      { title: 'Thuộc tính', url: '/admin/attributes', icon: Palette },
-      { title: 'Thương hiệu', url: '/admin/brands', icon: Tag },
-      { title: 'Kho hàng', url: '/admin/inventory', icon: Warehouse },
-      { title: 'Chi tiết sản phẩm', url: '/admin/product-detail', icon: BookOpen },
+      { title: 'Sản phẩm', url: '/admin/products', icon: Package, module: 'PRODUCTS' },
+      { title: 'Thể loại', url: '/admin/categories', icon: FolderTree, module: 'CATEGORIES' },
+      { title: 'Thuộc tính', url: '/admin/attributes', icon: Palette, module: 'ATTRIBUTES' },
+      { title: 'Thương hiệu', url: '/admin/brands', icon: Tag, module: 'BRANDS' },
+      { title: 'Kho hàng', url: '/admin/inventory', icon: Warehouse, module: 'INVENTORY' },
+      { title: 'Chi tiết sản phẩm', url: '/admin/product-detail', icon: BookOpen, module: ['PRODUCT DETAIL', 'PRODUCT_DETAIL', 'PRODUCTDETAIL'] },
     ],
   },
   {
     label: 'Bán hàng',
     items: [
-      { title: 'Đơn hàng', url: '/admin/orders', icon: ShoppingCart },
-      { title: 'Khuyến mãi', url: '/admin/promotions', icon: Percent },
-      { title: 'Mã giảm giá', url: '/admin/coupons', icon: Ticket },
-      { title: 'Flash Sale', url: '/admin/flash-sales', icon: Zap },
-      { title: 'Giao dịch', url: '/admin/transactions', icon: BarChart3 },
+      { title: 'Đơn hàng', url: '/admin/orders', icon: ShoppingCart, module: 'ORDER', action: 'READ' },
+      { title: 'Khuyến mãi', url: '/admin/promotions', icon: Percent, module: 'PROMOTIONS' },
+      { title: 'Mã giảm giá', url: '/admin/coupons', icon: Ticket, module: 'COUPONS' },
+      { title: 'Flash Sale', url: '/admin/flash-sales', icon: Zap, module: ['FLASH SALE', 'FLASH_SALE', 'FLASHSALE'] },
+      { title: 'Giao dịch', url: '/admin/transactions', icon: BarChart3, module: 'TRANSACTIONS' },
     ],
   },
   {
     label: 'Nội dung',
     items: [
-      { title: 'Banner', url: '/admin/banners', icon: Image },
-      { title: 'Bài viết (Blog)', url: '/admin/blogs', icon: BookOpen },
+      { title: 'Banner', url: '/admin/banners', icon: Image, module: 'BANNERS' },
+      { title: 'Bài viết (Blog)', url: '/admin/blogs', icon: BookOpen, module: ['BLOGS', 'BLOG', 'POST'] },
     ],
   },
   {
     label: 'Hệ thống',
     items: [
-      { title: 'Chat', url: '/admin/chat', icon: MessageSquare },
-      { title: 'Người dùng', url: '/admin/users', icon: Users },
-      { title: 'Vai trò', url: '/admin/roles', icon: Shield },
-      { title: 'Quyền hạn', url: '/admin/permissions', icon: Lock },
-      { title: 'Hoạt động', url: '/admin/user-activities', icon: MousePointer2 },
-      { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3 },
-      { title: 'Giám sát hệ thống', url: '/admin/monitoring', icon: Activity },
+      { title: 'Chat', url: '/admin/chat', icon: MessageSquare, module: 'CHAT', action: 'READ' },
+      { title: 'Người dùng', url: '/admin/users', icon: Users, module: 'USERS', action: 'READ' },
+      { title: 'Vai trò', url: '/admin/roles', icon: Shield, module: 'ROLES' },
+      { title: 'Quyền hạn', url: '/admin/permissions', icon: Lock, module: 'PERMISSIONS' },
+      { title: 'Hoạt động', url: '/admin/user-activities', icon: MousePointer2, module: ['TRACKING', 'USER_ACTIVITY', 'USERACTIVITY', 'ACTIVITY'] },
+      { title: 'Thống kê', url: '/admin/statistics', icon: BarChart3, module: ['STATISTIC', 'STATISTICS'] },
+      { title: 'Giám sát hệ thống', url: '/admin/monitoring', icon: Activity, module: ['SYSTEM', 'MONITORING'] },
     ],
   },
 ];
@@ -103,11 +106,18 @@ import { useChat } from '../../context/ChatContext';
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobileOpen, onMobileClose }) => {
   const location = useLocation();
   const { totalUnreadCount } = useChat();
+  const { hasAdminPermission } = usePermission();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     menuGroups.forEach(g => { initial[g.label] = true; });
     return initial;
   });
+  const visibleMenuGroups = menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.module || hasAdminPermission(item.module, item.action)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const isActive = (path: string) => {
     if (path === '/admin') return location.pathname === '/admin';
@@ -148,7 +158,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle, mobile
       {/* Navigation */}
       <ScrollArea className="flex-1">
         <nav className="p-2 space-y-1">
-          {menuGroups.map((group) => {
+          {visibleMenuGroups.map((group) => {
             if (collapsed) {
               return group.items.map((item) => (
                 <NavLink

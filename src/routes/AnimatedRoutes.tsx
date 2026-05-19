@@ -54,6 +54,7 @@ const SystemMonitoring = lazy(() => import("../pages/admin/SystemMonitoring"));
 
 import ProtectedRoute from "../routes/ProtectedRoute";
 import AdminRoute from "../routes/AdminRoute";
+import AdminPermissionRoute from "../routes/AdminPermissionRoute";
 const Blog = lazy(() => import("../pages/Blog"));
 const BlogDetail = lazy(() => import("../pages/BlogDetail"));
 const Contact = lazy(() => import("../pages/Contact"));
@@ -126,26 +127,26 @@ const AnimatedRoutes = () => {
         <Route path="/admin" element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductsManagement />} />
-            <Route path="categories" element={<CategoriesManagement />} />
-            <Route path="attributes" element={<AttributesManagement />} />
-            <Route path="banners" element={<BannersManagement />} />
-            <Route path="brands" element={<BrandsManagement />} />
-            <Route path="orders" element={<OrdersManagement />} />
-            <Route path="users" element={<UsersManagement />} />
-            <Route path="promotions" element={<PromotionsManagement />} />
-            <Route path="coupons" element={<CouponsManagement />} />
-            <Route path="statistics" element={<Statistics />} />
-            <Route path="inventory" element={<InventoryManagement />} />
-            <Route path="product-detail" element={<ProductDetailManagement />} />
-            <Route path="blogs" element={<BlogManagement />} />
-            <Route path="chat" element={<ChatManagement />} />
-            <Route path="user-activities" element={<UserActivityManagement />} />
-            <Route path="roles" element={<RolesManagement />} />
-            <Route path="permissions" element={<PermissionsManagement />} />
-            <Route path="flash-sales" element={<FlashSaleManagement />} />
-            <Route path="transactions" element={<TransactionsManagement />} />
-            <Route path="monitoring" element={<SystemMonitoring />} />
+            <Route path="products" element={<AdminPermissionRoute module="PRODUCTS"><ProductsManagement /></AdminPermissionRoute>} />
+            <Route path="categories" element={<AdminPermissionRoute module="CATEGORIES"><CategoriesManagement /></AdminPermissionRoute>} />
+            <Route path="attributes" element={<AdminPermissionRoute module="ATTRIBUTES"><AttributesManagement /></AdminPermissionRoute>} />
+            <Route path="banners" element={<AdminPermissionRoute module="BANNERS"><BannersManagement /></AdminPermissionRoute>} />
+            <Route path="brands" element={<AdminPermissionRoute module="BRANDS"><BrandsManagement /></AdminPermissionRoute>} />
+            <Route path="orders" element={<AdminPermissionRoute module="ORDER" action="READ"><OrdersManagement /></AdminPermissionRoute>} />
+            <Route path="users" element={<AdminPermissionRoute module="USERS" action="READ"><UsersManagement /></AdminPermissionRoute>} />
+            <Route path="promotions" element={<AdminPermissionRoute module="PROMOTIONS"><PromotionsManagement /></AdminPermissionRoute>} />
+            <Route path="coupons" element={<AdminPermissionRoute module="COUPONS"><CouponsManagement /></AdminPermissionRoute>} />
+            <Route path="statistics" element={<AdminPermissionRoute module={["STATISTIC", "STATISTICS"]}><Statistics /></AdminPermissionRoute>} />
+            <Route path="inventory" element={<AdminPermissionRoute module="INVENTORY"><InventoryManagement /></AdminPermissionRoute>} />
+            <Route path="product-detail" element={<AdminPermissionRoute module={["PRODUCT DETAIL", "PRODUCT_DETAIL", "PRODUCTDETAIL"]}><ProductDetailManagement /></AdminPermissionRoute>} />
+            <Route path="blogs" element={<AdminPermissionRoute module={["BLOGS", "BLOG", "POST"]}><BlogManagement /></AdminPermissionRoute>} />
+            <Route path="chat" element={<AdminPermissionRoute module="CHAT" action="READ"><ChatManagement /></AdminPermissionRoute>} />
+            <Route path="user-activities" element={<AdminPermissionRoute module={["TRACKING", "USER_ACTIVITY", "USERACTIVITY", "ACTIVITY"]}><UserActivityManagement /></AdminPermissionRoute>} />
+            <Route path="roles" element={<AdminPermissionRoute module="ROLES"><RolesManagement /></AdminPermissionRoute>} />
+            <Route path="permissions" element={<AdminPermissionRoute module="PERMISSIONS"><PermissionsManagement /></AdminPermissionRoute>} />
+            <Route path="flash-sales" element={<AdminPermissionRoute module={["FLASH SALE", "FLASH_SALE", "FLASHSALE"]}><FlashSaleManagement /></AdminPermissionRoute>} />
+            <Route path="transactions" element={<AdminPermissionRoute module="TRANSACTIONS"><TransactionsManagement /></AdminPermissionRoute>} />
+            <Route path="monitoring" element={<AdminPermissionRoute module={["SYSTEM", "MONITORING"]}><SystemMonitoring /></AdminPermissionRoute>} />
           </Route>
         </Route>
 

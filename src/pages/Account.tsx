@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { usePermission } from '../context/PermissionContext';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -20,6 +21,7 @@ import type { IUser } from '../types/user.type';
  
 const Account = () => {
   const { user, logout, setUser } = useAuth() as { user: IUser | null, logout: () => void, setUser: (user: IUser | null) => void };
+  const { canAccessAdmin } = usePermission();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -201,7 +203,7 @@ const Account = () => {
                   Đăng xuất
                 </Button>
 
-                {user && ['SUPER_ADMIN', 'ADMIN'].includes(user.role.name?.toUpperCase()) && (
+                {canAccessAdmin && (
                   <Button
                     className="mt-2 w-full bg-primary text-primary-foreground font-bold"
                     onClick={() => navigate('/admin')}
