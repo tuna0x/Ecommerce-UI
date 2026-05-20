@@ -532,6 +532,7 @@ const Checkout: React.FC = () => {
         cartItemId: number[];
         couponCode: string | null;
         paymentMethod: 'VNPAY' | 'COD' | 'PAYOS';
+        shippingFee: number;
       }
 
       const mapPaymentMethod = (): 'VNPAY' | 'COD' | 'PAYOS' => {
@@ -544,7 +545,8 @@ const Checkout: React.FC = () => {
         addressId: finalAddressId,
         cartItemId: cartItemIds,
         couponCode: appliedCoupon ? appliedCoupon.code : (couponCode || null),
-        paymentMethod: mapPaymentMethod()
+        paymentMethod: mapPaymentMethod(),
+        shippingFee
       };
 
       const submitRes = await checkoutAsyncApi(payload);
