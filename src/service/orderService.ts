@@ -41,6 +41,7 @@ export const checkoutApi = async (data: {
     cartItemId: number[];
     couponCode?: string | null;
     paymentMethod: "COD" | "VNPAY" | "PAYOS";
+    shippingFee?: number;
 }) => {
     return axiosInstance.post("/order/checkout", data);
 };
@@ -60,6 +61,7 @@ export const checkoutAsyncApi = async (data: {
     cartItemId: number[];
     couponCode?: string | null;
     paymentMethod: "COD" | "VNPAY" | "PAYOS";
+    shippingFee?: number;
 }) => {
     return axiosInstance.post("/order/checkout/async", data);
 };
