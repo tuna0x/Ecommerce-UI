@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share2,
@@ -25,6 +25,7 @@ import { useCart } from "../context/CartContext";
 import ProductCard from "../components/ProductCard";
 import ProductReviews from "../components/ProductReviews";
 import ProductDetailSidebar from "../components/ProductDetailSidebar";
+import ProductDetailSkeleton from "../components/ProductDetailSkeleton";
 import ImageLightbox from "../components/ImageLightBox";
 import RecentlyViewed from "../components/RecentlyViewed";
 import { cn } from "../lib/utils";
@@ -41,9 +42,11 @@ import { useSocket } from "../context/SocketContext";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<IProduct | null>(null);
+  const location = useLocation();
+  const routeProduct = (location.state as { product?: IProduct } | null)?.product;
+  const [product, setProduct] = useState<IProduct | null>(() => routeProduct ?? null);
   const [detailContent, setDetailContent] = useState<IProductDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !routeProduct);
   const [relatedProducts, setRelatedProducts] = useState<IProduct[]>([]);
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
@@ -65,11 +68,30 @@ const ProductDetail: React.FC = () => {
 
   const showStickyBar = !isMainButtonInView && !loading && product;
 
+  useEffect(() => {
+    const prodId = Number(id);
+    if (routeProduct && routeProduct.id === prodId) {
+      setProduct(routeProduct);
+      setLoading(false);
+    } else {
+      setProduct(null);
+      setLoading(true);
+    }
+    setDetailContent(null);
+    setRelatedProducts([]);
+    setSelectedImage(0);
+    setQuantity(1);
+    setSelectedAttributes({});
+  }, [id, routeProduct]);
+
   const fetchData = useCallback(async () => {
     if (!id) return;
-    setLoading(true);
+    const prodId = Number(id);
+    const hasRouteProduct = routeProduct?.id === prodId;
+    if (!hasRouteProduct) {
+      setLoading(true);
+    }
     try {
-      const prodId = Number(id);
       const [prodRes, detailRes] = await Promise.all([
         ProductService.getById(prodId),
         productDetailService.getByProductId(prodId)
@@ -101,11 +123,10 @@ const ProductDetail: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, trackView]);
+  }, [id, routeProduct, trackView]);
 
   useEffect(() => {
     fetchData();
-    window.scrollTo(0, 0);
   }, [fetchData]);
 
   // Real-time update subscription
@@ -241,12 +262,7 @@ const ProductDetail: React.FC = () => {
   }, [groupedAttributes, selectedAttributes]);
 
   if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
-        <p className="text-muted-foreground animate-pulse">Đang tải thông tin sản phẩm...</p>
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (!product) {

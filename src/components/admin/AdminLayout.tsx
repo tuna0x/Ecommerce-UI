@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
@@ -34,7 +34,13 @@ const AdminLayout: React.FC = () => {
         )}
       >
         <div className="p-4 md:p-6">
-          <Outlet />
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent opacity-50 mb-4"></div>
+            </div>
+          }>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
     </div>

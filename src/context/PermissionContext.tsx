@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 import { UserService } from "../service/userService";
 import type { IPermission } from "../types/permission.type";
@@ -154,7 +154,47 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [loadedUserKey, setLoadedUserKey] = useState<string | null>(null);
   const currentUserKey = user ? String(user.email || user.id) : null;
 
+  // Use a ref to avoid re-creating fetchPermissions on every user object reference change
+  const userRef = React.useRef(user);
+  userRef.current = user;
+
   const fetchPermissions = useCallback(async () => {
+    const currentUser = userRef.current;
+    if (!isAuthenticated || !currentUser) {
+      setPermissions([]);
+      setLoadedUserKey(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const userKey = String(currentUser.email || currentUser.id);
+
+    // Skip re-fetch if permissions are already loaded for this user
+    setLoadedUserKey(prev => {
+      if (prev === userKey) return prev; // no state change needed
+      return prev;
+    });
+
+    setIsLoading(true);
+    try {
+      const res = await UserService.getAccountPermissions(); 
+      if (res.data) {
+        setPermissions(res.data);
+      } else {
+        setPermissions([]);
+      }
+      setLoadedUserKey(userKey);
+    } catch (error) {
+      console.error("Failed to fetch permissions", error);
+      setPermissions([]);
+      setLoadedUserKey(userKey);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated]);
+
+  // Only re-fetch when auth state changes or user identity changes (not object reference)
+  useEffect(() => {
     if (!isAuthenticated || !user) {
       setPermissions([]);
       setLoadedUserKey(null);
@@ -162,37 +202,20 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // Endpoint này cần được hỗ trợ trả về danh sách quyền của user hiện tại
-      // Ở backend, ta sẽ dùng UserService.getPermissionsByEmail(email)
-      const res = await UserService.getAccountPermissions(); 
-      if (res.data) {
-        setPermissions(res.data);
-      } else {
-        setPermissions([]);
-      }
-      setLoadedUserKey(String(user.email || user.id));
-    } catch (error) {
-      console.error("Failed to fetch permissions", error);
-      setPermissions([]);
-      setLoadedUserKey(String(user.email || user.id));
-    } finally {
-      setIsLoading(false);
+    const userKey = String(user.email || user.id);
+    // Only fetch if we haven't loaded for this user yet
+    if (loadedUserKey !== userKey) {
+      fetchPermissions();
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, currentUserKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    fetchPermissions();
-  }, [fetchPermissions]);
-
-  const activePermissions = permissions.filter(isPermissionActive);
+  const activePermissions = useMemo(() => permissions.filter(isPermissionActive), [permissions]);
   const roleName = normalizeValue(user?.role?.name);
   const isSuperAdmin = roleName === "SUPERADMIN";
-  const hasAnyPermission = () => activePermissions.length > 0;
+  const hasAnyPermission = useCallback(() => activePermissions.length > 0, [activePermissions]);
   const permissionLoading = isLoading || (!!currentUserKey && loadedUserKey !== currentUserKey);
 
-  const hasPermission = (module: PermissionMatcher, action?: PermissionMatcher) => {
+  const hasPermission = useCallback((module: PermissionMatcher, action?: PermissionMatcher) => {
     if (isSuperAdmin) return true;
 
     const targetModules = toArray(module).map(normalizeValue);
@@ -213,9 +236,9 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         permissionMethod.includes(targetAction)
       );
     });
-  };
+  }, [isSuperAdmin, activePermissions]);
 
-  const hasAdminPermission = (module?: PermissionMatcher, action?: PermissionMatcher) => {
+  const hasAdminPermission = useCallback((module?: PermissionMatcher, action?: PermissionMatcher) => {
     if (isSuperAdmin) return true;
 
     const targetModules = toArray(module).map(normalizeValue);
@@ -238,21 +261,36 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         permissionMethod.includes(targetAction)
       );
     });
-  };
+  }, [isSuperAdmin, activePermissions]);
+
+  const canAccessAdmin = useMemo(() => {
+    return isSuperAdmin ||
+      hasAdminPermission(ADMIN_ROUTE_MODULES, "READ") ||
+      hasAdminPermission(ADMIN_ENTRY_ANY_MODULES);
+  }, [isSuperAdmin, hasAdminPermission]);
+
+  const contextValue = useMemo(() => ({
+    permissions,
+    hasPermission,
+    hasAdminPermission,
+    hasAnyPermission,
+    canAccessAdmin,
+    isSuperAdmin,
+    isLoading: permissionLoading,
+    refreshPermissions: fetchPermissions
+  }), [
+    permissions,
+    hasPermission,
+    hasAdminPermission,
+    hasAnyPermission,
+    canAccessAdmin,
+    isSuperAdmin,
+    permissionLoading,
+    fetchPermissions
+  ]);
 
   return (
-    <PermissionContext.Provider value={{ 
-        permissions, 
-        hasPermission,
-        hasAdminPermission,
-        hasAnyPermission,
-        canAccessAdmin: isSuperAdmin ||
-          hasAdminPermission(ADMIN_ROUTE_MODULES, "READ") ||
-          hasAdminPermission(ADMIN_ENTRY_ANY_MODULES),
-        isSuperAdmin, 
-        isLoading: permissionLoading,
-        refreshPermissions: fetchPermissions
-    }}>
+    <PermissionContext.Provider value={contextValue}>
       {children}
     </PermissionContext.Provider>
   );

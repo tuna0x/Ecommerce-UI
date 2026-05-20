@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopBar from '../TopBar';
 import Header from '../Header';
@@ -15,7 +15,14 @@ const UserLayout: React.FC = () => {
         <Header />
       </div>
       <main className="pt-[116px] md:pt-[164px]">
-        <Outlet />
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[60vh] bg-background">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent opacity-50 mb-4"></div>
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Đang tải trang...</p>
+          </div>
+        }>
+          <Outlet />
+        </Suspense>
       </main>
       <CartSidebar />
       <Footer />

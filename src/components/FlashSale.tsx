@@ -38,8 +38,8 @@ const ScheduleModal: React.FC<{ size?: 'default' | 'sm' }> = ({ size = 'default'
       <DialogTrigger asChild>
         <Button
           variant={size === 'sm' ? "link" : "outline"}
-          className={size === 'sm' 
-            ? "text-pink-600 font-bold p-0 h-auto hover:text-pink-700" 
+          className={size === 'sm'
+            ? "text-pink-600 font-bold p-0 h-auto hover:text-pink-700"
             : "rounded-full px-8 h-12 border-slate-200 font-bold hover:bg-slate-50 transition-all"}
         >
           {size === 'sm' ? "Xem lịch hẹn →" : "Xem lịch hẹn Flash Sale"}
@@ -60,7 +60,7 @@ const ScheduleModal: React.FC<{ size?: 'default' | 'sm' }> = ({ size = 'default'
           ) : campaigns.length === 0 ? (
             <div className="text-center py-12 px-4">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                 <Zap className="w-8 h-8 text-slate-300" />
+                <Zap className="w-8 h-8 text-slate-300" />
               </div>
               <p className="text-slate-500 font-medium">Hiện chưa có lịch hẹn Flash Sale nào sắp tới.</p>
               <p className="text-sm text-slate-400 mt-1">Vui lòng quay lại sau nhé!</p>
@@ -289,7 +289,7 @@ const FlashSale: React.FC = () => {
   return (
     <section className="py-8 md:py-12 bg-gradient-to-r from-primary/5 via-background to-accent/5">
       <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
@@ -315,7 +315,7 @@ const FlashSale: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <div className="md:hidden">
-               <ScheduleModal size="sm" />
+              <ScheduleModal size="sm" />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">

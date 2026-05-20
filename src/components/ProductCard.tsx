@@ -69,6 +69,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   return (
     <Link
       to={`/product/${product.id}`}
+      state={{ product }}
       className="group block"
       onClick={handleClick}
     >

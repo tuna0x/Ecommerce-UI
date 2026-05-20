@@ -54,6 +54,7 @@ export interface CheckoutAsyncRes {
     orderId?: number;
     paymentUrl?: string;
     message?: string;
+    transactionId?: string;
 }
 
 export const checkoutAsyncApi = async (data: {

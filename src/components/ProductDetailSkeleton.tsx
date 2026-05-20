@@ -3,7 +3,7 @@ import { Skeleton } from './ui/skeleton';
 
 const ProductDetailSkeleton: React.FC = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background animate-in fade-in duration-200">
       <main className="container mx-auto px-4 py-4 md:py-8">
         {/* Breadcrumb Skeleton */}
         <div className="flex items-center gap-2 mb-6">

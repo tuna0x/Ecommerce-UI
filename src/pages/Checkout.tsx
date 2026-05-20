@@ -569,21 +569,8 @@ const Checkout: React.FC = () => {
           throw new Error('Khong nhan duoc URL thanh toan tu may chu');
         }
       } else if (finalStatus.status === 'SUCCESS') {
-        const findField = (obj: unknown, field: string): unknown => {
-          if (!obj || typeof obj !== 'object') return null;
-          const target = obj as Record<string, unknown>;
-          if (target[field]) return target[field];
-          for (const key in target) {
-            const found = findField(target[key], field);
-            if (found) return found;
-          }
-          return null;
-        };
-
-        const responseData = finalStatus;
-        const orderId = findField(responseData, 'orderId');
-        const transactionId = null;
-
+        const orderId = finalStatus.orderId ?? '';
+        const transactionId = finalStatus.transactionId ?? '';
         navigate(`/payment-result?status=success&orderId=${orderId}&transactionId=${transactionId}&method=cod`);
       } else {
         throw new Error(finalStatus.message || 'Khong the hoan tat dat hang');

@@ -89,7 +89,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             // Subscribe to personal queue
             try {
-                subNotifications = stompClient.subscribe(`/user/${user.email}/queue/notifications`, (message) => {
+                subNotifications = stompClient.subscribe('/user/queue/notifications', (message) => {
                     const newNotif = JSON.parse(message.body);
                     const mapped = mapBackendToFrontend(newNotif);
                     
