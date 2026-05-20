@@ -45,6 +45,29 @@ export const checkoutApi = async (data: {
     return axiosInstance.post("/order/checkout", data);
 };
 
+export type CheckoutStatus = "PROCESSING" | "SUCCESS" | "PAYMENT_REQUIRED" | "OUT_OF_STOCK" | "FAILED";
+
+export interface CheckoutAsyncRes {
+    checkoutId: string;
+    status: CheckoutStatus;
+    orderId?: number;
+    paymentUrl?: string;
+    message?: string;
+}
+
+export const checkoutAsyncApi = async (data: {
+    addressId?: number | null;
+    cartItemId: number[];
+    couponCode?: string | null;
+    paymentMethod: "COD" | "VNPAY" | "PAYOS";
+}) => {
+    return axiosInstance.post("/order/checkout/async", data);
+};
+
+export const getCheckoutStatusApi = async (checkoutId: string) => {
+    return axiosInstance.get(`/order/checkout/status/${checkoutId}`);
+};
+
 export const getMyOrdersApi = async (page: number, size: number) => {
     return axiosInstance.get(`/order/me?page=${page - 1}&size=${size}`);
 };

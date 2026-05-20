@@ -38,13 +38,15 @@ import { SearchableSelect } from '../components/SearchableSelect';
 
 
 import { AddressService } from '../service/addressService';
-import { checkoutApi } from '../service/orderService';
+import { checkoutAsyncApi, getCheckoutStatusApi, type CheckoutAsyncRes } from '../service/orderService';
+import { useSocket } from '../context/SocketContext';
 import vnpayLogo from '../assets/Logo-VNPAY-QR.webp';
 import payosLogo from '../assets/payos.png';
 
 const Checkout: React.FC = () => {
   const { selectedItems, selectedTotal, selectedCount } = useCart();
   const { user } = useAuth();
+  const { stompClient, isConnected } = useSocket();
   const navigate = useNavigate();
 
   const [addresses, setAddresses] = useState<ShippingAddress[]>([]);
@@ -118,6 +120,82 @@ const Checkout: React.FC = () => {
   const [provinces, setProvinces] = useState<LocationItem[]>([]);
   const [districts, setDistricts] = useState<LocationItem[]>([]);
   const [wards, setWards] = useState<LocationItem[]>([]);
+
+  const unwrapCheckoutResponse = (response: unknown): CheckoutAsyncRes => {
+    const data = response as { data?: CheckoutAsyncRes } & CheckoutAsyncRes;
+    return data.data || data;
+  };
+
+  const waitForCheckoutResult = async (checkoutId: string): Promise<CheckoutAsyncRes> => {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let attempts = 0;
+      let subscription: { unsubscribe: () => void } | null = null;
+      let pollTimer: ReturnType<typeof setTimeout> | null = null;
+      let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        if (subscription) {
+          subscription.unsubscribe();
+          subscription = null;
+        }
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
+      };
+
+      const settleWithStatus = (status: CheckoutAsyncRes) => {
+        if (settled || status.status === 'PROCESSING') return;
+        settled = true;
+        cleanup();
+        resolve(status);
+      };
+
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error instanceof Error ? error : new Error('Khong the theo doi trang thai checkout'));
+      };
+
+      if (isConnected && stompClient?.connected) {
+        subscription = stompClient.subscribe(`/topic/checkout/${checkoutId}`, (message) => {
+          try {
+            settleWithStatus(unwrapCheckoutResponse(JSON.parse(message.body)));
+          } catch (error) {
+            console.error('Invalid checkout WebSocket payload', error);
+          }
+        });
+      }
+
+      const poll = async () => {
+        if (settled) return;
+        try {
+          attempts += 1;
+          const res = await getCheckoutStatusApi(checkoutId);
+          settleWithStatus(unwrapCheckoutResponse(res.data));
+
+          if (!settled) {
+            const delay = attempts < 5 ? 1000 : attempts < 15 ? 2000 : 5000;
+            pollTimer = setTimeout(poll, delay);
+          }
+        } catch (error) {
+          fail(error);
+        }
+      };
+
+      pollTimer = setTimeout(poll, isConnected && stompClient?.connected ? 5000 : 1000);
+      timeoutTimer = setTimeout(() => {
+        fail(new Error('Don hang dang xu ly qua lau, vui long kiem tra lai sau.'));
+      }, 60000);
+    });
+
+  };
 
   useEffect(() => {
     const loadProvinces = async () => {
@@ -469,19 +547,26 @@ const Checkout: React.FC = () => {
         paymentMethod: mapPaymentMethod()
       };
 
-      const res = await checkoutApi(payload);
+      const submitRes = await checkoutAsyncApi(payload);
+      const initialStatus = unwrapCheckoutResponse(submitRes.data);
 
-      if (payload.paymentMethod === 'VNPAY' || payload.paymentMethod === 'PAYOS') {
-        const data = (res.data?.data || res.data) as { paymentUrl?: string, url?: string, checkoutUrl?: string };
-        const urlToRedirect = data.paymentUrl || data.checkoutUrl || data.url;
+      if (!initialStatus.checkoutId) {
+        throw new Error("Khong nhan duoc ma xu ly checkout");
+      }
+
+      toast.info('Don hang dang duoc xu ly...');
+      const finalStatus = await waitForCheckoutResult(initialStatus.checkoutId);
+
+      if (finalStatus.status === 'PAYMENT_REQUIRED') {
+        const urlToRedirect = finalStatus.paymentUrl;
 
         if (urlToRedirect) {
           window.location.href = urlToRedirect;
         } else {
           toast.error('Không nhận được URL thanh toán từ máy chủ');
-          setIsSubmitting(false);
+          throw new Error('Khong nhan duoc URL thanh toan tu may chu');
         }
-      } else {
+      } else if (finalStatus.status === 'SUCCESS') {
         const findField = (obj: unknown, field: string): unknown => {
           if (!obj || typeof obj !== 'object') return null;
           const target = obj as Record<string, unknown>;
@@ -493,11 +578,13 @@ const Checkout: React.FC = () => {
           return null;
         };
 
-        const responseData = res.data?.data || res.data;
-        const orderId = findField(responseData, 'id');
-        const transactionId = findField(responseData, 'transactionId') || findField(responseData, 'transactionID');
+        const responseData = finalStatus;
+        const orderId = findField(responseData, 'orderId');
+        const transactionId = null;
 
         navigate(`/payment-result?status=success&orderId=${orderId}&transactionId=${transactionId}&method=cod`);
+      } else {
+        throw new Error(finalStatus.message || 'Khong the hoan tat dat hang');
       }
     } catch (err: unknown) {
       console.error("Checkout Error:", err);
