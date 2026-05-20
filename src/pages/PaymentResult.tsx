@@ -28,7 +28,26 @@ const PaymentResult: React.FC = () => {
     const isCod = method === 'cod';
     const isAnySuccess = isSuccess || isConfirmed;
 
-    const displayTransactionId = (transactionId && transactionId !== 'undefined' && transactionId !== 'null') ? transactionId : '...';
+    const displayTransactionId = (transactionId && transactionId !== 'undefined' && transactionId !== 'null') 
+        ? transactionId 
+        : (orderId && orderId !== 'undefined' && orderId !== 'null' ? `#${orderId}` : '...');
+
+    const preloadRoute = React.useCallback((path: string) => {
+        if (path === '/orders') return import('./Orders');
+        if (path === '/checkout') return import('./Checkout');
+        if (path === '/') return import('./Index');
+        return Promise.resolve();
+    }, []);
+
+    const navigateSmoothly = React.useCallback(async (path: string) => {
+        await preloadRoute(path);
+        navigate(path);
+    }, [navigate, preloadRoute]);
+
+    React.useEffect(() => {
+        void preloadRoute(isAnySuccess ? '/orders' : '/checkout');
+        void preloadRoute('/');
+    }, [isAnySuccess, preloadRoute]);
 
     React.useEffect(() => {
         if (isAnySuccess && !hasClearedRef.current) {
@@ -145,7 +164,7 @@ const PaymentResult: React.FC = () => {
                     <CardFooter className="flex flex-col sm:flex-row gap-3 pt-6 pb-8">
                         <Button
                             className="w-full flex items-center justify-center gap-2"
-                            onClick={() => navigate(isAnySuccess ? '/orders' : '/checkout')}
+                            onClick={() => void navigateSmoothly(isAnySuccess ? '/orders' : '/checkout')}
                             variant={isAnySuccess ? "default" : "outline"}
                         >
                             {isAnySuccess ? <Receipt className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />}
@@ -153,7 +172,7 @@ const PaymentResult: React.FC = () => {
                         </Button>
                         <Button
                             className="w-full relative group overflow-hidden"
-                            onClick={() => navigate('/')}
+                            onClick={() => void navigateSmoothly('/')}
                             variant={isAnySuccess ? "outline" : "default"}
                         >
                             <span className="absolute inset-0 bg-primary/10 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300"></span>

@@ -18,11 +18,11 @@ const SuggestedForYou: React.FC = () => {
         const fetchSuggestions = async () => {
             try {
                 setIsLoading(true);
-                
+
                 // Logic: Find top category from preferences
                 const sortedCategories = Object.entries(preferredCategories)
                     .sort(([, a], [, b]) => b - a);
-                
+
                 let filter: string | undefined = undefined;
                 if (sortedCategories.length > 0) {
                     const topCategoryId = sortedCategories[0][0];
@@ -35,10 +35,10 @@ const SuggestedForYou: React.FC = () => {
 
                 // Fetch products based on preference or fallback to top rated
                 const response = await ProductService.getAll(
-                    0, 
-                    4, 
-                    undefined, 
-                    filter ? "createdAt,desc" : "averageRating,desc", 
+                    0,
+                    4,
+                    undefined,
+                    filter ? "createdAt,desc" : "averageRating,desc",
                     filter,
                     undefined,
                     true
@@ -77,10 +77,10 @@ const SuggestedForYou: React.FC = () => {
                             </p>
                         </div>
                     </ScrollReveal>
-                    
+
                     <ScrollReveal delay={0.2}>
-                        <Link 
-                            to="/shop" 
+                        <Link
+                            to="/shop"
                             className="group inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
                         >
                             Xem tất cả cửa hàng

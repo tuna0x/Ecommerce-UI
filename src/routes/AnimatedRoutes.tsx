@@ -4,10 +4,10 @@ import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { logActivity } from "../service/trackingService";
 import UserLayout from "../components/layout/UserLayout";
+import ProductDetail from "../pages/ProductDetail";
 
 // Lazy load all pages
 const Index = lazy(() => import("../pages/Index"));
-const ProductDetail = lazy(() => import("../pages/ProductDetail"));
 const Login = lazy(() => import("../pages/Login"));
 const Register = lazy(() => import("../pages/Register"));
 const ForgotPassword = lazy(() => import("../pages/ForgotPassword"));
