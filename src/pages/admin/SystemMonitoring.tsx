@@ -1,588 +1,550 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Activity, Cpu, Database, Zap, RefreshCw, XCircle, 
-  AlertCircle, Clock, HardDrive, Shield, Server, Check,
-  Play, Pause, Terminal, Gauge, Layers
-} from 'lucide-react';
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line
-} from 'recharts';
-import axios from 'axios';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertCircle,
+  Check,
+  Clock,
+  Cpu,
+  Database,
+  Gauge,
+  HardDrive,
+  Layers,
+  Pause,
+  Play,
+  RefreshCw,
+  Server,
+  Shield,
+  Terminal,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import axios from "axios";
+import { cn } from "../../lib/utils";
+
+type HealthStatus = "UP" | "DOWN" | "UNKNOWN";
+type LogLevel = "INFO" | "WARN" | "ERROR";
 
 interface MetricPoint {
   time: string;
-  ram: number; // MB
-  cpu: number; // %
-  latency: number; // ms
+  ram: number | null;
+  cpu: number | null;
+  latency: number | null;
 }
 
 interface ComponentHealth {
   name: string;
-  status: 'UP' | 'DOWN' | 'UNKNOWN';
-  details?: Record<string, any>;
-  icon: any;
-  color: string;
+  status: HealthStatus;
+  details?: string;
+  icon: React.ElementType;
+  tone: "emerald" | "rose" | "indigo" | "amber" | "cyan";
 }
+
+interface ConsoleLog {
+  id: string;
+  time: string;
+  level: LogLevel;
+  message: string;
+}
+
+const POLL_INTERVAL_MS = 5000;
+const MAX_HISTORY_POINTS = 24;
+
+const toneClassMap: Record<ComponentHealth["tone"], string> = {
+  emerald: "bg-emerald-500/10 text-emerald-600",
+  rose: "bg-rose-500/10 text-rose-600",
+  indigo: "bg-indigo-500/10 text-indigo-600",
+  amber: "bg-amber-500/10 text-amber-600",
+  cyan: "bg-cyan-500/10 text-cyan-600",
+};
+
+const formatTime = (date = new Date()) =>
+  date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+const formatUptime = (seconds?: number | null) => {
+  if (seconds == null || !Number.isFinite(seconds)) return "Chưa có dữ liệu";
+  const total = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(secs)}s`;
+};
+
+const getMeasurementValue = (payload: any, statistic = "VALUE") => {
+  const metricPayload = unwrapActuatorPayload(payload);
+  const measurements = metricPayload?.measurements;
+  if (!Array.isArray(measurements)) return null;
+  const exact = measurements.find((item) => item?.statistic === statistic);
+  const fallback = measurements[0];
+  const value = exact?.value ?? fallback?.value;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+
+const unwrapActuatorPayload = (payload: any) => {
+  if (payload?.data && (payload.statusCode != null || payload.message != null || payload.error !== undefined)) {
+    return payload.data;
+  }
+  return payload;
+};
+
+const getComponentStatus = (components: any, ...names: string[]): HealthStatus => {
+  for (const name of names) {
+    const status = components?.[name]?.status;
+    if (status === "UP" || status === "DOWN" || status === "UNKNOWN") return status;
+  }
+  return "UNKNOWN";
+};
+
+const statusLabel: Record<HealthStatus, string> = {
+  UP: "UP",
+  DOWN: "DOWN",
+  UNKNOWN: "UNKNOWN",
+};
 
 export const SystemMonitoring: React.FC = () => {
   const [isPolling, setIsPolling] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  // Real or simulated states
-  const [healthStatus, setHealthStatus] = useState<'UP' | 'DOWN'>('UP');
-  const [uptime, setUptime] = useState<string>('00d 00h 00m 00s');
-  const [memoryMetrics, setMemoryMetrics] = useState({ used: 128, max: 512, percentage: 25 });
-  const [cpuUsage, setCpuUsage] = useState<number>(12);
-  const [activeThreads, setActiveThreads] = useState<number>(35);
-  const [activeConnections] = useState<number>(8);
-  const [logs, setLogs] = useState<Array<{ id: string; time: string; level: 'INFO' | 'WARN' | 'ERROR'; message: string }>>([]);
-
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>("UNKNOWN");
+  const [uptimeSeconds, setUptimeSeconds] = useState<number | null>(null);
+  const [memoryMetrics, setMemoryMetrics] = useState({ used: null as number | null, max: null as number | null, percentage: null as number | null });
+  const [cpuUsage, setCpuUsage] = useState<number | null>(null);
+  const [activeThreads, setActiveThreads] = useState<number | null>(null);
+  const [logs, setLogs] = useState<ConsoleLog[]>([]);
+  const [history, setHistory] = useState<MetricPoint[]>([]);
   const [components, setComponents] = useState<ComponentHealth[]>([
-    { name: 'Database (MySQL)', status: 'UNKNOWN', icon: Database, color: 'emerald' },
-    { name: 'Cache Engine (Redis)', status: 'UNKNOWN', icon: Zap, color: 'rose' },
-    { name: 'Message Broker (RabbitMQ)', status: 'UNKNOWN', icon: Layers, color: 'indigo' },
-    { name: 'Mail Gateway (Brevo)', status: 'UNKNOWN', icon: Server, color: 'amber' },
-    { name: 'Storage Service (Cloudinary)', status: 'UP', icon: HardDrive, color: 'cyan' }
+    { name: "Database (MySQL)", status: "UNKNOWN", icon: Database, tone: "emerald" },
+    { name: "Cache Engine (Redis)", status: "UNKNOWN", icon: Zap, tone: "rose" },
+    { name: "Message Broker (RabbitMQ)", status: "UNKNOWN", icon: Layers, tone: "indigo" },
+    { name: "Mail Gateway (Brevo)", status: "UNKNOWN", icon: Server, tone: "amber" },
+    { name: "Storage Service (Cloudinary)", status: "UNKNOWN", icon: HardDrive, tone: "cyan" },
   ]);
 
-  const [history, setHistory] = useState<MetricPoint[]>(() => {
-    // Generate some starter historical data points
-    const points: MetricPoint[] = [];
-    const now = new Date();
-    for (let i = 15; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 5000);
-      points.push({
-        time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        ram: 110 + Math.floor(Math.random() * 40),
-        cpu: 5 + Math.floor(Math.random() * 15),
-        latency: 15 + Math.floor(Math.random() * 25)
-      });
-    }
-    return points;
-  });
-
-  const uptimeSeconds = useRef<number>(12340);
-
-  // Compute Server API URL based on frontend settings
   const serverRoot = useMemo(() => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
     return apiBase.replace(/\/api\/v1\/?$/, "");
   }, []);
 
-  // Update uptime counter every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      uptimeSeconds.current += 1;
-      const days = Math.floor(uptimeSeconds.current / (24 * 3600));
-      const hours = Math.floor((uptimeSeconds.current % (24 * 3600)) / 3600);
-      const minutes = Math.floor((uptimeSeconds.current % 3600) / 60);
-      const seconds = uptimeSeconds.current % 60;
-      
-      const format = (n: number) => String(n).padStart(2, '0');
-      setUptime(`${days}d ${format(hours)}h ${format(minutes)}m ${format(seconds)}s`);
-    }, 1000);
-
-    return () => clearInterval(interval);
+  const addLog = useCallback((level: LogLevel, message: string) => {
+    const now = new Date();
+    setLogs((prev) => [
+      {
+        id: `${now.getTime()}-${Math.random()}`,
+        time: formatTime(now),
+        level,
+        message,
+      },
+      ...prev,
+    ].slice(0, 50));
   }, []);
 
-  // Fetch metrics and health
-  const fetchData = async () => {
-    setLastUpdated(new Date());
-    
-    let dbStatus: 'UP' | 'DOWN' = 'UP';
-    let redisStatus: 'UP' | 'DOWN' = 'UP';
-    let rabbitStatus: 'UP' | 'DOWN' = 'UP';
+  const fetchMetric = useCallback(async (name: string, query = "") => {
+    const suffix = query ? `?${query}` : "";
+    const response = await axios.get(`${serverRoot}/actuator/metrics/${name}${suffix}`, { timeout: 2500 });
+    return getMeasurementValue(response.data);
+  }, [serverRoot]);
+
+  const fetchData = useCallback(async () => {
+    const startedAt = performance.now();
+    const timeLabel = formatTime();
+    setLoading(true);
+
+    let latency: number | null = null;
+    let nextHealth: HealthStatus = "UNKNOWN";
+    let nextComponents: any = null;
 
     try {
-      // 1. Fetch Health Status
-      const resHealth = await axios.get(`${serverRoot}/actuator/health`, { timeout: 3000 });
-      const data = resHealth.data;
-      
-      setHealthStatus(data.status === 'UP' ? 'UP' : 'DOWN');
-      
-      if (data.components) {
-        dbStatus = data.components.db?.status === 'UP' ? 'UP' : 'DOWN';
-        redisStatus = data.components.redis?.status === 'UP' ? 'UP' : 'DOWN';
-        rabbitStatus = data.components.rabbit?.status === 'UP' ? 'UP' : 'DOWN';
-      }
-    } catch (err) {
-      console.warn("Actuator Health endpoint unavailable, fallback to simulated indicators.");
-      // Soft fail: keep indicators in simulated mode
+      const healthResponse = await axios.get(`${serverRoot}/actuator/health`, { timeout: 3000 });
+      latency = Math.round(performance.now() - startedAt);
+      const healthPayload = unwrapActuatorPayload(healthResponse.data);
+      nextHealth = healthPayload?.status === "UP" ? "UP" : healthPayload?.status === "DOWN" ? "DOWN" : "UNKNOWN";
+      nextComponents = healthPayload?.components;
+      setHealthStatus(nextHealth);
+    } catch (error) {
+      setHealthStatus("UNKNOWN");
+      addLog("ERROR", "Không gọi được /actuator/health. Kiểm tra backend, CORS hoặc cấu hình actuator.");
     }
 
-    // 2. Fetch or Simulate JVM memory metrics
-    let jvmUsed = memoryMetrics.used;
-    let jvmMax = memoryMetrics.max;
-
-    try {
-      const resMemoryUsed = await axios.get(`${serverRoot}/actuator/metrics/jvm.memory.used`, { timeout: 1500 });
-      const rawUsed = resMemoryUsed.data.measurements?.[0]?.value || 0;
-      jvmUsed = Math.floor(rawUsed / (1024 * 1024)); // Convert to MB
-      
-      const resMemoryMax = await axios.get(`${serverRoot}/actuator/metrics/jvm.memory.max`, { timeout: 1500 });
-      const rawMax = resMemoryMax.data.measurements?.[0]?.value || 0;
-      jvmMax = rawMax > 0 ? Math.floor(rawMax / (1024 * 1024)) : 512;
-    } catch (err) {
-      // Simulated oscillation
-      const delta = (Math.random() - 0.5) * 8;
-      jvmUsed = Math.max(80, Math.min(380, Math.floor(jvmUsed + delta)));
-    }
-
-    const memPercent = Math.round((jvmUsed / jvmMax) * 100);
-    setMemoryMetrics({ used: jvmUsed, max: jvmMax, percentage: memPercent });
-
-    // 3. Fetch or Simulate CPU
-    let currentCpu = cpuUsage;
-    try {
-      const resCpu = await axios.get(`${serverRoot}/actuator/metrics/system.cpu.usage`, { timeout: 1500 });
-      const val = resCpu.data.measurements?.[0]?.value || 0;
-      currentCpu = Math.round(val * 100);
-    } catch (err) {
-      // Random walk simulation
-      const change = (Math.random() - 0.5) * 4;
-      currentCpu = Math.max(3, Math.min(85, Math.round(currentCpu + change)));
-    }
-    setCpuUsage(currentCpu);
-
-    // 4. Fetch or Simulate Threads
-    let threads = activeThreads;
-    try {
-      const resThreads = await axios.get(`${serverRoot}/actuator/metrics/jvm.threads.live`, { timeout: 1500 });
-      threads = resThreads.data.measurements?.[0]?.value || 35;
-    } catch (err) {
-      if (Math.random() > 0.8) {
-        threads = Math.max(10, Math.min(120, threads + (Math.random() > 0.5 ? 1 : -1)));
-      }
-    }
-    setActiveThreads(threads);
-
-    // Update Component status
-    setComponents([
-      { name: 'Database (MySQL)', status: dbStatus, icon: Database, color: 'emerald', details: { pool: 'HikariCP (Max: 10)', activeConnections: activeConnections } },
-      { name: 'Cache Engine (Redis)', status: redisStatus, icon: Zap, color: 'rose', details: { client: 'Lettuce', activeCache: 'Active' } },
-      { name: 'Message Broker (RabbitMQ)', status: rabbitStatus, icon: Layers, color: 'indigo', details: { prefetch: '1', retries: '3 max' } },
-      { name: 'Mail Gateway (Brevo)', status: 'UP', icon: Server, color: 'amber', details: { type: 'Brevo API / SMTP' } },
-      { name: 'Storage Service (Cloudinary)', status: 'UP', icon: HardDrive, color: 'cyan', details: { ssl: 'Secure', format: 'Optimized' } }
+    const metricResults = await Promise.allSettled([
+      fetchMetric("jvm.memory.used", "tag=area:heap"),
+      fetchMetric("jvm.memory.max", "tag=area:heap"),
+      fetchMetric("process.cpu.usage"),
+      fetchMetric("jvm.threads.live"),
+      fetchMetric("process.uptime"),
+      fetchMetric("hikaricp.connections.active"),
     ]);
 
-    // Push new metrics point to history
-    const d = new Date();
-    const timeLabel = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const latencyVal = Math.floor(10 + Math.random() * 20 + (currentCpu > 50 ? currentCpu * 0.4 : 0));
-    
-    setHistory(prev => {
-      const updated = [...prev, {
-        time: timeLabel,
-        ram: jvmUsed,
-        cpu: currentCpu,
-        latency: latencyVal
-      }];
-      if (updated.length > 20) updated.shift();
-      return updated;
-    });
+    const [usedResult, maxResult, cpuResult, threadsResult, uptimeResult, connectionsResult] = metricResults;
+    const readResult = (result: PromiseSettledResult<number | null>) => result.status === "fulfilled" ? result.value : null;
 
-    // Add randomized logs
-    const logPool = [
-      { level: 'INFO' as const, msg: 'API GET /api/v1/products - Response 200 OK' },
-      { level: 'INFO' as const, msg: 'HikariPool-1 - Connection validation check passed' },
-      { level: 'INFO' as const, msg: 'Redis cache hit for key: categories-all' },
-      { level: 'INFO' as const, msg: 'RabbitMQ message acknowledged - channel id: 102' },
-      { level: 'WARN' as const, msg: 'Memory cleanup triggered - garbage collection optimization' },
-      { level: 'INFO' as const, msg: 'Skincare check-in synced successfully for user: user@gmail.com' }
-    ];
+    const usedMb = readResult(usedResult) != null ? Math.round(readResult(usedResult)! / 1024 / 1024) : null;
+    const maxMb = readResult(maxResult) != null && readResult(maxResult)! > 0 ? Math.round(readResult(maxResult)! / 1024 / 1024) : null;
+    const memoryPercentage = usedMb != null && maxMb != null && maxMb > 0 ? Math.round((usedMb / maxMb) * 100) : null;
+    const cpuPercent = readResult(cpuResult) != null ? Math.round(readResult(cpuResult)! * 1000) / 10 : null;
+    const threads = readResult(threadsResult) != null ? Math.round(readResult(threadsResult)!) : null;
+    const uptime = readResult(uptimeResult);
+    const connections = readResult(connectionsResult) != null ? Math.round(readResult(connectionsResult)!) : null;
 
-    if (Math.random() > 0.3) {
-      const selected = logPool[Math.floor(Math.random() * logPool.length)];
-      setLogs(prev => {
-        const item = {
-          id: String(Math.random()),
-          time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          level: selected.level,
-          message: selected.msg
-        };
-        const updated = [item, ...prev];
-        if (updated.length > 50) updated.pop();
-        return updated;
-      });
+    setMemoryMetrics({ used: usedMb, max: maxMb, percentage: memoryPercentage });
+    setCpuUsage(cpuPercent);
+    setActiveThreads(threads);
+    setUptimeSeconds(uptime);
+    setComponents([
+      {
+        name: "Database (MySQL)",
+        status: getComponentStatus(nextComponents, "db"),
+        icon: Database,
+        tone: "emerald",
+        details: connections != null ? `Hikari active connections: ${connections}` : "Theo dõi qua actuator health",
+      },
+      {
+        name: "Cache Engine (Redis)",
+        status: getComponentStatus(nextComponents, "redis"),
+        icon: Zap,
+        tone: "rose",
+        details: "Theo dõi qua Redis health indicator",
+      },
+      {
+        name: "Message Broker (RabbitMQ)",
+        status: getComponentStatus(nextComponents, "rabbit", "rabbitMQ"),
+        icon: Layers,
+        tone: "indigo",
+        details: "Theo dõi qua Rabbit health indicator",
+      },
+      {
+        name: "Mail Gateway (Brevo)",
+        status: "UNKNOWN",
+        icon: Server,
+        tone: "amber",
+        details: "Backend chưa có health indicator riêng",
+      },
+      {
+        name: "Storage Service (Cloudinary)",
+        status: "UNKNOWN",
+        icon: HardDrive,
+        tone: "cyan",
+        details: "Backend chưa có health indicator riêng",
+      },
+    ]);
+
+    setHistory((prev) => [...prev, { time: timeLabel, ram: usedMb, cpu: cpuPercent, latency }].slice(-MAX_HISTORY_POINTS));
+    setLastUpdated(new Date());
+
+    if (nextHealth === "UP") {
+      addLog("INFO", `Actuator health OK${latency != null ? `, latency ${latency}ms` : ""}.`);
+    } else if (nextHealth === "DOWN") {
+      addLog("ERROR", "Actuator báo hệ thống DOWN. Xem chi tiết trong component health.");
+    }
+
+    if (metricResults.some((result) => result.status === "rejected")) {
+      addLog("WARN", "Một số actuator metrics không khả dụng. Dashboard đã giữ giá trị UNKNOWN thay vì mô phỏng.");
     }
 
     setLoading(false);
-  };
+  }, [addLog, fetchMetric, serverRoot]);
 
-  // Continuous polling loop
   useEffect(() => {
     void fetchData();
-    if (!isPolling) return;
+  }, [fetchData]);
 
-    const interval = setInterval(() => {
-      void fetchData();
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isPolling]);
-
-  // Initial dummy logs
   useEffect(() => {
-    const starterLogs = [
-      { id: '1', time: '01:10:00', level: 'INFO' as const, message: 'Spring Boot Application initialized successfully on port 8080' },
-      { id: '2', time: '01:10:05', level: 'INFO' as const, message: 'Hikari pool initialized successfully (jdbc:mysql://localhost:3306/ecommerce)' },
-      { id: '3', time: '01:10:07', level: 'INFO' as const, message: 'Connection to Redis cache established on localhost:6379' },
-      { id: '4', time: '01:10:10', level: 'INFO' as const, message: 'RabbitMQ listener registered: queue-skincare-checkin' }
-    ];
-    setLogs(starterLogs.reverse());
-  }, []);
+    if (!isPolling) return;
+    const interval = window.setInterval(() => void fetchData(), POLL_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [fetchData, isPolling]);
+
+  useEffect(() => {
+    if (uptimeSeconds == null) return;
+    const interval = window.setInterval(() => {
+      setUptimeSeconds((prev) => (prev == null ? prev : prev + 1));
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [uptimeSeconds]);
+
+  const uptime = formatUptime(uptimeSeconds);
+  const hasMemory = memoryMetrics.used != null && memoryMetrics.max != null;
+  const hasHistory = history.length > 0;
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6 bg-slate-50/20 dark:bg-slate-950/20 min-h-screen">
-      
-      {/* Premium Glassmorphism Page Header */}
-      <div className="relative p-6 md:p-8 rounded-3xl border border-border/30 bg-white/70 dark:bg-slate-900/60 backdrop-blur-md shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6 overflow-hidden">
-        <div className="absolute top-0 right-0 h-40 w-40 bg-pink-100/40 dark:bg-pink-950/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-        
-        <div className="space-y-1.5">
+    <div className="container mx-auto min-h-screen space-y-6 bg-slate-50/20 p-4 md:p-6 dark:bg-slate-950/20">
+      <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-              <Activity className="h-6 w-6 animate-pulse" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Activity className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-black tracking-tight">Giám Sát Hệ Thống</h1>
-              <p className="text-xs text-muted-foreground font-medium">Theo dõi hoạt động, tài nguyên và dịch vụ nền của máy chủ</p>
+              <h1 className="text-xl font-bold tracking-tight md:text-2xl">Giám sát hệ thống</h1>
+              <p className="text-xs font-medium text-muted-foreground">
+                Dữ liệu lấy trực tiếp từ Spring Boot Actuator, không dùng số liệu mô phỏng.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsPolling((prev) => !prev)}
+              className={cn(
+                "flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-colors",
+                isPolling
+                  ? "border-emerald-200 bg-emerald-500/10 text-emerald-700"
+                  : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800",
+              )}
+            >
+              {isPolling ? <Play className="h-3.5 w-3.5 fill-emerald-600" /> : <Pause className="h-3.5 w-3.5" />}
+              {isPolling ? "Live polling" : "Đã tạm dừng"}
+            </button>
+            <button
+              onClick={() => void fetchData()}
+              className="flex h-9 items-center gap-2 rounded-xl border border-border/40 px-3 text-xs font-bold hover:bg-secondary"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+              Làm mới
+            </button>
+            <div className="rounded-xl border border-border/40 bg-secondary px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Cập nhật: {lastUpdated ? lastUpdated.toLocaleTimeString("vi-VN") : "Chưa có"}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Polling & Live indicators */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setIsPolling(!isPolling)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl border flex items-center gap-2 transition-all active:scale-95 ${
-              isPolling
-                ? "bg-emerald-500/10 text-emerald-600 border-emerald-200/30 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50"
-                : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
-            }`}
-          >
-            {isPolling ? (
-              <>
-                <Play className="h-3.5 w-3.5 text-emerald-500 fill-emerald-500 animate-pulse" />
-                Đang trực tuyến (Live Polling)
-              </>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          title="Trạng thái server"
+          icon={Server}
+          value={healthStatus === "UP" ? "Kết nối tốt" : healthStatus === "DOWN" ? "Mất kết nối" : "Chưa xác định"}
+          description={healthStatus === "UNKNOWN" ? "Không lấy được /actuator/health" : "Theo trạng thái actuator health"}
+          status={healthStatus}
+        />
+        <MetricCard title="Uptime" icon={Clock} value={uptime} description="process.uptime từ JVM" />
+        <MetricCard
+          title="JVM heap memory"
+          icon={Cpu}
+          value={hasMemory ? `${memoryMetrics.used} MB / ${memoryMetrics.max} MB` : "Chưa có dữ liệu"}
+          description={memoryMetrics.percentage != null ? `Đã dùng ${memoryMetrics.percentage}%` : "Metric jvm.memory.* không khả dụng"}
+          progress={memoryMetrics.percentage}
+          tone="rose"
+        />
+        <MetricCard
+          title="CPU & threads"
+          icon={Gauge}
+          value={`${cpuUsage != null ? `${cpuUsage}%` : "N/A"} / ${activeThreads ?? "N/A"} luồng`}
+          description="process.cpu.usage và jvm.threads.live"
+          progress={cpuUsage}
+          tone="amber"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-4 rounded-2xl border border-border/40 bg-card p-5 shadow-sm lg:col-span-2">
+          <ChartHeader
+            icon={Cpu}
+            title="RAM heap & CPU"
+            description="Chỉ vẽ các điểm lấy được từ actuator metrics"
+          />
+          <div className="h-72 w-full text-xs">
+            {hasHistory ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                  <XAxis dataKey="time" fontSize={9} stroke="#94a3b8" />
+                  <YAxis fontSize={9} stroke="#94a3b8" />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="ram" name="RAM heap (MB)" stroke="#ec4899" fill="#ec489933" strokeWidth={2} connectNulls />
+                  <Area type="monotone" dataKey="cpu" name="CPU (%)" stroke="#f59e0b" fill="#f59e0b22" strokeWidth={2} connectNulls />
+                </AreaChart>
+              </ResponsiveContainer>
             ) : (
-              <>
-                <Pause className="h-3.5 w-3.5 text-slate-400 fill-slate-400" />
-                Đã tạm dừng cập nhật
-              </>
+              <EmptyChart />
             )}
-          </button>
+          </div>
+        </div>
 
-          <button
-            onClick={() => void fetchData()}
-            className="h-9 px-3 text-xs font-bold border border-border/30 rounded-xl flex items-center gap-1.5 hover:bg-secondary dark:hover:bg-slate-800 transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Làm mới
-          </button>
-
-          <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider bg-secondary px-3 py-2 rounded-xl border border-border/30">
-            Cập nhật: {lastUpdated.toLocaleTimeString()}
+        <div className="space-y-4 rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+          <ChartHeader
+            icon={Activity}
+            title="Latency actuator"
+            description="Thời gian phản hồi của /actuator/health"
+          />
+          <div className="h-72 w-full text-xs">
+            {hasHistory ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={history} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                  <XAxis dataKey="time" fontSize={9} stroke="#94a3b8" />
+                  <YAxis fontSize={9} stroke="#94a3b8" />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="latency" name="Latency (ms)" stroke="#10b981" strokeWidth={3} dot={{ r: 2 }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyChart />
+            )}
           </div>
         </div>
       </div>
 
-      {/* Grid: Main metrics summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Metric Card 1: Server Status */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-2xl border border-border/40 bg-card hover:shadow-md transition-all flex items-center justify-between"
-        >
-          <div className="space-y-1.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Trạng thái Server</span>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-3 w-3">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${healthStatus === 'UP' ? 'bg-emerald-400' : 'bg-rose-400'} opacity-75`}></span>
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${healthStatus === 'UP' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-              </span>
-              <span className="text-xl font-extrabold tracking-tight">
-                {healthStatus === 'UP' ? 'KẾT NỐI TỐT' : 'MẤT KẾT NỐI'}
-              </span>
-            </div>
-            <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-              <Shield className={`h-3 w-3 ${healthStatus === 'UP' ? 'text-emerald-500' : 'text-rose-500'}`} />
-              {healthStatus === 'UP' ? 'Bảo mật HTTPS / SSL đang kích hoạt' : 'Hệ thống ngoại tuyến / Đang bảo trì'}
-            </p>
-          </div>
-          <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${healthStatus === 'UP' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-            <Server className="h-6 w-6" />
-          </div>
-        </motion.div>
-
-        {/* Metric Card 2: Uptime */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-2xl border border-border/40 bg-card hover:shadow-md transition-all flex items-center justify-between"
-        >
-          <div className="space-y-1.5">
-            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Thời gian chạy (Uptime)</span>
-            <h2 className="text-xl font-extrabold tracking-tight tabular-nums">{uptime}</h2>
-            <p className="text-[10px] text-muted-foreground font-semibold">Tự động duy trì ổn định không downtime</p>
-          </div>
-          <div className="h-12 w-12 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-            <Clock className="h-6 w-6" />
-          </div>
-        </motion.div>
-
-        {/* Metric Card 3: JVM Memory Heap */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-2xl border border-border/40 bg-card hover:shadow-md transition-all"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">JVM Memory (Heap)</span>
-              <div className="text-xl font-extrabold tracking-tight tabular-nums">
-                {memoryMetrics.used} MB <span className="text-xs text-muted-foreground">/ {memoryMetrics.max} MB</span>
-              </div>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0">
-              <Cpu className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-pink-500 to-rose-500 transition-all duration-500"
-                style={{ width: `${memoryMetrics.percentage}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>Đã dùng {memoryMetrics.percentage}%</span>
-              <span>Còn trống {memoryMetrics.max - memoryMetrics.used} MB</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Metric Card 4: CPU & Active Threads */}
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-2xl border border-border/40 bg-card hover:shadow-md transition-all"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Hiệu suất CPU & Threads</span>
-              <div className="text-xl font-extrabold tracking-tight tabular-nums">
-                {cpuUsage}% <span className="text-xs text-muted-foreground">/ {activeThreads} Luồng</span>
-              </div>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-              <Gauge className="h-5 w-5 animate-pulse" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500"
-                style={{ width: `${cpuUsage}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
-              <span>CPU Load: {cpuUsage > 70 ? 'Cao ⚠️' : 'An toàn'}</span>
-              <span>Peak: 120 threads</span>
-            </div>
-          </div>
-        </motion.div>
-
-      </div>
-
-      {/* Grid: Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Chart 1: Memory & CPU Live Area Chart */}
-        <div className="lg:col-span-2 p-5 rounded-3xl border border-border/30 bg-card shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-border/30 pb-4">
-            <div>
-              <h3 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-                <Cpu className="h-4 w-4 text-pink-500" />
-                Sự thay đổi RAM Heap & CPU load hằng giây
-              </h3>
-              <p className="text-[11px] text-muted-foreground">Giám sát tự động và thống kê hiệu quả bộ nhớ</p>
-            </div>
-            <span className="text-[10px] text-pink-600 dark:text-pink-400 bg-pink-100/50 dark:bg-pink-950/20 px-2 py-0.5 rounded-full font-bold">Thời gian thực</span>
-          </div>
-
-          <div className="h-72 w-full pt-2 text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} />
-                <YAxis stroke="#94a3b8" fontSize={9} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                    borderColor: 'rgba(236, 72, 153, 0.2)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                    fontSize: '11px'
-                  }}
-                />
-                <Area type="monotone" dataKey="ram" stroke="#ec4899" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRam)" name="RAM JVM (MB)" />
-                <Area type="monotone" dataKey="cpu" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCpu)" name="CPU Usage (%)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 2: API Latency Line Chart */}
-        <div className="p-5 rounded-3xl border border-border/30 bg-card shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-border/30 pb-4">
-            <div>
-              <h3 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-                <Activity className="h-4 w-4 text-emerald-500" />
-                Tốc độ phản hồi API (ms)
-              </h3>
-              <p className="text-[11px] text-muted-foreground">Tốc độ trung bình phản hồi các yêu cầu</p>
-            </div>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full font-bold">Ổn định</span>
-          </div>
-
-          <div className="h-72 w-full pt-2 text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={history} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} />
-                <YAxis stroke="#94a3b8" fontSize={9} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)', 
-                    borderColor: 'rgba(16, 185, 129, 0.2)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                    fontSize: '11px'
-                  }}
-                />
-                <Line type="monotone" dataKey="latency" stroke="#10b981" strokeWidth={3} dot={{ r: 2 }} activeDot={{ r: 6 }} name="Độ trễ (ms)" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Grid: Component Health Statuses & Logs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Section: Component Services list */}
-        <div className="lg:col-span-1 p-5 rounded-3xl border border-border/30 bg-card shadow-sm space-y-4">
-          <div className="border-b border-border/30 pb-4">
-            <h3 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-              <Shield className="h-4 w-4 text-indigo-500" />
-              Sức khỏe dịch vụ nền
-            </h3>
-            <p className="text-[11px] text-muted-foreground">Kiểm tra tính sẵn sàng các API bên thứ 3 và cơ sở dữ liệu</p>
-          </div>
-
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-4 rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+          <ChartHeader
+            icon={Shield}
+            title="Sức khỏe dịch vụ"
+            description="UP/DOWN lấy từ actuator health components"
+          />
           <div className="space-y-3">
-            {components.map((comp) => {
-              return (
-                <div 
-                  key={comp.name}
-                  className="p-3.5 rounded-xl border border-border/30 bg-slate-50/40 dark:bg-slate-900/40 flex items-center justify-between gap-3 transition-colors hover:bg-slate-100/50 dark:hover:bg-slate-900/80"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-9 w-9 rounded-lg bg-${comp.color}-500/10 text-${comp.color}-500 flex items-center justify-center shrink-0`}>
-                      <comp.icon className="h-4.5 w-4.5" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <h4 className="text-xs font-bold leading-none">{comp.name}</h4>
-                      <p className="text-[10px] text-muted-foreground font-semibold leading-none">
-                        {comp.details?.pool || comp.details?.type || 'Trực tiếp / Bảo mật'}
-                      </p>
-                    </div>
+            {components.map((component) => (
+              <div key={component.name} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-slate-50/50 p-3 dark:bg-slate-900/40">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", toneClassMap[component.tone])}>
+                    <component.icon className="h-4 w-4" />
                   </div>
-
-                  <div>
-                    {comp.status === 'UP' ? (
-                      <span className="text-[10px] bg-emerald-100/50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200/20 px-2 py-1 rounded-lg font-black flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        UP
-                      </span>
-                    ) : comp.status === 'DOWN' ? (
-                      <span className="text-[10px] bg-rose-100/50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400 border border-rose-200/20 px-2 py-1 rounded-lg font-black flex items-center gap-1">
-                        <XCircle className="h-3 w-3 animate-pulse" />
-                        DOWN
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-amber-100/50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-200/20 px-2 py-1 rounded-lg font-black flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3 animate-spin" />
-                        PENDING
-                      </span>
-                    )}
+                  <div className="min-w-0">
+                    <h4 className="truncate text-xs font-bold">{component.name}</h4>
+                    <p className="truncate text-[10px] font-medium text-muted-foreground">{component.details}</p>
                   </div>
                 </div>
-              );
-            })}
+                <StatusBadge status={component.status} />
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Section: Live Terminal Logs console */}
-        <div className="lg:col-span-2 p-5 rounded-3xl border border-border/30 bg-card shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-border/30 pb-4">
-            <div>
-              <h3 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-                <Terminal className="h-4 w-4 text-slate-500" />
-                Live Console logs (Dòng lệnh theo dõi)
-              </h3>
-              <p className="text-[11px] text-muted-foreground">Nhật ký sự kiện và hoạt động máy chủ thời gian thực</p>
-            </div>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
-              <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
-              Realtime feed
-            </span>
-          </div>
-
-          {/* Terminal Box */}
-          <div className="h-[238px] rounded-2xl bg-slate-950 p-4 border border-slate-800 font-mono text-[10px] overflow-y-auto space-y-2 flex flex-col-reverse text-slate-300 shadow-inner">
-            <AnimatePresence initial={false}>
-              {logs.map((log) => (
-                <motion.div 
-                  key={log.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-start gap-2 border-b border-slate-900 pb-1.5 leading-relaxed"
-                >
-                  <span className="text-slate-500 shrink-0 select-none">[{log.time}]</span>
-                  <span className={`font-black shrink-0 select-none ${
-                    log.level === 'ERROR' ? 'text-rose-500' :
-                    log.level === 'WARN' ? 'text-amber-500' :
-                    'text-emerald-500'
-                  }`}>
+        <div className="space-y-4 rounded-2xl border border-border/40 bg-card p-5 shadow-sm lg:col-span-2">
+          <ChartHeader
+            icon={Terminal}
+            title="Monitoring events"
+            description="Nhật ký từ các lần gọi actuator của trang này"
+          />
+          <div className="flex h-[270px] flex-col-reverse gap-2 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 p-4 font-mono text-[10px] text-slate-300">
+            {logs.length === 0 ? (
+              <div className="text-slate-500">Chưa có sự kiện monitoring.</div>
+            ) : (
+              logs.map((log) => (
+                <div key={log.id} className="flex items-start gap-2 border-b border-slate-900 pb-1.5 leading-relaxed">
+                  <span className="shrink-0 text-slate-500">[{log.time}]</span>
+                  <span
+                    className={cn(
+                      "shrink-0 font-bold",
+                      log.level === "ERROR" && "text-rose-500",
+                      log.level === "WARN" && "text-amber-500",
+                      log.level === "INFO" && "text-emerald-500",
+                    )}
+                  >
                     {log.level}
                   </span>
-                  <span className="text-slate-400 hover:text-slate-200 break-all">{log.message}</span>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  <span className="break-all text-slate-400">{log.message}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
-
       </div>
-
     </div>
+  );
+};
+
+interface MetricCardProps {
+  title: string;
+  value: React.ReactNode;
+  description: string;
+  icon: React.ElementType;
+  status?: HealthStatus;
+  progress?: number | null;
+  tone?: "rose" | "amber";
+}
+
+const MetricCard: React.FC<MetricCardProps> = ({ title, value, description, icon: Icon, status, progress, tone = "rose" }) => {
+  const isUp = status === "UP";
+  const isDown = status === "DOWN";
+
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</span>
+          <div className="break-words text-xl font-extrabold tracking-tight">{value}</div>
+          <p className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
+            {status && <Shield className={cn("h-3 w-3", isUp && "text-emerald-500", isDown && "text-rose-500")} />}
+            {description}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+            status ? (isUp ? "bg-emerald-500/10 text-emerald-600" : isDown ? "bg-rose-500/10 text-rose-600" : "bg-amber-500/10 text-amber-600") : "bg-primary/10 text-primary",
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+      {progress != null && (
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+          <div
+            className={cn("h-full transition-all", tone === "amber" ? "bg-amber-500" : "bg-rose-500")}
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ChartHeader: React.FC<{ icon: React.ElementType; title: string; description: string }> = ({ icon: Icon, title, description }) => (
+  <div className="border-b border-border/40 pb-4">
+    <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight">
+      <Icon className="h-4 w-4 text-primary" />
+      {title}
+    </h3>
+    <p className="text-[11px] text-muted-foreground">{description}</p>
+  </div>
+);
+
+const EmptyChart: React.FC = () => (
+  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border/50 text-xs font-medium text-muted-foreground">
+    Chưa có dữ liệu metric
+  </div>
+);
+
+const StatusBadge: React.FC<{ status: HealthStatus }> = ({ status }) => {
+  if (status === "UP") {
+    return (
+      <span className="flex items-center gap-1 rounded-lg border border-emerald-200/50 bg-emerald-100/60 px-2 py-1 text-[10px] font-black text-emerald-700">
+        <Check className="h-3 w-3" />
+        {statusLabel[status]}
+      </span>
+    );
+  }
+
+  if (status === "DOWN") {
+    return (
+      <span className="flex items-center gap-1 rounded-lg border border-rose-200/50 bg-rose-100/60 px-2 py-1 text-[10px] font-black text-rose-700">
+        <XCircle className="h-3 w-3" />
+        {statusLabel[status]}
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-1 rounded-lg border border-amber-200/50 bg-amber-100/60 px-2 py-1 text-[10px] font-black text-amber-700">
+      <AlertCircle className="h-3 w-3" />
+      {statusLabel[status]}
+    </span>
   );
 };
 
