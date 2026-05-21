@@ -189,7 +189,7 @@ const Checkout: React.FC = () => {
         }
       };
 
-      pollTimer = setTimeout(poll, isConnected && stompClient?.connected ? 5000 : 1000);
+      pollTimer = setTimeout(poll, isConnected && stompClient?.connected ? 15000 : 1000);
       timeoutTimer = setTimeout(() => {
         fail(new Error('Don hang dang xu ly qua lau, vui long kiem tra lai sau.'));
       }, 60000);
