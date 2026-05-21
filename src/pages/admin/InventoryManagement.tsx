@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warehouse, Search, AlertTriangle, Package, Edit, ArrowUpDown, History, Settings, RefreshCcw, Loader2, Plus, Minus, Trash2, Filter, FileBarChart2, Zap, XCircle } from 'lucide-react';
+import { Warehouse, Search, AlertTriangle, Package, Edit, ArrowUpDown, History, Settings, RefreshCcw, Loader2, Plus, Minus, Trash2, Filter, FileBarChart2, Zap, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatNumberWithDots, parseNumberFromDots } from '../../lib/numberUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
@@ -21,6 +21,18 @@ import { cn } from '../../lib/utils';
 import { DATE_MIN, getTodayStr, clampYear } from '../../lib/date';
 
 type StockFilter = 'all' | 'low' | 'out' | 'ok';
+
+type InventoryProductGroup = {
+    productId: number;
+    productName: string;
+    thumbnail: string;
+    categoryName?: string;
+    items: Inventory[];
+    stock: number;
+    reservedStock: number;
+    maxStock: number;
+    stockValue: number;
+};
 
 const translateLogType = (type: string) => {
     switch (type) {
@@ -47,6 +59,7 @@ const InventoryManagement: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [categories, setCategories] = useState<ICategory[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [expandedProductIds, setExpandedProductIds] = useState<number[]>([]);
 
     const toggleSelection = (id: number) => {
         setSelectedIds(prev =>
@@ -60,6 +73,25 @@ const InventoryManagement: React.FC = () => {
         } else {
             setSelectedIds(items.map(i => i.id));
         }
+    };
+
+    const toggleProductSelection = (items: Inventory[]) => {
+        const itemIds = items.map(item => item.id);
+        const isAllSelected = itemIds.every(id => selectedIds.includes(id));
+        setSelectedIds(prev => {
+            if (isAllSelected) {
+                return prev.filter(id => !itemIds.includes(id));
+            }
+            return Array.from(new Set([...prev, ...itemIds]));
+        });
+    };
+
+    const toggleProductExpanded = (productId: number) => {
+        setExpandedProductIds(prev =>
+            prev.includes(productId)
+                ? prev.filter(id => id !== productId)
+                : [...prev, productId]
+        );
     };
 
     // Modal states
@@ -459,6 +491,62 @@ const InventoryManagement: React.FC = () => {
         return <Badge className={`${color} border-none shadow-sm text-white`}>{label}</Badge>;
     };
 
+    const inventoryGroups = useMemo<InventoryProductGroup[]>(() => {
+        const groupMap = new Map<number, InventoryProductGroup>();
+
+        (filtered || []).forEach(item => {
+            const product = item.productVariant?.product;
+            if (!product) return;
+
+            const current = groupMap.get(product.id);
+            const stock = item.stock || 0;
+            const reservedStock = item.reservedStock || 0;
+            const maxStock = item.maxStock || 0;
+            const stockValue = stock * (item.costPrice || 0);
+
+            if (!current) {
+                groupMap.set(product.id, {
+                    productId: product.id,
+                    productName: product.name,
+                    thumbnail: product.thumbnail,
+                    categoryName: product.categoryName,
+                    items: [item],
+                    stock,
+                    reservedStock,
+                    maxStock,
+                    stockValue,
+                });
+                return;
+            }
+
+            current.items.push(item);
+            current.stock += stock;
+            current.reservedStock += reservedStock;
+            current.maxStock += maxStock;
+            current.stockValue += stockValue;
+        });
+
+        return Array.from(groupMap.values());
+    }, [filtered]);
+
+    const getGroupStatus = (group: InventoryProductGroup) => {
+        if (group.items.every(item => item.stock === 0)) {
+            return { label: 'Háº¿t hÃ ng', color: 'bg-destructive' };
+        }
+        if (group.items.some(item => item.stock > 0 && item.stock < (item.minStockThreshold || 10))) {
+            return { label: 'Sáº¯p háº¿t', color: 'bg-orange-500' };
+        }
+        if (group.items.some(item => (item.stock + item.reservedStock) > (item.maxStock || 100))) {
+            return { label: 'Tá»“n Ä‘á»ng', color: 'bg-yellow-500' };
+        }
+        return { label: 'BÃ¬nh thÆ°á»ng', color: 'bg-green-600' };
+    };
+
+    const getGroupBadge = (group: InventoryProductGroup) => {
+        const { label, color } = getGroupStatus(group);
+        return <Badge className={`${color} border-none shadow-sm text-white`}>{label}</Badge>;
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -632,71 +720,87 @@ const InventoryManagement: React.FC = () => {
                                                 Array.from({ length: 5 }).map((_, i) => (
                                                     <tr key={i} className="border-b last:border-0">
                                                         <td className="py-4 px-6 opacity-50"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></td>
-                                                        <td colSpan={5} className="py-8 text-center text-muted-foreground animate-pulse font-medium">Đang tải dữ liệu kho hàng...</td>
+                                                        <td colSpan={6} className="py-8 text-center text-muted-foreground animate-pulse font-medium">Đang tải dữ liệu kho hàng...</td>
                                                     </tr>
                                                 ))
-                                            ) : filtered.map((item) => {
-                                                const status = getStockStatus(item);
-                                                const stockPercent = Math.min(100, (item.stock / item.maxStock) * 100);
-                                                const reservedPercent = Math.min(100 - stockPercent, (item.reservedStock / item.maxStock) * 100);
+                                            ) : inventoryGroups.map((group) => {
+                                                const status = getGroupStatus(group);
+                                                const isExpanded = expandedProductIds.includes(group.productId);
+                                                const groupItemIds = group.items.map(groupItem => groupItem.id);
+                                                const isGroupSelected = groupItemIds.every(id => selectedIds.includes(id));
+                                                const stockPercent = group.maxStock > 0 ? Math.min(100, (group.stock / group.maxStock) * 100) : 0;
+                                                const reservedPercent = group.maxStock > 0 ? Math.min(100 - stockPercent, (group.reservedStock / group.maxStock) * 100) : 0;
 
                                                 return (
+                                                    <React.Fragment key={group.productId}>
                                                     <motion.tr
                                                         layout
                                                         initial={{ opacity: 0 }}
                                                         animate={{ opacity: 1 }}
                                                         exit={{ opacity: 0 }}
-                                                        key={item.id}
+                                                        key={group.productId}
                                                         className={cn(
                                                             "border-b last:border-0 hover:bg-muted/50 transition-colors group",
-                                                            selectedIds.includes(item.id) && "bg-primary/5 hover:bg-primary/10"
+                                                            isGroupSelected && "bg-primary/5 hover:bg-primary/10"
                                                         )}
                                                     >
                                                         <td className="py-4 px-6">
                                                             <Checkbox
-                                                                checked={selectedIds.includes(item.id)}
-                                                                onCheckedChange={() => toggleSelection(item.id)}
+                                                                checked={isGroupSelected}
+                                                                onCheckedChange={() => toggleProductSelection(group.items)}
                                                             />
                                                         </td>
                                                         <td className="py-4 px-2">
-                                                            <div className="flex items-center gap-4">
+                                                            <div className="flex items-center gap-3 min-w-[320px]">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                                    onClick={() => toggleProductExpanded(group.productId)}
+                                                                    title={isExpanded ? 'Thu gọn biến thể' : 'Xem biến thể'}
+                                                                >
+                                                                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                                </Button>
                                                                 <div className="relative h-14 w-14 shrink-0 transition-transform hover:scale-110 duration-200">
                                                                     <img
-                                                                        src={item.productVariant?.product?.thumbnail || "https://placehold.co/100x100?text=P"}
-                                                                        alt={item.productVariant?.product?.name}
+                                                                        src={group.thumbnail || "https://placehold.co/100x100?text=P"}
+                                                                        alt={group.productName}
                                                                         className="h-full w-full rounded-lg object-cover border border-border/50 shadow-md"
                                                                     />
-                                                                    {item.stock === 0 && (
+                                                                    {group.items.some(groupItem => groupItem.stock === 0) && (
                                                                         <div className="absolute inset-0 bg-destructive/10 rounded-lg flex items-center justify-center">
                                                                             <AlertTriangle className="h-4 w-4 text-destructive" />
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <span className="block text-sm font-semibold line-clamp-1 group-hover:text-primary transition-colors">
-                                                                        {item.productVariant?.product?.name}
+                                                                    <span className="block text-sm font-semibold line-clamp-2 group-hover:text-primary transition-colors">
+                                                                        {group.productName}
                                                                     </span>
-                                                                    <span className="text-xs text-muted-foreground font-medium">
-                                                                        {item.productVariant?.sku && !item.productVariant.sku.startsWith('DEFAULT-')
-                                                                            ? `Biến thể: ${item.productVariant.sku}`
-                                                                            : 'Sản phẩm cơ bản'}
-                                                                    </span>
+                                                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                                                        <Badge variant="secondary" className="border-none bg-muted text-muted-foreground text-[11px] font-semibold">
+                                                                            {group.items.length} biến thể
+                                                                        </Badge>
+                                                                        {!isExpanded && (
+                                                                            <span className="text-[11px] text-muted-foreground">Mở để xem SKU và thao tác</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>
                                                         <td className="py-4 px-4 text-sm text-muted-foreground hidden lg:table-cell">
                                                             <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-none font-normal text-[11px]">
-                                                                {item.productVariant?.product?.categoryName || 'N/A'}
+                                                                {group.categoryName || 'N/A'}
                                                             </Badge>
                                                         </td>
                                                         <td className="py-4 px-4 min-w-[180px]">
                                                             <div className="space-y-1.5">
                                                                 <div className="flex items-center justify-between text-[11px] mb-1">
                                                                     <div className="flex gap-2">
-                                                                        <span className="font-bold text-foreground">{item.stock}</span>
-                                                                        <span className="text-blue-600 font-semibold opacity-80">({item.reservedStock} held)</span>
+                                                                        <span className="font-bold text-foreground">{formatNumberWithDots(group.stock.toString())}</span>
+                                                                        <span className="text-blue-600 font-semibold opacity-80">({formatNumberWithDots(group.reservedStock.toString())} held)</span>
                                                                     </div>
-                                                                    <span className="text-muted-foreground font-bold opacity-60">MAX: {item.maxStock}</span>
+                                                                    <span className="text-muted-foreground font-bold opacity-60">MAX: {formatNumberWithDots(group.maxStock.toString())}</span>
                                                                 </div>
                                                                 <div className="relative h-2 w-full bg-muted rounded-full overflow-hidden flex shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
                                                                     <div
@@ -712,34 +816,116 @@ const InventoryManagement: React.FC = () => {
                                                         </td>
                                                         <td className="py-4 px-4 hidden sm:table-cell">
                                                             <div className="flex flex-col">
-                                                                <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Vốn: {formatNumberWithDots((item.costPrice || 0).toString())} ₫</span>
-                                                                <span className="text-xs font-bold text-foreground whitespace-nowrap">Tồn: {formatNumberWithDots(((item.stock || 0) * (item.costPrice || 0)).toString())} ₫</span>
+                                                                <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Giá trị tồn</span>
+                                                                <span className="text-xs font-bold text-foreground whitespace-nowrap">{formatNumberWithDots(group.stockValue.toString())} ₫</span>
                                                             </div>
                                                         </td>
-                                                        <td className="py-4 px-4">{getStockBadge(item)}</td>
+                                                        <td className="py-4 px-4">{getGroupBadge(group)}</td>
                                                          <td className="py-4 px-6">
-                                                            <div className="flex items-center justify-end gap-2 transition-opacity">
+                                                            <div className="flex items-center justify-end transition-opacity">
                                                                 <Button
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 border-border/60 transition-colors shadow-sm"
-                                                                    title="Xem lịch sử"
-                                                                    onClick={() => openHistory(item)}
+                                                                    className="h-8 gap-1.5 border-border/60 transition-colors shadow-sm"
+                                                                    title={isExpanded ? 'Thu gọn biến thể' : 'Xem biến thể'}
+                                                                    onClick={() => toggleProductExpanded(group.productId)}
                                                                 >
-                                                                    <History className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border-border/60 transition-colors shadow-sm"
-                                                                    title="Điều chỉnh"
-                                                                    onClick={() => openAdjust(item)}
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
+                                                                    {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                                                    <span className="hidden xl:inline">{isExpanded ? 'Thu gọn' : 'Biến thể'}</span>
                                                                 </Button>
                                                             </div>
                                                         </td>
                                                     </motion.tr>
+
+                                                    {isExpanded && group.items.map((variantItem) => {
+                                                        const variantStatus = getStockStatus(variantItem);
+                                                        const variantStockPercent = variantItem.maxStock > 0 ? Math.min(100, (variantItem.stock / variantItem.maxStock) * 100) : 0;
+                                                        const variantReservedPercent = variantItem.maxStock > 0 ? Math.min(100 - variantStockPercent, (variantItem.reservedStock / variantItem.maxStock) * 100) : 0;
+                                                        const variantLabel = variantItem.productVariant?.sku && !variantItem.productVariant.sku.startsWith('DEFAULT-')
+                                                            ? variantItem.productVariant.sku
+                                                            : 'Sản phẩm cơ bản';
+
+                                                        return (
+                                                            <motion.tr
+                                                                layout
+                                                                initial={{ opacity: 0 }}
+                                                                animate={{ opacity: 1 }}
+                                                                exit={{ opacity: 0 }}
+                                                                key={variantItem.id}
+                                                                className={cn(
+                                                                    "border-b bg-muted/20 hover:bg-muted/40 transition-colors",
+                                                                    selectedIds.includes(variantItem.id) && "bg-primary/5 hover:bg-primary/10"
+                                                                )}
+                                                            >
+                                                                <td className="py-3 px-6">
+                                                                    <Checkbox
+                                                                        checked={selectedIds.includes(variantItem.id)}
+                                                                        onCheckedChange={() => toggleSelection(variantItem.id)}
+                                                                    />
+                                                                </td>
+                                                                <td className="py-3 px-2">
+                                                                    <div className="pl-11 flex min-w-[280px] flex-col gap-1">
+                                                                        <span className="text-xs font-bold text-foreground break-all">{variantLabel}</span>
+                                                                        <span className="text-[11px] text-muted-foreground">Chi tiết tồn kho theo biến thể</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3 px-4 hidden lg:table-cell">
+                                                                    <span className="text-[11px] text-muted-foreground">Biến thể</span>
+                                                                </td>
+                                                                <td className="py-3 px-4 min-w-[180px]">
+                                                                    <div className="space-y-1.5">
+                                                                        <div className="flex items-center justify-between text-[11px] mb-1">
+                                                                            <div className="flex gap-2">
+                                                                                <span className="font-bold text-foreground">{variantItem.stock}</span>
+                                                                                <span className="text-blue-600 font-semibold opacity-80">({variantItem.reservedStock} held)</span>
+                                                                            </div>
+                                                                            <span className="text-muted-foreground font-bold opacity-60">MAX: {variantItem.maxStock}</span>
+                                                                        </div>
+                                                                        <div className="relative h-2 w-full bg-background rounded-full overflow-hidden flex shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]">
+                                                                            <div
+                                                                                style={{ width: `${variantStockPercent}%` }}
+                                                                                className={`${variantStatus.color} h-full transition-all duration-700 ease-out`}
+                                                                            />
+                                                                            <div
+                                                                                style={{ width: `${variantReservedPercent}%` }}
+                                                                                className="bg-blue-400 h-full transition-all duration-700 ease-out opacity-60 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.1)]"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3 px-4 hidden sm:table-cell">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">Vốn: {formatNumberWithDots((variantItem.costPrice || 0).toString())} ₫</span>
+                                                                        <span className="text-xs font-bold text-foreground whitespace-nowrap">Tồn: {formatNumberWithDots(((variantItem.stock || 0) * (variantItem.costPrice || 0)).toString())} ₫</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3 px-4">{getStockBadge(variantItem)}</td>
+                                                                <td className="py-3 px-6">
+                                                                    <div className="flex items-center justify-end gap-2 transition-opacity">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 border-border/60 transition-colors shadow-sm"
+                                                                            title="Xem lịch sử"
+                                                                            onClick={() => openHistory(variantItem)}
+                                                                        >
+                                                                            <History className="h-4 w-4" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-8 w-8 p-0 text-primary hover:bg-primary/10 border-border/60 transition-colors shadow-sm"
+                                                                            title="Điều chỉnh"
+                                                                            onClick={() => openAdjust(variantItem)}
+                                                                        >
+                                                                            <Edit className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </td>
+                                                            </motion.tr>
+                                                        );
+                                                    })}
+                                                    </React.Fragment>
                                                 );
                                             })}
                                         </AnimatePresence>

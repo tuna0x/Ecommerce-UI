@@ -5,14 +5,12 @@ import { CheckCircle2, XCircle, ShoppingBag, ArrowLeft, Receipt, Clock, Mail } f
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { useCart } from '../context/CartContext';
-import { useToast } from '../hooks/use-toast';
 import { logActivity } from '../service/trackingService';
 
 const PaymentResult: React.FC = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { clearSelectedItems } = useCart();
-    const { toast } = useToast();
 
     // Ensure we only clear the items once when the component mounts
     const hasClearedRef = React.useRef(false);
@@ -58,15 +56,8 @@ const PaymentResult: React.FC = () => {
             hasClearedRef.current = true;
 
             logActivity('PURCHASE', { orderId, transactionId, method });
-
-            toast({
-                title: isConfirmed ? "Xác nhận thành công" : (isCod ? "Đã tiếp nhận đơn hàng" : "Thanh toán thành công"),
-                description: isConfirmed 
-                    ? "Đơn hàng của bạn đã được xác nhận thành công. Cảm ơn bạn!"
-                    : `Mã giao dịch: ${displayTransactionId}. Cảm ơn bạn đã mua sắm tại BÔNGCOSMETIC!`,
-            });
         }
-    }, [isAnySuccess, isSuccess, isConfirmed, isCod, clearSelectedItems, toast, orderId, transactionId, status, method, displayTransactionId]);
+    }, [isAnySuccess, clearSelectedItems, orderId, transactionId, method]);
 
     return (
         <div className="min-h-screen pt-24 pb-12 flex items-center justify-center bg-muted/30 px-4">
