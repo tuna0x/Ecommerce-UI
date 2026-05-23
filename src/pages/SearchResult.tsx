@@ -54,7 +54,17 @@ const SearchResults: React.FC = () => {
 
       filter = conditions.join(" and ");
 
-      const res = await ProductService.getAll(0, 50, query, sortBy, filter || undefined, undefined, true);
+      const canUseDedicatedSearch =
+        query.trim() &&
+        !brandParam &&
+        !categoryParam &&
+        selectedCategory === "all" &&
+        priceRange === "all" &&
+        sortBy === "id,desc";
+
+      const res = canUseDedicatedSearch
+        ? await ProductService.search(0, 50, query)
+        : await ProductService.getAll(0, 50, query, sortBy, filter || undefined, undefined, true);
       if (res.data) {
         setProducts(res.data.result);
       }
