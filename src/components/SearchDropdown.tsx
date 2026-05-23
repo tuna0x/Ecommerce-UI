@@ -106,7 +106,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
       try {
         setIsLoading(true);
         setIsOpen(true);
-        const res = await ProductService.getAll(0, 6, query);
+        const res = await ProductService.search(0, 6, query);
         if (res.data?.result) {
           setFilteredProducts(res.data.result);
         } else {
