@@ -73,12 +73,10 @@ const InventoryManagement: React.FC = () => {
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebounce(search, 500);
     const [filter, setFilter] = useState<StockFilter>('all');
-    const [inventoryPageData, setInventoryPageData] = useState<Inventory[]>([]);
     const [inventorySummaryData, setInventorySummaryData] = useState<Inventory[]>([]);
     const [loadingInventoryPage, setLoadingInventoryPage] = useState(true);
     const [loadingInventorySummary, setLoadingInventorySummary] = useState(true);
     const [invPage, setInvPage] = useState(1);
-    const [invTotal, setInvTotal] = useState(0);
     const invPageSize = 10;
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [categories, setCategories] = useState<ICategory[]>([]);
@@ -92,10 +90,12 @@ const InventoryManagement: React.FC = () => {
     };
 
     const toggleAll = (items: Inventory[]) => {
-        if (selectedIds.length === items.length) {
-            setSelectedIds([]);
+        const itemIds = items.map(item => item.id);
+        const isAllSelected = itemIds.every(id => selectedIds.includes(id));
+        if (isAllSelected) {
+            setSelectedIds(prev => prev.filter(id => !itemIds.includes(id)));
         } else {
-            setSelectedIds(items.map(i => i.id));
+            setSelectedIds(prev => Array.from(new Set([...prev, ...itemIds])));
         }
     };
 
@@ -193,11 +193,9 @@ const InventoryManagement: React.FC = () => {
 
     useEffect(() => {
         setInvPage(1);
+        setSelectedIds([]);
+        setExpandedProductIds([]);
     }, [debouncedSearch, filter, selectedCategory]);
-
-    useEffect(() => {
-        fetchInventory();
-    }, [invPage, debouncedSearch, filter, selectedCategory]);
 
     useEffect(() => {
         fetchInventorySummary();
@@ -324,28 +322,11 @@ const InventoryManagement: React.FC = () => {
         setLogPage(1);
     };
 
-    const fetchInventory = async (silent: boolean = false) => {
-        if (!silent) setLoadingInventoryPage(true);
-        try {
-            const query = buildInventoryQuery({
-                searchValue: debouncedSearch,
-                categoryValue: selectedCategory,
-                stockFilter: filter,
-            });
-
-            const data = await inventoryService.getAllInventory(invPage, invPageSize, query);
-            setInventoryPageData(data.result || []);
-            setInvTotal(data.meta.total || 0);
-        } catch {
-            toast.error('Không thể tải dữ liệu kho hàng');
-            setInventoryPageData([]);
-        } finally {
-            if (!silent) setLoadingInventoryPage(false);
-        }
-    };
-
     const fetchInventorySummary = async (silent: boolean = false) => {
-        if (!silent) setLoadingInventorySummary(true);
+        if (!silent) {
+            setLoadingInventorySummary(true);
+            setLoadingInventoryPage(true);
+        }
         try {
             const query = buildInventoryQuery({
                 searchValue: debouncedSearch,
@@ -358,7 +339,10 @@ const InventoryManagement: React.FC = () => {
             toast.error('Không thể tải tổng quan kho hàng');
             setInventorySummaryData([]);
         } finally {
-            if (!silent) setLoadingInventorySummary(false);
+            if (!silent) {
+                setLoadingInventorySummary(false);
+                setLoadingInventoryPage(false);
+            }
         }
     };
 
@@ -409,7 +393,6 @@ const InventoryManagement: React.FC = () => {
             });
             toast.success('Cập nhật kho hàng thành công');
             setAdjustOpen(false);
-            fetchInventory(true); // Silent refresh
             fetchInventorySummary(true);
         } catch {
             toast.error('Lỗi khi cập nhật kho hàng');
@@ -436,7 +419,6 @@ const InventoryManagement: React.FC = () => {
             setBulkOpen(false);
             setBulkItems([]);
             setAdjustNote('');
-            fetchInventory(true); // Silent refresh
             fetchInventorySummary(true);
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Có lỗi khi nhập kho hàng loạt');
@@ -446,7 +428,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const handleBulkSelected = () => {
-        const selectedItems = (inventoryPageData || []).filter(item => selectedIds.includes(item.id));
+        const selectedItems = (inventorySummaryData || []).filter(item => selectedIds.includes(item.id));
         setBulkItems(selectedItems.map(item => ({
             inventoryId: item.id,
             productId: item.productVariant.product.id,
@@ -538,9 +520,8 @@ const InventoryManagement: React.FC = () => {
     ).slice(0, 5);
 
     const filtered = useMemo(() => {
-        // Backend now handles filtering and pagination
-        return inventoryPageData;
-    }, [inventoryPageData]);
+        return inventorySummaryData;
+    }, [inventorySummaryData]);
 
     const getStockStatus = (item: Inventory) => {
         const total = item.stock + item.reservedStock;
@@ -570,7 +551,7 @@ const InventoryManagement: React.FC = () => {
         return <Badge className={`${color} border-none shadow-sm text-white`}>{normalizedLabel || label}</Badge>;
     };
 
-    const inventoryGroups = useMemo<InventoryProductGroup[]>(() => {
+    const allInventoryGroups = useMemo<InventoryProductGroup[]>(() => {
         const groupMap = new Map<number, InventoryProductGroup>();
 
         (filtered || []).forEach(item => {
@@ -607,6 +588,25 @@ const InventoryManagement: React.FC = () => {
 
         return Array.from(groupMap.values());
     }, [filtered]);
+
+    const inventoryGroups = useMemo(() => {
+        const start = (invPage - 1) * invPageSize;
+        return allInventoryGroups.slice(start, start + invPageSize);
+    }, [allInventoryGroups, invPage, invPageSize]);
+
+    const visibleInventoryItems = useMemo(
+        () => inventoryGroups.flatMap(group => group.items),
+        [inventoryGroups]
+    );
+
+    const productGroupTotal = allInventoryGroups.length;
+    const productGroupTotalPages = Math.max(1, Math.ceil(productGroupTotal / invPageSize));
+
+    useEffect(() => {
+        if (invPage > productGroupTotalPages) {
+            setInvPage(productGroupTotalPages);
+        }
+    }, [invPage, productGroupTotalPages]);
 
     const getGroupStatus = (group: InventoryProductGroup) => {
         if (group.items.every(item => item.stock === 0)) {
@@ -651,7 +651,6 @@ const InventoryManagement: React.FC = () => {
                         variant="ghost"
                         className="gap-2"
                         onClick={() => {
-                            fetchInventory();
                             fetchInventorySummary();
                         }}
                     >
@@ -781,7 +780,6 @@ const InventoryManagement: React.FC = () => {
                                         size="icon"
                                         className="h-10 w-10 shrink-0"
                                         onClick={() => {
-                                            fetchInventory();
                                             fetchInventorySummary();
                                         }}
                                     >
@@ -801,8 +799,8 @@ const InventoryManagement: React.FC = () => {
                                         <tr>
                                             <th className="py-4 px-6 w-[50px]">
                                                 <Checkbox
-                                                    checked={filtered.length > 0 && selectedIds.length === filtered.length}
-                                                    onCheckedChange={() => toggleAll(filtered)}
+                                                    checked={visibleInventoryItems.length > 0 && visibleInventoryItems.every(item => selectedIds.includes(item.id))}
+                                                    onCheckedChange={() => toggleAll(visibleInventoryItems)}
                                                 />
                                             </th>
                                             <th className="py-4 px-2 text-sm font-semibold text-muted-foreground">Sản phẩm</th>
@@ -1030,7 +1028,7 @@ const InventoryManagement: React.FC = () => {
                                         </AnimatePresence>
                                     </tbody>
                                 </table>
-                                {filtered.length === 0 && (
+                                {allInventoryGroups.length === 0 && (
                                     <motion.div
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
@@ -1049,10 +1047,10 @@ const InventoryManagement: React.FC = () => {
                             </div>
 
                             {/* Inventory Pagination */}
-                            {invTotal > 0 && (
+                            {productGroupTotal > 0 && (
                                 <div className="flex items-center justify-between p-6 border-t bg-muted/5">
                                     <p className="text-xs text-muted-foreground font-medium">
-                                        Hiển thị {((invPage - 1) * invPageSize) + 1} - {Math.min(invPage * invPageSize, invTotal)} của {invTotal} mặt hàng kho
+                                        Hiển thị {((invPage - 1) * invPageSize) + 1} - {Math.min(invPage * invPageSize, productGroupTotal)} của {productGroupTotal} sản phẩm
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
@@ -1065,13 +1063,13 @@ const InventoryManagement: React.FC = () => {
                                             Trước
                                         </Button>
                                         <div className="flex items-center px-4 text-xs font-bold bg-muted/50 rounded-md border">
-                                            Trang {invPage} / {Math.ceil(invTotal / invPageSize)}
+                                            Trang {invPage} / {productGroupTotalPages}
                                         </div>
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             className="h-8 shadow-sm"
-                                            disabled={invPage >= Math.ceil(invTotal / invPageSize) || loadingInventoryPage}
+                                            disabled={invPage >= productGroupTotalPages || loadingInventoryPage}
                                             onClick={() => setInvPage(p => p + 1)}
                                         >
                                             Tiếp theo
