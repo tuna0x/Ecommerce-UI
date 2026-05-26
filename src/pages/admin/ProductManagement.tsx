@@ -69,6 +69,7 @@ const ProductsManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [sort] = useState("createdAt,desc");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
@@ -108,6 +109,7 @@ const ProductsManagement: React.FC = () => {
         const productList = res.data?.result || [];
         setProducts(productList);
         setTotalPages(res.data?.meta.pages || 0);
+        setTotalProducts(res.data?.meta.total || 0);
 
         // Clean up processingIds if products now have images
         setProcessingIds(prev => prev.filter(id => {
@@ -803,7 +805,7 @@ const ProductsManagement: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách sản phẩm ({products.length})</CardTitle>
+          <CardTitle>Danh sách sản phẩm ({totalProducts})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="relative">

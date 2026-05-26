@@ -19,8 +19,17 @@ import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { cn } from '../../lib/utils';
 import { DATE_MIN, getTodayStr, clampYear } from '../../lib/date';
+import { useDebounce } from '../../hooks/useDebounce';
 
 type StockFilter = 'all' | 'low' | 'out' | 'ok';
+
+type InventorySummary = {
+    totalAvailable: number;
+    totalReserved: number;
+    totalValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+};
 
 type InventoryProductGroup = {
     productId: number;
@@ -35,6 +44,18 @@ type InventoryProductGroup = {
 };
 
 const translateLogType = (type: string) => {
+    const normalized: Record<string, { label: string; color: string }> = {
+        PURCHASE: { label: 'Nhập hàng', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+        SALE: { label: 'Bán hàng', color: 'bg-green-100 text-green-700 border-green-200' },
+        ADJUSTMENT: { label: 'Điều chỉnh', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+        RETURN: { label: 'Trả hàng', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+        DAMAGE: { label: 'Hư hỏng', color: 'bg-red-100 text-red-700 border-red-200' },
+        LOSS: { label: 'Thất thoát', color: 'bg-gray-100 text-gray-700 border-gray-200' },
+        RESERVE: { label: 'Giữ kho', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+        RELEASE: { label: 'Giải phóng', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+    };
+    if (normalized[type]) return normalized[type];
+
     switch (type) {
         case 'PURCHASE': return { label: 'Nhập hàng', color: 'bg-blue-100 text-blue-700 border-blue-200' };
         case 'SALE': return { label: 'Bán hàng', color: 'bg-green-100 text-green-700 border-green-200' };
@@ -50,9 +71,12 @@ const translateLogType = (type: string) => {
 
 const InventoryManagement: React.FC = () => {
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 500);
     const [filter, setFilter] = useState<StockFilter>('all');
-    const [inventoryData, setInventoryData] = useState<Inventory[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [inventoryPageData, setInventoryPageData] = useState<Inventory[]>([]);
+    const [inventorySummaryData, setInventorySummaryData] = useState<Inventory[]>([]);
+    const [loadingInventoryPage, setLoadingInventoryPage] = useState(true);
+    const [loadingInventorySummary, setLoadingInventorySummary] = useState(true);
     const [invPage, setInvPage] = useState(1);
     const [invTotal, setInvTotal] = useState(0);
     const invPageSize = 10;
@@ -140,9 +164,44 @@ const InventoryManagement: React.FC = () => {
         quantity: number;
     }[]>([]);
 
+    const buildInventoryQuery = ({
+        searchValue,
+        categoryValue,
+        stockFilter,
+    }: {
+        searchValue: string;
+        categoryValue: string;
+        stockFilter: StockFilter;
+    }) => {
+        let query = "";
+        const trimmedSearch = searchValue.trim();
+        if (trimmedSearch) {
+            query += `&filter=(productVariant.product.name~'*${trimmedSearch}*' or productVariant.sku~'*${trimmedSearch}*')`;
+        }
+        if (categoryValue !== 'all') {
+            query += `&filter=productVariant.product.category.name:'${categoryValue}'`;
+        }
+        if (stockFilter === 'low') {
+            query += `&filter=stock > 0 and stock < minStockThreshold`;
+        } else if (stockFilter === 'out') {
+            query += `&filter=stock:0`;
+        } else if (stockFilter === 'ok') {
+            query += `&filter=stock >= minStockThreshold`;
+        }
+        return query;
+    };
+
+    useEffect(() => {
+        setInvPage(1);
+    }, [debouncedSearch, filter, selectedCategory]);
+
     useEffect(() => {
         fetchInventory();
-    }, [invPage, search, filter, selectedCategory]);
+    }, [invPage, debouncedSearch, filter, selectedCategory]);
+
+    useEffect(() => {
+        fetchInventorySummary();
+    }, [debouncedSearch, filter, selectedCategory]);
 
     useEffect(() => {
         fetchCategories();
@@ -266,32 +325,40 @@ const InventoryManagement: React.FC = () => {
     };
 
     const fetchInventory = async (silent: boolean = false) => {
-        if (!silent) setLoading(true);
+        if (!silent) setLoadingInventoryPage(true);
         try {
-            let query = "";
-            if (search) {
-                query += `&filter=(productVariant.product.name~'*${search}*' or productVariant.sku~'*${search}*')`;
-            }
-            if (selectedCategory !== 'all') {
-                query += `&filter=productVariant.product.category.name:'${selectedCategory}'`;
-            }
-            
-            if (filter === 'low') {
-                query += `&filter=stock > 0 and stock < minStockThreshold`;
-            } else if (filter === 'out') {
-                query += `&filter=stock:0`;
-            } else if (filter === 'ok') {
-                query += `&filter=stock >= minStockThreshold`;
-            }
+            const query = buildInventoryQuery({
+                searchValue: debouncedSearch,
+                categoryValue: selectedCategory,
+                stockFilter: filter,
+            });
 
             const data = await inventoryService.getAllInventory(invPage, invPageSize, query);
-            setInventoryData(data.result || []);
+            setInventoryPageData(data.result || []);
             setInvTotal(data.meta.total || 0);
         } catch {
             toast.error('Không thể tải dữ liệu kho hàng');
-            setInventoryData([]);
+            setInventoryPageData([]);
         } finally {
-            if (!silent) setLoading(false);
+            if (!silent) setLoadingInventoryPage(false);
+        }
+    };
+
+    const fetchInventorySummary = async (silent: boolean = false) => {
+        if (!silent) setLoadingInventorySummary(true);
+        try {
+            const query = buildInventoryQuery({
+                searchValue: debouncedSearch,
+                categoryValue: selectedCategory,
+                stockFilter: filter,
+            });
+            const allItems = await inventoryService.getAllInventoryForSummary(query);
+            setInventorySummaryData(allItems);
+        } catch {
+            toast.error('Không thể tải tổng quan kho hàng');
+            setInventorySummaryData([]);
+        } finally {
+            if (!silent) setLoadingInventorySummary(false);
         }
     };
 
@@ -343,6 +410,7 @@ const InventoryManagement: React.FC = () => {
             toast.success('Cập nhật kho hàng thành công');
             setAdjustOpen(false);
             fetchInventory(true); // Silent refresh
+            fetchInventorySummary(true);
         } catch {
             toast.error('Lỗi khi cập nhật kho hàng');
         } finally {
@@ -369,6 +437,7 @@ const InventoryManagement: React.FC = () => {
             setBulkItems([]);
             setAdjustNote('');
             fetchInventory(true); // Silent refresh
+            fetchInventorySummary(true);
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Có lỗi khi nhập kho hàng loạt');
         } finally {
@@ -377,7 +446,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const handleBulkSelected = () => {
-        const selectedItems = (inventoryData || []).filter(item => selectedIds.includes(item.id));
+        const selectedItems = (inventoryPageData || []).filter(item => selectedIds.includes(item.id));
         setBulkItems(selectedItems.map(item => ({
             inventoryId: item.id,
             productId: item.productVariant.product.id,
@@ -420,7 +489,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const addLowStockItems = () => {
-        const lowStock = (inventoryData || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0);
+        const lowStock = (inventorySummaryData || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0);
         const newItems = lowStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id) && item.productVariant?.product);
         if (newItems.length === 0) {
             toast.info('Không có sản phẩm sắp hết hàng mới để thêm');
@@ -440,7 +509,7 @@ const InventoryManagement: React.FC = () => {
     };
 
     const addOutOfStockItems = () => {
-        const outOfStock = (inventoryData || []).filter(item => (item.stock || 0) === 0);
+        const outOfStock = (inventorySummaryData || []).filter(item => (item.stock || 0) === 0);
         const newItems = outOfStock.filter(item => !bulkItems.find(bi => bi.inventoryId === item.id) && item.productVariant?.product);
         if (newItems.length === 0) {
             toast.info('Không có sản phẩm hết hàng mới để thêm');
@@ -463,15 +532,15 @@ const InventoryManagement: React.FC = () => {
         setBulkItems(bulkItems.filter(item => item.inventoryId !== inventoryId));
     };
 
-    const filteredBulkSearch = (inventoryData || []).filter(item =>
+    const filteredBulkSearch = (inventorySummaryData || []).filter(item =>
         item.productVariant?.product?.name?.toLowerCase().includes(bulkSearch.toLowerCase()) ||
         (item.productVariant?.sku && item.productVariant.sku.toLowerCase().includes(bulkSearch.toLowerCase()))
     ).slice(0, 5);
 
     const filtered = useMemo(() => {
         // Backend now handles filtering and pagination
-        return inventoryData;
-    }, [inventoryData]);
+        return inventoryPageData;
+    }, [inventoryPageData]);
 
     const getStockStatus = (item: Inventory) => {
         const total = item.stock + item.reservedStock;
@@ -481,14 +550,24 @@ const InventoryManagement: React.FC = () => {
         return { label: 'Bình thường', variant: 'success', color: 'bg-green-600' };
     };
 
-    const totalAvailable = (filtered || []).reduce((acc: number, item: Inventory) => acc + (item.stock || 0), 0);
-    const totalReserved = (filtered || []).reduce((acc: number, item: Inventory) => acc + (item.reservedStock || 0), 0);
-    const totalValue = (filtered || []).reduce((acc: number, item: Inventory) => acc + ((item.stock || 0) * (item.costPrice || 0)), 0);
-    const lowStockCount = (filtered || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0).length;
+    const inventorySummary = useMemo<InventorySummary>(() => ({
+        totalAvailable: (inventorySummaryData || []).reduce((acc: number, item: Inventory) => acc + (item.stock || 0), 0),
+        totalReserved: (inventorySummaryData || []).reduce((acc: number, item: Inventory) => acc + (item.reservedStock || 0), 0),
+        totalValue: (inventorySummaryData || []).reduce((acc: number, item: Inventory) => acc + ((item.stock || 0) * (item.costPrice || 0)), 0),
+        lowStockCount: (inventorySummaryData || []).filter(item => (item.stock || 0) < (item.minStockThreshold || 0) && (item.stock || 0) > 0).length,
+        outOfStockCount: (inventorySummaryData || []).filter(item => (item.stock || 0) === 0).length,
+    }), [inventorySummaryData]);
 
     const getStockBadge = (item: Inventory) => {
         const { label, color } = getStockStatus(item);
-        return <Badge className={`${color} border-none shadow-sm text-white`}>{label}</Badge>;
+        const normalizedLabel = item.stock === 0
+            ? 'Hết hàng'
+            : (item.stock + item.reservedStock) > (item.maxStock || 100)
+                ? 'Tồn đọng'
+                : item.stock < (item.minStockThreshold || 10)
+                    ? 'Sắp hết'
+                    : 'Bình thường';
+        return <Badge className={`${color} border-none shadow-sm text-white`}>{normalizedLabel || label}</Badge>;
     };
 
     const inventoryGroups = useMemo<InventoryProductGroup[]>(() => {
@@ -531,20 +610,27 @@ const InventoryManagement: React.FC = () => {
 
     const getGroupStatus = (group: InventoryProductGroup) => {
         if (group.items.every(item => item.stock === 0)) {
-            return { label: 'Háº¿t hÃ ng', color: 'bg-destructive' };
+            return { label: 'Hết hàng', color: 'bg-destructive' };
         }
         if (group.items.some(item => item.stock > 0 && item.stock < (item.minStockThreshold || 10))) {
-            return { label: 'Sáº¯p háº¿t', color: 'bg-orange-500' };
+            return { label: 'Sắp hết', color: 'bg-orange-500' };
         }
         if (group.items.some(item => (item.stock + item.reservedStock) > (item.maxStock || 100))) {
-            return { label: 'Tá»“n Ä‘á»ng', color: 'bg-yellow-500' };
+            return { label: 'Tồn đọng', color: 'bg-yellow-500' };
         }
-        return { label: 'BÃ¬nh thÆ°á»ng', color: 'bg-green-600' };
+        return { label: 'Bình thường', color: 'bg-green-600' };
     };
 
     const getGroupBadge = (group: InventoryProductGroup) => {
         const { label, color } = getGroupStatus(group);
-        return <Badge className={`${color} border-none shadow-sm text-white`}>{label}</Badge>;
+        const normalizedLabel = group.items.every(item => item.stock === 0)
+            ? 'Hết hàng'
+            : group.items.some(item => item.stock > 0 && item.stock < (item.minStockThreshold || 10))
+                ? 'Sắp hết'
+                : group.items.some(item => (item.stock + item.reservedStock) > (item.maxStock || 100))
+                    ? 'Tồn đọng'
+                    : 'Bình thường';
+        return <Badge className={`${color} border-none shadow-sm text-white`}>{normalizedLabel || label}</Badge>;
     };
 
     return (
@@ -564,9 +650,12 @@ const InventoryManagement: React.FC = () => {
                     <Button
                         variant="ghost"
                         className="gap-2"
-                        onClick={() => fetchInventory()}
+                        onClick={() => {
+                            fetchInventory();
+                            fetchInventorySummary();
+                        }}
                     >
-                        <RefreshCcw className={cn("h-4 w-4", loading && "animate-spin")} />
+                        <RefreshCcw className={cn("h-4 w-4", (loadingInventoryPage || loadingInventorySummary) && "animate-spin")} />
                         Làm mới
                     </Button>
                     <Button
@@ -601,10 +690,10 @@ const InventoryManagement: React.FC = () => {
                     {/* Summary Cards */}
                     <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                         {[
-                            { label: 'Sẵn sàng bán', value: totalAvailable.toLocaleString(), sub: 'Sẵn có trong kho', icon: Package, color: 'text-primary' },
-                            { label: 'Đang giữ chỗ', value: totalReserved.toLocaleString(), sub: 'Chờ xác nhận đơn', icon: ArrowUpDown, color: 'text-blue-500' },
-                            { label: 'Giá trị tồn kho', value: totalValue.toLocaleString() + ' ₫', sub: 'Tổng vốn kẹt', icon: FileBarChart2, color: 'text-emerald-500' },
-                            { label: 'Sắp hết hàng', value: lowStockCount, sub: 'Dưới định mức', icon: AlertTriangle, color: 'text-orange-500' },
+                            { label: 'Sẵn sàng bán', value: inventorySummary.totalAvailable.toLocaleString(), sub: 'Sẵn có trong kho', icon: Package, color: 'text-primary' },
+                            { label: 'Đang giữ chỗ', value: inventorySummary.totalReserved.toLocaleString(), sub: 'Chờ xác nhận đơn', icon: ArrowUpDown, color: 'text-blue-500' },
+                            { label: 'Giá trị tồn kho', value: inventorySummary.totalValue.toLocaleString() + ' ₫', sub: 'Tổng vốn kẹt', icon: FileBarChart2, color: 'text-emerald-500' },
+                            { label: 'Sắp hết hàng', value: inventorySummary.lowStockCount, sub: 'Dưới định mức', icon: AlertTriangle, color: 'text-orange-500' },
                         ].map((stat, i) => (
                             <motion.div
                                 key={i}
@@ -617,11 +706,13 @@ const InventoryManagement: React.FC = () => {
                                         <stat.icon className="h-12 w-12" />
                                     </div>
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+                                        <CardTitle className="text-sm font-medium">
+                                            {['Sẵn sàng bán', 'Đang giữ chỗ', 'Giá trị tồn kho', 'Sắp hết hàng'][i]}
+                                        </CardTitle>
                                         <stat.icon className={`h-4 w-4 ${stat.color}`} />
                                     </CardHeader>
                                     <CardContent>
-                                        <div className={`text-2xl font-bold ${stat.label === 'Sắp hết hàng' && lowStockCount > 10 ? 'text-destructive' : ''}`}>
+                                        <div className={`text-2xl font-bold ${stat.label === 'Sắp hết hàng' && inventorySummary.lowStockCount > 10 ? 'text-destructive' : ''}`}>
                                             {stat.value}
                                         </div>
                                         <p className="text-xs text-muted-foreground">{stat.sub}</p>
@@ -685,7 +776,15 @@ const InventoryManagement: React.FC = () => {
                                             <SelectItem value="out">Đã hết hàng</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => fetchInventory()}>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-10 w-10 shrink-0"
+                                        onClick={() => {
+                                            fetchInventory();
+                                            fetchInventorySummary();
+                                        }}
+                                    >
                                         <RefreshCcw className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -716,7 +815,7 @@ const InventoryManagement: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         <AnimatePresence mode='popLayout'>
-                                            {loading ? (
+                                            {loadingInventoryPage ? (
                                                 Array.from({ length: 5 }).map((_, i) => (
                                                     <tr key={i} className="border-b last:border-0">
                                                         <td className="py-4 px-6 opacity-50"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></td>
@@ -953,14 +1052,14 @@ const InventoryManagement: React.FC = () => {
                             {invTotal > 0 && (
                                 <div className="flex items-center justify-between p-6 border-t bg-muted/5">
                                     <p className="text-xs text-muted-foreground font-medium">
-                                        Hiển thị {((invPage - 1) * invPageSize) + 1} - {Math.min(invPage * invPageSize, invTotal)} của {invTotal} sản phẩm
+                                        Hiển thị {((invPage - 1) * invPageSize) + 1} - {Math.min(invPage * invPageSize, invTotal)} của {invTotal} mặt hàng kho
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             className="h-8 shadow-sm"
-                                            disabled={invPage === 1 || loading}
+                                            disabled={invPage === 1 || loadingInventoryPage}
                                             onClick={() => setInvPage(p => Math.max(1, p - 1))}
                                         >
                                             Trước
@@ -972,7 +1071,7 @@ const InventoryManagement: React.FC = () => {
                                             variant="outline"
                                             size="sm"
                                             className="h-8 shadow-sm"
-                                            disabled={invPage >= Math.ceil(invTotal / invPageSize) || loading}
+                                            disabled={invPage >= Math.ceil(invTotal / invPageSize) || loadingInventoryPage}
                                             onClick={() => setInvPage(p => p + 1)}
                                         >
                                             Tiếp theo
@@ -1370,7 +1469,7 @@ const InventoryManagement: React.FC = () => {
                                 className="h-8 text-[11px] gap-2 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all shadow-sm"
                             >
                                 <AlertTriangle className="h-3.5 w-3.5" />
-                                Sản phẩm sắp hết ({lowStockCount})
+                                Sản phẩm sắp hết ({inventorySummary.lowStockCount})
                             </Button>
                             <Button
                                 variant="outline"
@@ -1379,7 +1478,7 @@ const InventoryManagement: React.FC = () => {
                                 className="h-8 text-[11px] gap-2 hover:bg-destructive/5 hover:text-destructive hover:border-destructive/20 transition-all shadow-sm"
                             >
                                 <XCircle className="h-3.5 w-3.5" />
-                                Sản phẩm hết hàng ({(inventoryData || []).filter(i => i.stock === 0).length})
+                                Sản phẩm hết hàng ({inventorySummary.outOfStockCount})
                             </Button>
                             {bulkItems.length > 0 && (
                                 <Button

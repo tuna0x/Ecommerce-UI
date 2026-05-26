@@ -66,6 +66,23 @@ export const inventoryService = {
         return res.data.data;
     },
 
+    getAllInventoryForSummary: async (query: string = "", pageSize: number = 10000) => {
+        const firstPage = await inventoryService.getAllInventory(1, pageSize, query);
+        const allItems = [...(firstPage.result || [])];
+        const pages = firstPage.meta?.pages || 1;
+
+        if (pages > 1) {
+            const remainingPages = await Promise.all(
+                Array.from({ length: pages - 1 }, (_, index) =>
+                    inventoryService.getAllInventory(index + 2, pageSize, query)
+                )
+            );
+            remainingPages.forEach(page => allItems.push(...(page.result || [])));
+        }
+
+        return allItems;
+    },
+
     adjustInventory: async (payload: InventoryAdjustPayload) => {
         const res = await axiosInstance.post<APIResponse<Inventory>>("/inventory/adjust", payload);
         return res.data.data;
