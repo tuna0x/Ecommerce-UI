@@ -1046,7 +1046,7 @@ const ProductsManagement: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Import Excel</DialogTitle>
             <DialogDescription>
-              Upload file theo template Products va Variants de tao san pham hang loat.
+              Upload file theo template Products và Variants để tạo sản phẩm hàng loạt.
             </DialogDescription>
           </DialogHeader>
 
@@ -1065,7 +1065,7 @@ const ProductsManagement: React.FC = () => {
             {isImporting && (
               <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Dang xu ly file...
+                Đang xử lý file...
               </div>
             )}
 
@@ -1074,27 +1074,27 @@ const ProductsManagement: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>Products: <b>{importPreview.productRows}</b></div>
                   <div>Variants: <b>{importPreview.variantRows}</b></div>
-                  <div>Hop le: <b>{importPreview.validProducts}</b> san pham</div>
-                  <div>Hop le: <b>{importPreview.validVariants}</b> bien the</div>
+                  <div>Hợp lệ: <b>{importPreview.validProducts}</b> sản phẩm</div>
+                  <div>Hợp lệ: <b>{importPreview.validVariants}</b> biến thể</div>
                 </div>
 
                 {importPreview.errors.length > 0 ? (
                   <div className="mt-3 max-h-48 overflow-y-auto rounded border border-destructive/30 bg-destructive/5 p-2">
                     {importPreview.errors.slice(0, 50).map((error, index) => (
                       <div key={index} className="text-xs text-destructive">
-                        {error.sheet} dong {error.row}
+                        {error.sheet} dòng {error.row}
                         {error.productCode ? ` (${error.productCode})` : ""}: {error.message}
                       </div>
                     ))}
                     {importPreview.errors.length > 50 && (
                       <div className="mt-1 text-xs text-muted-foreground">
-                        Con {importPreview.errors.length - 50} loi khac...
+                        Còn {importPreview.errors.length - 50} lỗi khác...
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
-                    File hop le, co the import.
+                    File hợp lệ, có thể import.
                   </div>
                 )}
               </div>
@@ -1103,7 +1103,7 @@ const ProductsManagement: React.FC = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsImportDialogOpen(false)} disabled={isImporting}>
-              Huy
+              Hủy
             </Button>
             <Button
               onClick={handleConfirmImport}
