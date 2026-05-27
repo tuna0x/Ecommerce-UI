@@ -33,9 +33,11 @@ import { Badge } from "../../components/ui/badge";
 import { Checkbox } from "../../components/ui/Checkbox";
 import { DataTable } from "../../components/ui/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
+import VariantBuilder from "../../components/admin/VariantBuilder";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -957,6 +959,9 @@ const ProductsManagement: React.FC = () => {
             <DialogTitle>
               {editingProductId ? "Sửa sản phẩm" : "Thêm sản phẩm mới"}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Biểu mẫu thêm hoặc cập nhật sản phẩm.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -1152,297 +1157,17 @@ const ProductsManagement: React.FC = () => {
 
             {/* Variants Section */}
             {groupedAttributes.length > 0 && (
-              <div className="grid gap-4 mt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">
-                    Biến thể sản phẩm
-                  </Label>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1 text-primary border-primary/50 hover:bg-primary/5"
-                      onClick={() => {
-                        // 1. Get all selected attribute values in a grouped format
-                        const selectedAttributeGroups = groupedAttributes
-                          .map(attr => ({
-                            attributeId: attr.attributeId,
-                            values: attr.values.filter(v =>
-                              (selectedAttributes[attr.attributeId] || []).includes(v.id.toString())
-                            )
-                          }))
-                          .filter(group => group.values.length > 0);
-
-                        if (selectedAttributeGroups.length === 0) {
-                          toast.error("Vui lòng chọn ít nhất một tổ hợp thuộc tính phía trên!");
-                          return;
-                        }
-
-                        // 2. Cartesian Product Logic
-                        interface AttrValue { id: number; value: string }
-                        interface AttrGroup { attributeId: number; values: AttrValue[] }
-
-                        const generateCombinations = (groups: AttrGroup[], index = 0): number[][] => {
-                          if (index === groups.length) return [[]];
-                          const res: number[][] = [];
-                          const currentGroup = groups[index];
-                          const nextCombs = generateCombinations(groups, index + 1);
-
-                          currentGroup.values.forEach((val) => {
-                            nextCombs.forEach(comb => {
-                              res.push([val.id, ...comb]);
-                            });
-                          });
-                          return res;
-                        };
-
-                        const allCombinations = generateCombinations(selectedAttributeGroups);
-
-                        // 3. Convert to Variants
-                        const newVariants = allCombinations.map((comb, idx) => ({
-                          sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${idx + 1}-${Date.now()}`,
-                          price: null,
-                          costPrice: formData.costPrice || 0,
-                          stock: 0,
-                          weight: 200, // Default weight for variants
-                          attributeValues: comb
-                        }));
-
-                        setFormData({
-                          ...formData,
-                          variants: [...(formData.variants || []), ...newVariants]
-                        });
-
-                        toast.success(`Đã tạo nhanh ${newVariants.length} biến thể!`);
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Tạo nhanh tổ hợp
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1"
-                      onClick={() => {
-                        const newVariant = {
-                          sku: `${formData.name.toUpperCase().replace(/\s+/g, '-')}-${Date.now()}`,
-                          price: null,
-                          costPrice: formData.costPrice || 0,
-                          stock: 0,
-                          weight: 0,
-                          attributeValues: []
-                        };
-                        setFormData({
-                          ...formData,
-                          variants: [...(formData.variants || []), newVariant]
-                        });
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Thêm biến thể
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {(formData.variants || []).map((v, vIndex) => (
-                    <Card key={vIndex} className="relative overflow-hidden border-border bg-muted/20">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          const newVariants = [...(formData.variants || [])];
-                          newVariants.splice(vIndex, 1);
-                          setFormData({ ...formData, variants: newVariants });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-
-                      <CardContent className="p-4 grid gap-4">
-                        <div className={`grid ${!editingProductId ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
-                          <div className="space-y-2">
-                            <Label className="text-xs">SKU</Label>
-                            <Input
-                              value={v.sku}
-                              onChange={(e) => {
-                                const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].sku = e.target.value;
-                                setFormData({ ...formData, variants: newVariants });
-                              }}
-                              className="h-8 text-xs"
-                              placeholder="SKU biến thể"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Giá bán Override</Label>
-                            <Input
-                              type="text"
-                              value={formatNumberWithDots(v.price)}
-                              onChange={(e) => {
-                                const rawValue = e.target.value ? parseNumberFromDots(e.target.value) : null;
-                                const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].price = rawValue;
-                                setFormData({ ...formData, variants: newVariants });
-                              }}
-                              className="h-8 text-xs font-bold"
-                              placeholder="Dùng giá chính"
-                            />
-                          </div>
-                          {!editingProductId && (
-                            <div className="space-y-2">
-                              <Label className="text-xs">Giá vốn (VNĐ)</Label>
-                              <Input
-                                type="text"
-                                value={formatNumberWithDots(v.costPrice)}
-                                onChange={(e) => {
-                                  const rawValue = e.target.value ? parseNumberFromDots(e.target.value) : 0;
-                                  const newVariants = [...(formData.variants || [])];
-                                  newVariants[vIndex].costPrice = rawValue;
-                                  setFormData({ ...formData, variants: newVariants });
-                                }}
-                                className="h-8 text-xs font-bold text-orange-600"
-                                placeholder="0"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs">Kho hàng</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={v.stock}
-                              onChange={(e) => {
-                                const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].stock = Math.max(0, Number(e.target.value));
-                                setFormData({ ...formData, variants: newVariants });
-                              }}
-                              className="h-8 text-xs"
-                              placeholder="0"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs">Cân nặng (g)</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={v.weight}
-                              onChange={(e) => {
-                                const newVariants = [...(formData.variants || [])];
-                                newVariants[vIndex].weight = Math.max(0, Number(e.target.value));
-                                setFormData({ ...formData, variants: newVariants });
-                              }}
-                              className="h-8 text-xs"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs">Ảnh biến thể</Label>
-                          <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-muted/20">
-                            {availableImages.map((img, i) => {
-                              const isSelected = img.id
-                                ? v.productImageId === img.id
-                                : v.productImageIndex === img.index;
-
-                              return (
-                                <div
-                                  key={i}
-                                  onClick={() => {
-                                    const newVariants = [...(formData.variants || [])];
-                                    if (img.id) {
-                                      newVariants[vIndex].productImageId = img.id;
-                                      newVariants[vIndex].productImageIndex = undefined;
-                                    } else {
-                                      newVariants[vIndex].productImageIndex = img.index;
-                                      newVariants[vIndex].productImageId = undefined;
-                                    }
-                                    setFormData({ ...formData, variants: newVariants });
-                                  }}
-                                  className={cn(
-                                    "relative w-12 h-12 rounded border-2 cursor-pointer overflow-hidden transition-all hover:scale-105",
-                                    isSelected ? "border-primary shadow-sm ring-1 ring-primary" : "border-transparent opacity-60 hover:opacity-100"
-                                  )}
-                                >
-                                  <img
-                                    src={img.url}
-                                    alt="Variant"
-                                    className="w-full h-full object-cover"
-                                  />
-                                  {isSelected && (
-                                    <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
-                                      <div className="bg-primary text-primary-foreground rounded-full p-0.5">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {availableImages.length === 0 && (
-                              <div className="text-[10px] text-muted-foreground italic py-1">
-                                Hãy tải ảnh lên trước để chọn cho biến thể
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs">Thuộc tính</Label>
-                          <div className="flex flex-wrap gap-2">
-                            {groupedAttributes.map((attr) => {
-                              // Find which value of this attribute is selected for this variant
-                              const selectedValueId = v.attributeValues.find(id =>
-                                attr.values.some(av => av.id === id)
-                              );
-
-                              return (
-                                <div key={attr.attributeId} className="w-full">
-                                  <SearchableSelect
-                                    options={attr.values.map(av => ({
-                                      value: av.id.toString(),
-                                      label: av.value
-                                    }))}
-                                    value={selectedValueId?.toString() || "none"}
-                                    onValueChange={(val) => {
-                                      const newVariants = [...(formData.variants || [])];
-                                      const attrValueIds = newVariants[vIndex].attributeValues.filter(id =>
-                                        !attr.values.some(av => av.id === id)
-                                      );
-                                      if (val !== "none") {
-                                        attrValueIds.push(Number(val));
-                                      }
-                                      newVariants[vIndex].attributeValues = attrValueIds;
-                                      setFormData({ ...formData, variants: newVariants });
-                                    }}
-                                    placeholder={attr.attributeName}
-                                    className="h-8 text-xs w-full"
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {formData.variants?.length === 0 && (
-                    <div className="text-center py-8 rounded-lg border-2 border-dashed border-border bg-muted/30">
-                      <p className="text-sm text-muted-foreground">Chưa có biến thể nào. Nhấn "Thêm biến thể" để bắt đầu.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <VariantBuilder
+                groupedAttributes={groupedAttributes}
+                selectedAttributes={selectedAttributes}
+                variants={formData.variants || []}
+                onVariantsChange={(variants) => setFormData({ ...formData, variants })}
+                productName={formData.name}
+                defaultCostPrice={formData.costPrice || 0}
+                editingProductId={editingProductId}
+                availableImages={availableImages}
+              />
             )}
-
             {formData.categoryId && filteredAttributes.length === 0 && (
               <p className="text-sm text-muted-foreground italic">
                 Không có thuộc tính nào cho danh mục này.
