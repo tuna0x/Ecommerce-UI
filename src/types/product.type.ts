@@ -100,6 +100,23 @@ export interface ICreateProduct {
   active?: boolean;
 }
 
+export interface IProductImportIssue {
+  sheet: string;
+  row: number;
+  productCode: string;
+  message: string;
+}
+
+export interface IProductImportResult {
+  productRows: number;
+  variantRows: number;
+  validProducts: number;
+  validVariants: number;
+  importedProducts: number;
+  valid: boolean;
+  errors: IProductImportIssue[];
+}
+
 export interface IUpdateProduct {
   id: number;
   name: string;

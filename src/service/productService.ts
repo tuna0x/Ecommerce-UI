@@ -3,6 +3,7 @@ import type { IApiResponse, IPagination } from "../types/api.type";
 import type {
   ICreateProduct,
   IPrice,
+  IProductImportResult,
   IProduct,
   IUpdateProduct,
 } from "../types/product.type";
@@ -130,6 +131,37 @@ export const ProductService = {
 
   getRelatedProducts: async (id: number): Promise<IApiResponse<IProduct[]>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}/related`);
+    return res.data;
+  },
+
+  downloadImportTemplate: async (): Promise<Blob> => {
+    const res = await axiosInstance.get(`${BASE_URL}/import-template`, {
+      responseType: "blob",
+    });
+    return res.data;
+  },
+
+  previewImport: async (file: File): Promise<IApiResponse<IProductImportResult>> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await axiosInstance.post(`${BASE_URL}/import/preview`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  },
+
+  importExcel: async (file: File): Promise<IApiResponse<IProductImportResult>> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await axiosInstance.post(`${BASE_URL}/import`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return res.data;
   },
 };

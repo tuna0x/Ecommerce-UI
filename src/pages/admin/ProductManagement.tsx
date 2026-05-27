@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import type {
   ICreateProduct,
   IProduct,
+  IProductImportResult,
   IUpdateProduct,
 } from "../../types/product.type";
 import type {
@@ -77,10 +78,15 @@ const ProductsManagement: React.FC = () => {
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const [brand, setBrand] = useState<IBrand[]>([]);
   const [category, setCategory] = useState<ICategory[]>([]);
   const [value, setValue] = useState<IAttributeValue[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<IProductImportResult | null>(null);
   const { stompClient, isConnected } = useSocket();
   const [formData, setFormData] = useState<ICreateProduct>({
     name: "",
@@ -440,6 +446,73 @@ const ProductsManagement: React.FC = () => {
     }
   }, [fetchProducts]);
 
+  const resetImportState = () => {
+    setImportFile(null);
+    setImportPreview(null);
+    if (importFileInputRef.current) {
+      importFileInputRef.current.value = "";
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await ProductService.downloadImportTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "product-import-template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Khong the tai file mau");
+    }
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    setImportPreview(null);
+    setIsImporting(true);
+    try {
+      const res = await ProductService.previewImport(file);
+      if (!res.error && res.data) {
+        setImportPreview(res.data);
+      }
+    } catch {
+      toast.error("Khong the doc file Excel");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importFile || !importPreview?.valid) return;
+
+    setIsImporting(true);
+    try {
+      const res = await ProductService.importExcel(importFile);
+      if (!res.error && res.data) {
+        if (res.data.valid) {
+          toast.success(`Da import ${res.data.importedProducts} san pham`);
+          setIsImportDialogOpen(false);
+          resetImportState();
+          fetchProducts();
+        } else {
+          setImportPreview(res.data);
+          toast.error("File co loi, chua the import");
+        }
+      }
+    } catch {
+      toast.error("Import san pham that bai");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const removeImage = (index: number) => {
     const previewToRemove = imagePreviews[index];
 
@@ -773,10 +846,20 @@ const ProductsManagement: React.FC = () => {
           </h1>
           <p className="text-muted-foreground">Thêm, sửa, xóa sản phẩm</p>
         </div>
-        <Button onClick={() => openDialog(null)} className="gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2">
+            <FileText className="h-4 w-4" />
+            File mau
+          </Button>
+          <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="gap-2">
+            <FileText className="h-4 w-4" />
+            Import Excel
+          </Button>
+          <Button onClick={() => openDialog(null)} className="gap-2">
           <Plus className="h-4 w-4" />
           Thêm sản phẩm
-        </Button>
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -951,6 +1034,87 @@ const ProductsManagement: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={(open) => {
+        if (!isImporting) {
+          setIsImportDialogOpen(open);
+          if (!open) resetImportState();
+        }
+      }}>
+        <DialogContent className="sm:max-w-[560px]">
+          <DialogHeader>
+            <DialogTitle>Import Excel</DialogTitle>
+            <DialogDescription>
+              Upload file theo template Products va Variants de tao san pham hang loat.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>File Excel</Label>
+              <Input
+                ref={importFileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleImportFileChange}
+                disabled={isImporting}
+              />
+            </div>
+
+            {isImporting && (
+              <div className="flex items-center gap-2 rounded-md border p-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Dang xu ly file...
+              </div>
+            )}
+
+            {importPreview && (
+              <div className="rounded-md border p-3 text-sm">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>Products: <b>{importPreview.productRows}</b></div>
+                  <div>Variants: <b>{importPreview.variantRows}</b></div>
+                  <div>Hop le: <b>{importPreview.validProducts}</b> san pham</div>
+                  <div>Hop le: <b>{importPreview.validVariants}</b> bien the</div>
+                </div>
+
+                {importPreview.errors.length > 0 ? (
+                  <div className="mt-3 max-h-48 overflow-y-auto rounded border border-destructive/30 bg-destructive/5 p-2">
+                    {importPreview.errors.slice(0, 50).map((error, index) => (
+                      <div key={index} className="text-xs text-destructive">
+                        {error.sheet} dong {error.row}
+                        {error.productCode ? ` (${error.productCode})` : ""}: {error.message}
+                      </div>
+                    ))}
+                    {importPreview.errors.length > 50 && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Con {importPreview.errors.length - 50} loi khac...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">
+                    File hop le, co the import.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(false)} disabled={isImporting}>
+              Huy
+            </Button>
+            <Button
+              onClick={handleConfirmImport}
+              disabled={isImporting || !importFile || !importPreview?.valid}
+            >
+              {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Import
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
