@@ -7,3 +7,14 @@ export interface Notification {
     createdAt: Date;
     link?: string;
 }
+
+export interface BackendNotification {
+    id: string | number;
+    title: string;
+    message: string;
+    type: string;
+    isRead?: boolean;
+    read?: boolean;
+    createdAt: string | number | Date;
+    link?: string;
+}

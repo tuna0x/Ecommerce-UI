@@ -18,7 +18,7 @@ const CategorySlider: React.FC = () => {
   if (categories.length === 0) return null;
 
   return (
-    <div className="w-full py-6 bg-background/50 backdrop-blur-sm sticky top-[64px] md:top-[80px] z-30 border-b border-border md:hidden">
+    <div className="w-full py-6 bg-background/50 backdrop-blur-sm sticky top-[148px] md:top-[164px] z-30 border-b border-border md:hidden">
       <div className="container mx-auto px-4 overflow-x-auto no-scrollbar flex items-center gap-4 py-2">
         <Link
           to="/category/all"

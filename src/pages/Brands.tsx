@@ -56,7 +56,7 @@ const Brands = () => {
   const scrollToSection = (id: string) => {
     const element = document.getElementById(`brand-group-${id}`);
     if (element) {
-      const offset = 100; // Account for sticky header
+      const offset = window.innerWidth >= 768 ? 180 : 164;
       const bodyRect = document.body.getBoundingClientRect().top;
       const elementRect = element.getBoundingClientRect().top;
       const elementPosition = elementRect - bodyRect;
@@ -114,7 +114,7 @@ const Brands = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           
           {/* Alphabet Sidebar (Sticky) */}
-          <aside className="lg:w-16 flex lg:flex-col items-center gap-1 sticky top-20 z-30 bg-background/80 backdrop-blur-sm lg:bg-transparent p-2 lg:p-0 rounded-full border lg:border-none border-border">
+          <aside className="lg:w-16 flex lg:flex-col items-center gap-1 sticky top-[164px] md:top-[180px] z-30 bg-background/80 backdrop-blur-sm lg:bg-transparent p-2 lg:p-0 rounded-full border lg:border-none border-border">
             <button 
               onClick={() => scrollToSection("#")}
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold hover:bg-primary hover:text-white transition-all"
@@ -153,7 +153,7 @@ const Brands = () => {
               <div className="space-y-12">
                 {Object.keys(groupedBrands).sort((a, b) => a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b)).map(letter => (
                   <div key={letter} id={`brand-group-${letter}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex items-center gap-4 mb-6 sticky top-20 bg-background py-2 z-20">
+                    <div className="flex items-center gap-4 mb-6 sticky top-[164px] md:top-[180px] bg-background py-2 z-20">
                       <h2 className="text-3xl font-black text-primary">{letter}</h2>
                       <div className="h-[1px] flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
                     </div>
