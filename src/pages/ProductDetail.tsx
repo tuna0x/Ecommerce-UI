@@ -596,7 +596,7 @@ const ProductDetail: React.FC = () => {
 
         {/* Product Details & Tabs */}
         <div className="mb-12 pt-12 border-t border-border/30">
-          <div className="flex border-b border-border mb-8 overflow-x-auto scrollbar-none sticky top-[72px] bg-background z-10 py-2">
+          <div className="flex border-b border-border mb-8 overflow-x-auto scrollbar-none sticky top-[148px] md:top-[164px] bg-background z-10 py-2">
             {(["description", "ingredient", "usage", "specification", "reviews"] as const).map((tab) => (
               <button
                 key={tab}

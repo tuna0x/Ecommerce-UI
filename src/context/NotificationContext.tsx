@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Notification } from '../types/notification.type';
+import type { IMessage, StompSubscription } from '@stomp/stompjs';
+import type { BackendNotification, Notification } from '../types/notification.type';
+import type { IMeta } from '../types/api.type';
 import { notificationService } from '../service/notificationService';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
@@ -7,12 +9,14 @@ import { toast } from 'sonner';
 
 interface NotificationContextType {
     notifications: Notification[];
+    notificationMeta: IMeta;
+    isLoadingNotifications: boolean;
     unreadCount: number;
     markAsRead: (id: string) => void;
     markAllAsRead: () => void;
     clearAll: () => void;
     deleteNotification: (id: string) => void;
-    fetchNotifications: () => Promise<void>;
+    fetchNotifications: (page?: number, pageSize?: number) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -21,9 +25,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const { user } = useAuth();
     const { stompClient, isConnected } = useSocket();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notificationMeta, setNotificationMeta] = useState<IMeta>({
+        page: 1,
+        pageSize: 10,
+        pages: 1,
+        total: 0,
+    });
+    const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const mapBackendToFrontend = (notif: any): Notification => {
+    const mapBackendToFrontend = (notif: BackendNotification): Notification => {
         // Map backend types to frontend types and icons
         const typeMap: Record<string, Notification['type']> = {
             'ORDER': 'order',
@@ -54,22 +65,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
     };
 
-    const fetchNotifications = useCallback(async () => {
+    const fetchNotifications = useCallback(async (page: number = 1, pageSize: number = 10) => {
         if (!user) return;
+        setIsLoadingNotifications(true);
         try {
-            const data = await notificationService.getNotifications(1, 50); // Fetch more for better history
+            const [data, unread] = await Promise.all([
+                notificationService.getNotifications(page, pageSize),
+                notificationService.getUnreadCount(),
+            ]);
             if (data && data.result) {
                 // Deduplicate by ID
                 const mappedData: Notification[] = data.result.map(mapBackendToFrontend);
                 const uniqueData: Notification[] = Array.from(new Map(mappedData.map((item: Notification) => [item.id, item])).values());
                 setNotifications(uniqueData);
-                
-                // Recalculate unread count from local data to ensure consistency with UI
-                const localUnread = uniqueData.filter((n: Notification) => !n.read).length;
-                setUnreadCount(localUnread);
+                setNotificationMeta(data.meta || {
+                    page,
+                    pageSize,
+                    pages: 1,
+                    total: uniqueData.length,
+                });
             }
+            setUnreadCount(Number(unread || 0));
         } catch (err) {
             console.error("Failed to fetch notifications", err);
+        } finally {
+            setIsLoadingNotifications(false);
         }
     }, [user]);
 
@@ -78,22 +98,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             fetchNotifications();
         } else {
             setNotifications([]);
+            setNotificationMeta({
+                page: 1,
+                pageSize: 10,
+                pages: 1,
+                total: 0,
+            });
             setUnreadCount(0);
         }
     }, [user, fetchNotifications]);
 
     useEffect(() => {
         if (isConnected && stompClient && stompClient.connected && user) {
-            let subNotifications: any = null;
-            let subTopic: any = null;
+            let subNotifications: StompSubscription | null = null;
+            let subTopic: StompSubscription | null = null;
 
             // Subscribe to personal queue
             try {
-                subNotifications = stompClient.subscribe('/user/queue/notifications', (message) => {
-                    const newNotif = JSON.parse(message.body);
+                subNotifications = stompClient.subscribe('/user/queue/notifications', (message: IMessage) => {
+                    const newNotif = JSON.parse(message.body) as BackendNotification;
                     const mapped = mapBackendToFrontend(newNotif);
                     
-                    setNotifications(prev => [mapped, ...prev]);
+                    setNotifications(prev => [mapped, ...prev].slice(0, notificationMeta.pageSize));
+                    setNotificationMeta(prev => ({ ...prev, total: prev.total + 1 }));
                     setUnreadCount(prev => prev + 1);
                     
                     toast(mapped.title, {
@@ -111,7 +138,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             // Subscribe to common topic
             try {
-                subTopic = stompClient.subscribe('/topic/notifications', (message) => {
+                subTopic = stompClient.subscribe('/topic/notifications', (message: IMessage) => {
                     // Backend sends raw string or simple object for topics
                     let title = 'Thông báo hệ thống';
                     let body = message.body;
@@ -119,7 +146,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         const parsed = JSON.parse(message.body);
                         title = parsed.title || title;
                         body = parsed.message || body;
-                    } catch (e) { /* use raw body */ }
+                    } catch { /* use raw body */ }
 
                     toast.info(title, { description: body });
                     fetchNotifications(); // Refresh list for global notifications
@@ -139,7 +166,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                 }
             };
         }
-    }, [isConnected, stompClient, user, fetchNotifications]);
+    }, [isConnected, stompClient, user, fetchNotifications, notificationMeta.pageSize]);
 
     const markAsRead = useCallback(async (id: string) => {
         try {
@@ -171,6 +198,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const clearAll = useCallback(() => {
         setNotifications([]);
+        setNotificationMeta(prev => ({ ...prev, total: 0, pages: 1, page: 1 }));
         setUnreadCount(0);
     }, []);
 
@@ -180,6 +208,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (notif && !notif.read) {
                 setUnreadCount(c => Math.max(0, c - 1));
             }
+            setNotificationMeta(meta => ({ ...meta, total: Math.max(0, meta.total - 1) }));
             return prev.filter(n => n.id !== id);
         });
     }, []);
@@ -187,6 +216,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return (
         <NotificationContext.Provider value={{
             notifications,
+            notificationMeta,
+            isLoadingNotifications,
             unreadCount,
             markAsRead,
             markAllAsRead,
@@ -199,6 +230,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
     if (!context) throw new Error('useNotifications must be used within NotificationProvider');

@@ -14,7 +14,7 @@ const UserLayout: React.FC = () => {
         <TopBar />
         <Header />
       </div>
-      <main className="pt-[116px] md:pt-[164px]">
+      <main className="pt-[148px] md:pt-[164px]">
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center min-h-[60vh] bg-background">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent opacity-50 mb-4"></div>

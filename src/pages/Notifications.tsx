@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Package, Tag, Heart, Info, Check, Trash2, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '../context/NotificationContext';
@@ -6,6 +6,7 @@ import type { Notification } from '../types/notification.type';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import PaginationControl from '../components/PaginationControl';
 
 
 
@@ -42,8 +43,24 @@ const formatTimeAgo = (date: Date) => {
 };
 
 const Notifications: React.FC = () => {
-    const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll, deleteNotification } = useNotifications();
+    const {
+        notifications,
+        notificationMeta,
+        isLoadingNotifications,
+        unreadCount,
+        markAsRead,
+        markAllAsRead,
+        clearAll,
+        deleteNotification,
+        fetchNotifications,
+    } = useNotifications();
     const [activeTab, setActiveTab] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
+
+    useEffect(() => {
+        fetchNotifications(currentPage, pageSize);
+    }, [currentPage, fetchNotifications]);
 
     const filteredNotifications = activeTab === 'all'
         ? notifications
@@ -52,7 +69,7 @@ const Notifications: React.FC = () => {
             : notifications.filter(n => n.type === activeTab);
 
     const tabCounts: Record<string, number> = {
-        all: notifications.length,
+        all: notificationMeta.total,
         unread: unreadCount,
         order: notifications.filter(n => n.type === 'order').length,
         promo: notifications.filter(n => n.type === 'promo').length,
@@ -99,7 +116,14 @@ const Notifications: React.FC = () => {
                 </div>
 
                 {/* Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(value) => {
+                        setActiveTab(value);
+                        setCurrentPage(1);
+                    }}
+                    className="w-full"
+                >
                     <TabsList className="w-full justify-start overflow-x-auto bg-secondary/50 h-auto p-1 rounded-xl mb-4 flex-nowrap">
                         { [ 
                             { value: 'all', label: 'Tất cả' },
@@ -131,7 +155,22 @@ const Notifications: React.FC = () => {
                     {/* Notification List */}
                     <div className="space-y-2">
                         <AnimatePresence mode="popLayout">
-                            {filteredNotifications.length === 0 ? (
+                            {isLoadingNotifications ? (
+                                <div className="space-y-2">
+                                    {Array.from({ length: 4 }).map((_, index) => (
+                                        <div key={index} className="rounded-2xl border border-border bg-card p-4">
+                                            <div className="flex items-start gap-3 sm:gap-4">
+                                                <div className="h-10 w-10 flex-shrink-0 animate-pulse rounded-xl bg-secondary" />
+                                                <div className="min-w-0 flex-1 space-y-2">
+                                                    <div className="h-4 w-2/3 animate-pulse rounded bg-secondary" />
+                                                    <div className="h-3 w-full animate-pulse rounded bg-secondary" />
+                                                    <div className="h-3 w-4/5 animate-pulse rounded bg-secondary" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : filteredNotifications.length === 0 ? (
                                 <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -220,6 +259,16 @@ const Notifications: React.FC = () => {
                             )}
                         </AnimatePresence>
                     </div>
+
+                    {!isLoadingNotifications && notificationMeta.pages > 1 && (
+                        <div className="mt-6">
+                            <PaginationControl
+                                currentPage={currentPage}
+                                totalPages={notificationMeta.pages}
+                                onPageChange={setCurrentPage}
+                            />
+                        </div>
+                    )}
                 </Tabs>
             </div>
         </div>

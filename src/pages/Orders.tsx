@@ -126,10 +126,15 @@ const OrderCard = memo(({ order, onViewDetail, onCancel, formatPrice, formatDate
     <Card className="mb-4 overflow-hidden border-gray-100 shadow-sm hover:shadow-md transition-[box-shadow] duration-300 rounded-2xl">
       <CardContent className="p-0 text-sans">
         <div className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-5">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="font-bold text-pink-600">#{order.transactionID || order.id || "N/A"}</span>
-              <Badge variant="outline" className={`${config.color} border-current font-bold px-3 py-0.5 rounded-full text-[10px] uppercase tracking-wide`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-3 mb-2">
+              <span
+                className="block max-w-[180px] truncate font-bold text-pink-600 sm:max-w-[260px]"
+                title={`#${order.transactionID || order.id || "N/A"}`}
+              >
+                #{order.transactionID || order.id || "N/A"}
+              </span>
+              <Badge variant="outline" className={`${config.color} shrink-0 border-current font-bold px-3 py-0.5 rounded-full text-[10px] uppercase tracking-wide`}>
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {config.label}
               </Badge>
@@ -148,7 +153,7 @@ const OrderCard = memo(({ order, onViewDetail, onCancel, formatPrice, formatDate
                     className="w-16 h-16 rounded-xl object-cover border border-gray-100 bg-gray-50 flex-shrink-0 shadow-sm"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate text-gray-900 leading-tight">
+                    <p className="truncate text-sm font-bold text-gray-900 leading-tight" title={item.productName || "Sản phẩm lỗi"}>
                       {item.productName || "Sản phẩm lỗi"}
                     </p>
                     <p className="text-[10px] text-gray-500 mt-1 font-bold bg-gray-100 w-fit px-2 py-0.5 rounded uppercase tracking-tighter">
@@ -165,7 +170,7 @@ const OrderCard = memo(({ order, onViewDetail, onCancel, formatPrice, formatDate
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-3 self-center md:self-auto min-w-[150px] border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8 w-full md:w-auto">
+          <div className="flex shrink-0 flex-col items-end gap-3 self-center md:self-auto min-w-[150px] border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-8 w-full md:w-auto">
             <div className="text-right">
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Thành tiền</p>
               <p className="text-2xl font-black text-pink-600">
@@ -398,9 +403,12 @@ const Orders = () => {
               <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-pink-100">
                 Chi tiết đơn hàng
               </DialogTitle>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-pink-400 font-black text-[10px] uppercase tracking-[0.2em] opacity-80">Mã giao dịch:</span>
-                <span className="text-white font-mono font-bold text-sm bg-white/10 px-3 py-1 rounded-lg border border-white/10">
+              <div className="flex min-w-0 items-center gap-2 mt-2">
+                <span className="shrink-0 text-pink-400 font-black text-[10px] uppercase tracking-[0.2em] opacity-80">Mã giao dịch:</span>
+                <span
+                  className="max-w-[180px] truncate text-white font-mono font-bold text-sm bg-white/10 px-3 py-1 rounded-lg border border-white/10 sm:max-w-[320px]"
+                  title={`#${selectedOrder?.transactionID || selectedOrder?.id || "N/A"}`}
+                >
                   #{selectedOrder?.transactionID || selectedOrder?.id || "N/A"}
                 </span>
               </div>
@@ -496,7 +504,7 @@ const Orders = () => {
                   {(selectedOrder.items || []).map((item, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-5 p-5 hover:bg-white transition-colors duration-200"
+                      className="flex items-center gap-4 p-4 hover:bg-white transition-colors duration-200 sm:gap-5 sm:p-5"
                     >
                       <img
                         src={item.productImage || ""}
@@ -504,13 +512,18 @@ const Orders = () => {
                         className="w-16 h-16 rounded-xl object-cover border-none bg-white shadow-sm flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-black text-gray-900 tracking-tight leading-tight">{item.productName || "Sản phẩm không rõ tên"}</p>
+                        <p
+                          className="line-clamp-2 font-black text-gray-900 tracking-tight leading-tight"
+                          title={item.productName || "Sản phẩm không rõ tên"}
+                        >
+                          {item.productName || "Sản phẩm không rõ tên"}
+                        </p>
                         <p className="text-[10px] text-gray-400 font-black mt-1.5 uppercase tracking-widest">
                           SỐ LƯỢNG: {item.quantity || 0}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-black text-pink-600 text-sm">
+                      <div className="shrink-0 text-right">
+                        <p className="whitespace-nowrap font-black text-pink-600 text-sm">
                           {formatPrice((item.price || 0) * (item.quantity || 0))}
                         </p>
                       </div>
@@ -587,11 +600,15 @@ const CancelOrderDialog = memo(({ order, onClose, onSuccess }: CancelOrderDialog
         description: `Đơn hàng #${order.id} đã được hủy.`,
       });
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" && error !== null && "response" in error
+          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: error.response?.data?.message || "Không thể hủy đơn hàng vào lúc này.",
+        description: message || "Không thể hủy đơn hàng vào lúc này.",
       });
     } finally {
       setCancelling(false);

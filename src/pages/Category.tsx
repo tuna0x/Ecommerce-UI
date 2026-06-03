@@ -86,20 +86,54 @@ const Category = () => {
 
   const [priceRange, setPriceRange] = useState([0, 5000000]);
   const [debouncedPriceRange, setDebouncedPriceRange] = useState(priceRange);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<number[]>([]);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [showAllBrands, setShowAllBrands] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [sortBy, setSortBy] = useState("createdAt,desc");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  const getDescendantIds = useCallback((node: FrontendCategory): number[] => {
+    let ids = [node.id];
+    if (node.children && node.children.length > 0) {
+      node.children.forEach(child => {
+        ids = [...ids, ...getDescendantIds(child)];
+      });
+    }
+    return ids;
+  }, []);
+
+  const findCategoryById = useCallback((nodes: FrontendCategory[], id: number): FrontendCategory | undefined => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      const child = findCategoryById(node.children || [], id);
+      if (child) return child;
+    }
+    return undefined;
+  }, []);
+
+  const flattenCategories = useCallback((nodes: FrontendCategory[], level = 0): Array<FrontendCategory & { level: number }> => {
+    return nodes.flatMap(node => [
+      { ...node, level },
+      ...flattenCategories(node.children || [], level + 1),
+    ]);
+  }, []);
+
+  const escapeFilterValue = (value: string) => value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+
   useEffect(() => {
     const brandParam = searchParams.get("brand");
-    if (brandParam) {
-      setSelectedBrands([brandParam]);
+    if (!brandParam || brandsList.length === 0) return;
+
+    const matchedBrand = brandsList.find(
+      brand => brand.name.toLowerCase() === brandParam.toLowerCase()
+    );
+
+    if (matchedBrand) {
+      setSelectedBrands([matchedBrand.id]);
     }
-  }, [searchParams]);
+  }, [searchParams, brandsList]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -110,10 +144,26 @@ const Category = () => {
 
   const fetchBrands = async () => {
     try {
-      const res = await BrandService.getAll(1, 50, undefined, "name,asc");
-      if (res.data?.result) {
-        setBrandsList(res.data.result);
+      const pageSize = 100;
+      const firstPage = await BrandService.getAll(1, pageSize, undefined, "name,asc");
+      const firstResult = firstPage.data?.result || [];
+      const totalPages = firstPage.data?.meta?.pages || 1;
+
+      if (totalPages <= 1) {
+        setBrandsList(firstResult);
+        return;
       }
+
+      const restPages = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, index) =>
+          BrandService.getAll(index + 2, pageSize, undefined, "name,asc")
+        )
+      );
+
+      setBrandsList([
+        ...firstResult,
+        ...restPages.flatMap(res => res.data?.result || []),
+      ]);
     } catch (error) {
       console.error("Failed to fetch brands", error);
     }
@@ -125,16 +175,6 @@ const Category = () => {
       const filters: string[] = ["active:true"];
 
       if (activeCategoryNode && slug !== "all") {
-        const getDescendantIds = (node: FrontendCategory): number[] => {
-          let ids = [node.id];
-          if (node.children && node.children.length > 0) {
-            node.children.forEach(child => {
-              ids = [...ids, ...getDescendantIds(child)];
-            });
-          }
-          return ids;
-        };
-
         const descendantIds = getDescendantIds(activeCategoryNode);
         if (descendantIds.length > 0) {
           const catFilters = descendantIds.map(id => `category.id:${id}`).join(" or ");
@@ -143,17 +183,22 @@ const Category = () => {
       }
 
       if (selectedBrands.length > 0) {
-        const brandFilters = selectedBrands.map(b => `brand.name:'${b}'`).join(" or ");
+        const brandFilters = selectedBrands.map(id => `brand.id:${id}`).join(" or ");
         filters.push(`(${brandFilters})`);
       }
 
       if (selectedSkinTypes.length > 0) {
-        const skinFilters = selectedSkinTypes.map(s => `skinType:'${s}'`).join(" or ");
+        const skinFilters = selectedSkinTypes.map(s => `skinType:'${escapeFilterValue(s)}'`).join(" or ");
         filters.push(`(${skinFilters})`);
       }
 
       if (slug === "all" && selectedCategories.length > 0) {
-        const catFilters = selectedCategories.map(c => `category.name:'${c}'`).join(" or ");
+        const selectedCategoryIds = selectedCategories.flatMap(categoryId => {
+          const selectedCategory = findCategoryById(categories, categoryId);
+          return selectedCategory ? getDescendantIds(selectedCategory) : [categoryId];
+        });
+        const uniqueCategoryIds = Array.from(new Set(selectedCategoryIds));
+        const catFilters = uniqueCategoryIds.map(id => `category.id:${id}`).join(" or ");
         filters.push(`(${catFilters})`);
       }
 
@@ -181,7 +226,7 @@ const Category = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, selectedSkinTypes, selectedCategories, debouncedPriceRange, sortBy, slug]);
+  }, [activeCategoryNode, currentPage, meta.pageSize, selectedBrands, selectedSkinTypes, selectedCategories, debouncedPriceRange, sortBy, slug, categories, findCategoryById, getDescendantIds]);
 
   const fetchCategoryBanners = useCallback(async () => {
     try {
@@ -219,13 +264,13 @@ const Category = () => {
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [slug, subcategoryName, subSubcategoryName, selectedBrands, selectedSkinTypes, debouncedPriceRange, sortBy]);
+  }, [slug, subcategoryName, subSubcategoryName, selectedBrands, selectedSkinTypes, selectedCategories, debouncedPriceRange, sortBy]);
 
   const skinTypes = ["Da dầu", "Da khô", "Da hỗn hợp", "Da nhạy cảm", "Mọi loại da"];
 
-  const toggleBrand = (brand: string) => {
+  const toggleBrand = (brandId: number) => {
     setSelectedBrands((prev) =>
-      prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand],
+      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId],
     );
   };
 
@@ -235,9 +280,9 @@ const Category = () => {
     );
   };
 
-  const toggleCategory = (categoryName: string) => {
+  const toggleCategory = (categoryId: number) => {
     setSelectedCategories((prev) =>
-      prev.includes(categoryName) ? prev.filter((c) => c !== categoryName) : [...prev, categoryName],
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
     );
   };
 
@@ -270,6 +315,15 @@ const Category = () => {
   ];
 
   const currentSortLabel = sortOptions.find(opt => opt.value === sortBy)?.label;
+  const selectedBrandItems = selectedBrands
+    .map(id => brandsList.find(brand => brand.id === id))
+    .filter((brand): brand is IBrand => Boolean(brand));
+  const selectedCategoryItems = selectedCategories
+    .map(id => findCategoryById(categories, id))
+    .filter((cat): cat is FrontendCategory => Boolean(cat));
+  const filterCategories = flattenCategories(categories);
+  const visibleBrands = showAllBrands ? brandsList : brandsList.slice(0, 8);
+  const visibleCategories = showAllCategories ? filterCategories : filterCategories.slice(0, 8);
 
   const filterContent = (
     <div className="space-y-6">
@@ -351,25 +405,26 @@ const Category = () => {
 
       <div>
         <h3 className="font-semibold mb-3">Thương hiệu</h3>
-        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-          {(showAllBrands ? brandsList : brandsList.slice(0, 5)).map((brand) => (
+        <div className="space-y-2">
+          {visibleBrands.map((brand) => (
             <label key={brand.id} className="flex items-center gap-2 cursor-pointer group">
               <Checkbox
-                checked={selectedBrands.includes(brand.name)}
-                onCheckedChange={() => toggleBrand(brand.name)}
+                checked={selectedBrands.includes(brand.id)}
+                onCheckedChange={() => toggleBrand(brand.id)}
               />
               <span className="text-sm group-hover:text-primary transition-colors">{brand.name}</span>
             </label>
           ))}
+          {brandsList.length > 8 && (
+            <button
+              type="button"
+              onClick={() => setShowAllBrands(prev => !prev)}
+              className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+            >
+              {showAllBrands ? "Ẩn bớt" : `Hiện tất cả (${brandsList.length})`}
+            </button>
+          )}
         </div>
-        {brandsList.length > 5 && (
-          <button
-            onClick={() => setShowAllBrands(!showAllBrands)}
-            className="text-xs font-medium text-primary hover:underline mt-2"
-          >
-            {showAllBrands ? "Rút gọn" : `Xem thêm (${brandsList.length - 5})`}
-          </button>
-        )}
       </div>
 
       <div>
@@ -387,28 +442,34 @@ const Category = () => {
         </div>
       </div>
 
-      {slug === "all" && categories.length > 0 && (
+      {slug === "all" && filterCategories.length > 0 && (
         <div>
           <h3 className="font-semibold mb-3">Danh mục</h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-            {(showAllCategories ? categories : categories.slice(0, 5)).map((cat) => (
+          <div className="space-y-2">
+            {visibleCategories.map((cat) => (
               <label key={cat.id} className="flex items-center gap-2 cursor-pointer group">
                 <Checkbox
-                  checked={selectedCategories.includes(cat.name)}
-                  onCheckedChange={() => toggleCategory(cat.name)}
+                  checked={selectedCategories.includes(cat.id)}
+                  onCheckedChange={() => toggleCategory(cat.id)}
                 />
-                <span className="text-sm group-hover:text-primary transition-colors">{cat.name}</span>
+                <span
+                  className="text-sm group-hover:text-primary transition-colors"
+                  style={{ paddingLeft: `${cat.level * 12}px` }}
+                >
+                  {cat.name}
+                </span>
               </label>
             ))}
+            {filterCategories.length > 8 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCategories(prev => !prev)}
+                className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                {showAllCategories ? "Ẩn bớt" : `Hiện tất cả (${filterCategories.length})`}
+              </button>
+            )}
           </div>
-          {categories.length > 5 && (
-            <button
-              onClick={() => setShowAllCategories(!showAllCategories)}
-              className="text-xs font-medium text-primary hover:underline mt-2"
-            >
-              {showAllCategories ? "Rút gọn" : `Xem thêm (${categories.length - 5})`}
-            </button>
-          )}
         </div>
       )}
 
@@ -528,10 +589,10 @@ const Category = () => {
             )}
 
             {/* Brand Chips */}
-            {selectedBrands.map(brand => (
-              <div key={brand} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
-                <span>{brand}</span>
-                <button onClick={() => toggleBrand(brand)}><X className="w-3.5 h-3.5" /></button>
+            {selectedBrandItems.map(brand => (
+              <div key={brand.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>{brand.name}</span>
+                <button onClick={() => toggleBrand(brand.id)}><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
 
@@ -544,10 +605,10 @@ const Category = () => {
             ))}
 
             {/* Category Chips */}
-            {selectedCategories.map(cat => (
-              <div key={cat} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
-                <span>{cat}</span>
-                <button onClick={() => toggleCategory(cat)}><X className="w-3.5 h-3.5" /></button>
+            {selectedCategoryItems.map(cat => (
+              <div key={cat.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs font-medium border border-primary/20 hover:bg-primary/20 transition-colors">
+                <span>{cat.name}</span>
+                <button onClick={() => toggleCategory(cat.id)}><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
 
