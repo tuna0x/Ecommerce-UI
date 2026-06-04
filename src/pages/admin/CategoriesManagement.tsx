@@ -136,7 +136,7 @@ const CategoriesManagement: React.FC = () => {
       setIsDialogOpen(false);
       fetchCategories();
     } catch (error) {
-        const axiosError = error as { response?: { data?: { message?: any } } };
+        const axiosError = error as { response?: { data?: { message?: unknown } } };
         const backendMsg = axiosError.response?.data?.message;
         const finalMsg = Array.isArray(backendMsg) ? backendMsg[0] : backendMsg;
         toast.error(finalMsg || "Đã xảy ra lỗi khi lưu thể loại");

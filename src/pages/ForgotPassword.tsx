@@ -8,6 +8,14 @@ import { Label } from "../components/ui/label";
 import { useToast } from "../hooks/use-toast";
 import { forgotPasswordApi, resetPasswordApi } from "../service/authService";
 
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === "string") return response.data.message;
+  }
+  return fallback;
+};
+
 const ForgotPassword: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState("");
@@ -31,10 +39,10 @@ const ForgotPassword: React.FC = () => {
         description: "Vui lòng kiểm tra email để lấy mã xác thực.",
       });
       setStep(2);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
-        description: error.response?.data?.message || "Không thể gửi OTP. Vui lòng kiểm tra lại email.",
+        description: getApiErrorMessage(error, "Không thể gửi OTP. Vui lòng kiểm tra lại email."),
         variant: "destructive",
       });
     } finally {
@@ -80,10 +88,10 @@ const ForgotPassword: React.FC = () => {
         description: "Mật khẩu của bạn đã được cập nhật. Bạn có thể đăng nhập ngay bây giờ.",
       });
       navigate("/login");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi",
-        description: error.response?.data?.message || "Mã OTP không chính xác hoặc đã hết hạn.",
+        description: getApiErrorMessage(error, "Mã OTP không chính xác hoặc đã hết hạn."),
         variant: "destructive",
       });
       // If OTP fails, maybe go back to step 2

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../context/PermissionContext';
@@ -18,6 +18,13 @@ import ConfirmModal from '../components/ConfirmModal';
 import { compressImage } from '../lib/utils';
 
 import type { IUser } from '../types/user.type';
+
+const getApiErrorMessage = (error: unknown) => {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    return (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+  }
+  return undefined;
+};
  
 const Account = () => {
   const { user, logout, setUser } = useAuth() as { user: IUser | null, logout: () => void, setUser: (user: IUser | null) => void };
@@ -134,10 +141,10 @@ const Account = () => {
       });
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswords({ current: false, new: false, confirm: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Lỗi',
-        description: error.response?.data?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.',
+        description: getApiErrorMessage(error) || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.',
         variant: 'destructive',
       });
     }
@@ -436,3 +443,5 @@ const Account = () => {
 };
 
 export default Account;
+
+

@@ -7,7 +7,15 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/use-toast";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
+
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === "string") return response.data.message;
+  }
+  return fallback;
+};
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -43,10 +51,10 @@ const Login: React.FC = () => {
         });
         navigate("/");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Đăng nhập thất bại",
-        description: err.response?.data?.message || "Email hoặc mật khẩu không chính xác.",
+        description: getApiErrorMessage(err, "Email hoặc mật khẩu không chính xác."),
         variant: "destructive",
       });
       console.error(err);
@@ -55,7 +63,16 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      toast({
+        title: "Đăng nhập thất bại",
+        description: "Không thể xác thực tài khoản Google.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const success = await socialLogin(credentialResponse.credential);
@@ -66,11 +83,11 @@ const Login: React.FC = () => {
         });
         navigate("/");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google login error", error);
       toast({
         title: "Đăng nhập thất bại",
-        description: error.response?.data?.message || "Không thể xác thực tài khoản Google.",
+        description: getApiErrorMessage(error, "Không thể xác thực tài khoản Google."),
         variant: "destructive",
       });
     } finally {

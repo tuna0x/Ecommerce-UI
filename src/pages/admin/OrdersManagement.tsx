@@ -179,7 +179,7 @@ const OrdersManagement: React.FC = () => {
     const socket = new SockJS(`${wsHost}/websocket`);
     const client = new Client({
       webSocketFactory: () => socket,
-      debug: (_str) => {
+      debug: () => {
         // Suppress redundant logs
       },
       onConnect: () => {
@@ -334,9 +334,10 @@ const OrdersManagement: React.FC = () => {
       }
       
       toast.success(`Đã tạo vận đơn GHN thành công: ${updatedOrder.shippingCode}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("GHN Creation failed:", err);
-      toast.error(err.response?.data?.message || "Không thể tạo vận đơn GHN. Vui lòng kiểm tra lại địa chỉ.");
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || "Không thể tạo vận đơn GHN. Vui lòng kiểm tra lại địa chỉ.");
     } finally {
       setIsCreatingGhn(null);
     }
@@ -439,9 +440,10 @@ const OrdersManagement: React.FC = () => {
       setSelectedOrder(updatedOrder);
       setIsEditingAddress(false);
       toast.success("Đã cập nhật địa chỉ thành công");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Address update failed:", err);
-      toast.error(err.response?.data?.message || "Không thể cập nhật địa chỉ");
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || "Không thể cập nhật địa chỉ");
     } finally {
       setIsSavingAddress(false);
     }
@@ -1646,7 +1648,7 @@ const OrdersManagement: React.FC = () => {
                     toast.success(`Đã tạo thành công ${successCount}/${bulkGhnSelectedIds.size} vận đơn GHN.`);
                     setIsBulkGhnDialogOpen(false);
                     setBulkGhnSelectedIds(new Set());
-                  } catch (err) {
+                  } catch {
                     toast.error("Quá trình tạo vận đơn gặp lỗi.");
                   } finally {
                     setIsCreatingBulkGhn(false);

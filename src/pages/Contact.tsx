@@ -17,6 +17,14 @@ import { toast } from "sonner";
 import { contactService } from "../service/contactService";
 import type { ContactFormData } from "../service/contactService";
 
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === "string") return response.data.message;
+  }
+  return fallback;
+};
+
 const contactInfo = [
   {
     icon: MapPin,
@@ -75,11 +83,9 @@ const Contact = () => {
       setSubmitted(true);
       setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
       toast.success("Gửi liên hệ thành công! Chúng tôi sẽ phản hồi sớm nhất.");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Contact error:", error);
-      const errorMsg =
-        error.response?.data?.message ||
-        "Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.";
+      const errorMsg = getApiErrorMessage(error, "Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.");
       toast.error(errorMsg);
     } finally {
       setLoading(false);

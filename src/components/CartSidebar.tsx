@@ -284,9 +284,8 @@ const CartSidebar: React.FC = () => {
                             {item.variantAttributes && item.variantAttributes.length > 0 && (
                               <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1.5">
                                 {item.variantAttributes.map((attr, i) => {
-                                  // Handle potential inconsistency in field names from API/localStorage
-                                  const name = attr.name || (attr as any).attributeName;
-                                  const value = attr.attributeValue || (attr as any).value || (attr as any).attributeValue;
+                                  const name = attr.name;
+                                  const value = attr.attributeValue;
                                   
                                   if (!name && !value) return null;
 

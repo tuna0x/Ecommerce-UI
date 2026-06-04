@@ -1,8 +1,21 @@
 import axiosInstance from "./axiosInstance";
 import type { IApiResponse, IPagination } from "../types/api.type";
-import type { IUser } from "../types/user.type";
+import type { IUser, IUserAnalytics } from "../types/user.type";
+import type { IPermission } from "../types/permission.type";
 
 const BASE_URL = "/users";
+
+interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+type CreateUserPayload = Omit<Partial<IUser>, "id" | "role"> & {
+  email: string;
+  name: string;
+  password?: string;
+  role?: { id: number };
+};
 
 export const UserService = {
   getAll: async (
@@ -58,11 +71,11 @@ export const UserService = {
     });
     return res.data;
   },
-  getAnalytics: async (id: number): Promise<IApiResponse<any>> => {
+  getAnalytics: async (id: number): Promise<IApiResponse<IUserAnalytics>> => {
     const res = await axiosInstance.get(`${BASE_URL}/${id}/analytics`);
     return res.data;
   },
-  getAccountPermissions: async (): Promise<IApiResponse<any>> => {
+  getAccountPermissions: async (): Promise<IApiResponse<IPermission[]>> => {
     const res = await axiosInstance.get(`/auth/permissions`);
     return res.data;
   },
@@ -70,12 +83,12 @@ export const UserService = {
     const res = await axiosInstance.patch(`${BASE_URL}/${id}/admin-notes`, { notes });
     return res.data;
   },
-  changePassword: async (data: any): Promise<IApiResponse<void>> => {
+  changePassword: async (data: ChangePasswordPayload): Promise<IApiResponse<void>> => {
     const res = await axiosInstance.post(`/auth/change-password`, data);
     return res.data;
   },
 
-  create: async (data: any): Promise<IApiResponse<IUser>> => {
+  create: async (data: CreateUserPayload): Promise<IApiResponse<IUser>> => {
     const res = await axiosInstance.post(BASE_URL, data);
     return res.data;
   },

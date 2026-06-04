@@ -9,7 +9,15 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/use-toast";
 import { sendOtpApi, verifyOtpApi, checkEmailApi } from "../service/authService";
 import { cn } from "../lib/utils";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
+
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error === "object" && error !== null && "response" in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === "string") return response.data.message;
+  }
+  return fallback;
+};
 
 const Register: React.FC = () => {
   const [name, setName] = useState("");
@@ -33,7 +41,7 @@ const Register: React.FC = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | undefined;
     if (countdown > 0) {
       timer = setInterval(() => {
         setCountdown((prev) => prev - 1);
@@ -83,10 +91,10 @@ const Register: React.FC = () => {
         title: "Đã gửi mã OTP",
         description: "Vui lòng kiểm tra email của bạn.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lỗi gửi mã",
-        description: error.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại.",
+        description: getApiErrorMessage(error, "Không thể gửi mã OTP, vui lòng thử lại."),
         variant: "destructive",
       });
     } finally {
@@ -148,10 +156,10 @@ const Register: React.FC = () => {
         });
         navigate("/");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Thao tác thất bại",
-        description: error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại.",
+        description: getApiErrorMessage(error, "Có lỗi xảy ra, vui lòng thử lại."),
         variant: "destructive",
       });
       console.error(error);
@@ -159,7 +167,16 @@ const Register: React.FC = () => {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (!credentialResponse.credential) {
+      toast({
+        title: "Lỗi đăng ký",
+        description: "Không thể xác thực tài khoản Google.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const success = await socialLogin(credentialResponse.credential);
@@ -170,11 +187,11 @@ const Register: React.FC = () => {
         });
         navigate("/");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Google login error", error);
       toast({
         title: "Lỗi đăng ký",
-        description: error.response?.data?.message || "Không thể xác thực tài khoản Google.",
+        description: getApiErrorMessage(error, "Không thể xác thực tài khoản Google."),
         variant: "destructive",
       });
     } finally {

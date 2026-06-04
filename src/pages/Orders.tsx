@@ -91,7 +91,7 @@ const paymentMethodLabels: Record<string, string> = {
 
 const paymentStatusConfig: Record<string, { label: string; color: string }> = {
   PAID: {
-    label: "ĐÃ THANH TOÁN",
+    label: "ĐàTHANH TOÁN",
     color: "text-green-600 bg-green-50",
   },
   UNPAID: {

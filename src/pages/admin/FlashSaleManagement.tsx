@@ -190,8 +190,9 @@ const FlashSaleManagement: React.FC = () => {
       }
       setIsDialogOpen(false);
       fetchCampaigns();
-    } catch (error: any) {
-      toast.error(error.message || (isEditing ? "Lỗi khi cập nhật Flash Sale" : "Lỗi khi tạo Flash Sale"));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "";
+      toast.error(message || (isEditing ? "Lỗi khi cập nhật Flash Sale" : "Lỗi khi tạo Flash Sale"));
     } finally {
       setIsLoading(false);
     }

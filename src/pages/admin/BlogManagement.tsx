@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Plus, Pencil, Trash2, Search, Loader2, BookOpen, User, Calendar, ImageIcon, Upload } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -62,7 +62,7 @@ const BlogManagement: React.FC = () => {
                 setBlogs(res.data.result || []);
                 setTotalPages(res.data.meta.pages || 0);
             }
-        } catch (error) {
+        } catch {
             toast.error("Không thể tải danh sách bài viết");
         } finally {
             setIsLoading(false);
@@ -128,7 +128,7 @@ const BlogManagement: React.FC = () => {
             }
             setIsDialogOpen(false);
             fetchBlogs();
-        } catch (error) {
+        } catch {
             toast.error("Đã xảy ra lỗi khi lưu bài viết");
         } finally {
             setIsSubmitting(false);
@@ -141,7 +141,7 @@ const BlogManagement: React.FC = () => {
                 await BlogService.remove(id);
                 toast.success("Xóa bài viết thành công");
                 fetchBlogs();
-            } catch (error) {
+            } catch {
                 toast.error("Không thể xóa bài viết");
             }
         }
@@ -363,3 +363,5 @@ const BlogManagement: React.FC = () => {
 };
 
 export default BlogManagement;
+
+

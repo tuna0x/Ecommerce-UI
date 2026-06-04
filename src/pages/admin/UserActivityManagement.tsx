@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, memo } from "react";
+﻿import React, { useEffect, useState, useCallback, memo } from "react";
 import { 
   Search, 
   Eye, 
@@ -75,6 +75,27 @@ interface IUserBehavior {
   pageUrl: string;
 }
 
+interface ActivityMetadata {
+  durationMs?: number;
+  path?: string;
+  orderId?: string | number;
+  method?: string;
+  cartTotal?: number;
+  itemCount?: number;
+  productName?: string;
+}
+
+interface AnalyticsData {
+  totalEvents: number;
+  totalSessions: number;
+  activeUsers: number;
+  totalPurchases: number;
+  totalAddToCart: number;
+  conversionRate: number;
+  actionDistribution?: Array<{ action: string; count: number }>;
+  activityTrend?: Array<{ date: string; count: number }>;
+}
+
 // --- Static Helpers Moved Outside to avoid recreation ---
 
 const formatDateTime = (dateString: string) => {
@@ -119,13 +140,27 @@ const getActionBadgeColor = (type: string) => {
   }
 };
 
+const parseActivityMetadata = (metadata: string): ActivityMetadata | null => {
+  try {
+    const parsed: unknown = JSON.parse(metadata);
+    if (typeof parsed === "object" && parsed !== null) {
+      return parsed as ActivityMetadata;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
 // --- Optimized Row Component ---
 
 const LogTableRow = memo(({ log }: { log: IUserBehavior }) => {
   const metadataContent = React.useMemo(() => {
-    try {
-      const meta = JSON.parse(log.metadata);
-      if (log.actionType === 'TIME_ON_PAGE') {
+    const meta = parseActivityMetadata(log.metadata);
+    if (!meta) {
+      return <span className="text-xs font-mono text-muted-foreground">{log.metadata}</span>;
+    }
+      if (log.actionType === 'TIME_ON_PAGE' && typeof meta.durationMs === 'number') {
         const seconds = Math.floor(meta.durationMs / 1000);
         const durationText = seconds >= 60 
           ? `${Math.floor(seconds / 60)} phút ${seconds % 60} giây` 
@@ -156,7 +191,7 @@ const LogTableRow = memo(({ log }: { log: IUserBehavior }) => {
           </div>
         );
       }
-      if (log.actionType === 'BEGIN_CHECKOUT') {
+      if (log.actionType === 'BEGIN_CHECKOUT' && typeof meta.cartTotal === 'number') {
         return (
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5 font-semibold text-orange-700">
@@ -189,9 +224,6 @@ const LogTableRow = memo(({ log }: { log: IUserBehavior }) => {
           </Tooltip>
         </TooltipProvider>
       );
-    } catch (e) {
-      return <span className="text-xs font-mono text-muted-foreground">{log.metadata}</span>;
-    }
   }, [log.metadata, log.actionType]);
 
   return (
@@ -234,7 +266,7 @@ LogTableRow.displayName = "LogTableRow";
 
 const UserActivityLog: React.FC = () => {
   const [logs, setLogs] = useState<IUserBehavior[]>([]);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [actionFilter, setActionFilter] = useState<string>("all");
@@ -321,7 +353,7 @@ const UserActivityLog: React.FC = () => {
   }, [debouncedSearchTerm, actionFilter, appliedStartDate, appliedEndDate]);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isAutoRefresh) {
       interval = setInterval(() => {
         if (!isLoading && !isAnalyticsLoading) {
@@ -652,3 +684,7 @@ const UserActivityLog: React.FC = () => {
 };
 
 export default UserActivityLog;
+
+
+
+

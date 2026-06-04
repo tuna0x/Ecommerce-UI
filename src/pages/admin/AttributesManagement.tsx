@@ -252,8 +252,8 @@ const AttributesManagement: React.FC = () => {
 
       fetchAttributeValues(selectedAttribute.id);
       setIsValueDialogOpen(false);
-    } catch (error: any) {
-      const msg = error.response?.data?.message || "Đã xảy ra lỗi";
+    } catch (error: unknown) {
+      const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message || "Đã xảy ra lỗi";
       toast.error(msg);
     }
   }, [selectedAttribute, valueForm.attributeValue, editingValueId, fetchAttributeValues]);

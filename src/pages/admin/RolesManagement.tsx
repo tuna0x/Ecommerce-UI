@@ -140,10 +140,11 @@ const RolesManagement: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchInitialData();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
       toast({ 
         title: "Lỗi", 
-        description: error.response?.data?.message || "Không thể lưu vai trò", 
+        description: message || "Không thể lưu vai trò", 
         variant: "destructive" 
       });
     }

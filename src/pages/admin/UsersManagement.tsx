@@ -296,9 +296,10 @@ const UsersManagement: React.FC = () => {
       }
       setIsUserModalOpen(false);
       fetchUsers(currentPage);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.response?.data?.message || "Thao tác thất bại");
+      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(message || "Thao tác thất bại");
     } finally {
       setIsSubmitting(false);
     }
@@ -1122,7 +1123,7 @@ const UsersManagement: React.FC = () => {
                                           );
                                         }
                                         return <p className="text-sm font-bold bg-muted/30 p-3 rounded-lg border-l-4 border-primary/40">{activity.metadata}</p>;
-                                      } catch (e) {
+                                      } catch {
                                         return <p className="text-sm font-bold bg-muted/30 p-3 rounded-lg border-l-4 border-primary/40">{activity.metadata}</p>;
                                       }
                                     })()}

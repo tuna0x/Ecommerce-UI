@@ -39,7 +39,7 @@ const SEO: React.FC<SEOProps> = ({
 
   const displayTitle = title ? `${title} | Bông Cosmetic` : siteTitle;
   const [activeTitle, setActiveTitle] = useState(displayTitle);
-  const intervalRef = useRef<any>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isHiddenRef = useRef(false);
 
   const funnyMessages = [
@@ -82,6 +82,7 @@ const SEO: React.FC<SEOProps> = ({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayTitle]);
 
   const seo = {
