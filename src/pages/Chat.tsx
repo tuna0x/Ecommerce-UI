@@ -16,6 +16,42 @@ const ADMIN_EMAIL = 'admin@gmail.com';
 
 type AIMessage = { role: 'user' | 'assistant'; content: string };
 
+const ProductMiniCard = ({ data, onNavigate }: { data: string, onNavigate: (id: string) => void }) => {
+    const [id = '', name = 'Sản phẩm', price = '0', ...thumbnailParts] = data.split('|');
+    const thumbnail = thumbnailParts.join('|').trim();
+    const imageSrc = thumbnail || '/logo.jpg';
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={() => onNavigate(id)}
+            className="mt-2 flex w-full max-w-sm items-center gap-3 overflow-hidden rounded-2xl border border-pink-100 bg-white p-3 text-left shadow-sm transition-all hover:border-pink-300 cursor-pointer group"
+        >
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-50">
+                <img
+                    src={imageSrc}
+                    alt={name}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(event) => {
+                        const target = event.currentTarget;
+                        if (target.src.endsWith('/logo.jpg')) return;
+                        target.src = '/logo.jpg';
+                    }}
+                />
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-bold text-slate-800">{name}</p>
+                <p className="text-[12px] font-extrabold text-pink-600">{price} VNĐ</p>
+                <div className="mt-1 flex items-center gap-1">
+                    <span className="text-[10px] font-medium text-slate-400">Xem chi tiết</span>
+                    <Sparkles className="h-2.5 w-2.5 text-pink-400" />
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
 const Chat: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -236,38 +272,56 @@ const Chat: React.FC = () => {
                                 exit={{ opacity: 0, x: 10 }}
                                 className="space-y-6"
                             >
-                                {aiMessages.map((msg, idx) => (
+                                {aiMessages.map((msg, idx) => {
+                                    const visibleContent = msg.role === 'assistant'
+                                        ? (displayContent[idx] || (idx === 0 ? msg.content : ''))
+                                        : msg.content;
+                                    const cleanContent = visibleContent.replace(/\[PRODUCT_CARD:.*?\]/g, '').replace(/\[QUICK_REPLY:.*?\]/g, '');
+                                    const isTypingDone = msg.role !== 'assistant' || visibleContent.length >= msg.content.length;
+                                    const productCards = isTypingDone ? (msg.content.match(/\[PRODUCT_CARD:(.*?)\]/g) || []) : [];
+
+                                    return (
                                     <div key={idx} className={cn("flex gap-3", msg.role === 'user' ? "justify-end" : "justify-start")}>
                                         {msg.role === 'assistant' && (
                                             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 mt-auto shadow-md">
                                                 <Bot className="h-4 w-4 text-white" />
                                             </div>
                                         )}
-                                        <div className={cn(
-                                            "max-w-[85%] px-4 py-3 rounded-[22px] shadow-sm text-sm leading-relaxed",
-                                            msg.role === 'user'
-                                                ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
-                                                : "bg-white border border-slate-100 text-slate-800 rounded-bl-none prose prose-sm prose-pink"
-                                        )}>
-                                            {msg.role === 'assistant' ? (
-                                                <ReactMarkdown
-                                                    components={{
-                                                        a: ({ href, children }) => (
-                                                            <Link 
-                                                                to={href || "#"} 
-                                                                className="text-pink-600 underline hover:text-pink-700 font-bold"
-                                                            >
-                                                                {children}
-                                                            </Link>
-                                                        )
-                                                    }}
-                                                >
-                                                    {displayContent[idx] || (idx === 0 ? msg.content : '')}
-                                                </ReactMarkdown>
-                                            ) : msg.content}
+                                        <div className="max-w-[85%]">
+                                            <div className={cn(
+                                                "px-4 py-3 rounded-[22px] shadow-sm text-sm leading-relaxed",
+                                                msg.role === 'user'
+                                                    ? "bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-br-none"
+                                                    : "bg-white border border-slate-100 text-slate-800 rounded-bl-none prose prose-sm prose-pink"
+                                            )}>
+                                                {msg.role === 'assistant' ? (
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            a: ({ href, children }) => (
+                                                                <Link
+                                                                    to={href || "#"}
+                                                                    className="text-pink-600 underline hover:text-pink-700 font-bold"
+                                                                >
+                                                                    {children}
+                                                                </Link>
+                                                            )
+                                                        }}
+                                                    >
+                                                        {cleanContent}
+                                                    </ReactMarkdown>
+                                                ) : msg.content}
+                                            </div>
+                                            {msg.role === 'assistant' && productCards.map((match, cardIdx) => (
+                                                <ProductMiniCard
+                                                    key={cardIdx}
+                                                    data={match.replace('[PRODUCT_CARD:', '').replace(']', '')}
+                                                    onNavigate={(id) => navigate(`/product/${id}`)}
+                                                />
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                                 {isLoadingAI && <TypingIndicator />}
                             </motion.div>
                         ) : (

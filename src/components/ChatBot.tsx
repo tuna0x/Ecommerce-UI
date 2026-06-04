@@ -13,10 +13,12 @@ import { cn } from '../lib/utils';
 type Message = { role: 'user' | 'assistant' | 'admin'; content: string; timestamp?: string };
 
 const quickQuestions = [
-    { label: '🔥 Đang Flashsale', value: 'Có sản phẩm nào đang flashsale hay gỉảm giá không?' },
-    { label: '🛒 Xem Giỏ Hàng', value: 'Trong giỏ hàng của tôi đang có những gì?' },
-    { label: '📦 Tình trạng đơn', value: 'Đơn hàng của tôi bao giờ giao?' },
-    { label: '🎟️ Lấy mã giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
+    { label: 'Top sản phẩm hot', value: 'Top 3 sản phẩm hot nhất hiện tại là gì?' },
+    { label: 'Tư vấn theo da', value: 'Da dầu mụn nên dùng sản phẩm nào dưới 500k?' },
+    { label: 'Đang flash sale', value: 'Có sản phẩm nào đang flash sale hoặc giảm giá không?' },
+    { label: 'Lấy mã giảm giá', value: 'Cho mình xin mã giảm giá hiện có với' },
+    { label: 'Tình trạng đơn', value: 'Đơn hàng của tôi hiện đang ở trạng thái nào?' },
+    { label: 'Xây routine', value: 'Lập routine skincare sáng tối cho da nhạy cảm giúp mình' },
 ];
 
 const ADMIN_EMAIL = 'admin@gmail.com';
@@ -24,16 +26,27 @@ const ADMIN_EMAIL = 'admin@gmail.com';
 // --- Sub-components (outside for better memoization) ---
 
 const ProductMiniCard = ({ data, onNavigate }: { data: string, onNavigate: (id: string) => void }) => {
-    const [id, name, price, thumbnail] = data.split('|');
+    const [id = '', name = 'Sản phẩm', price = '0', ...thumbnailParts] = data.split('|');
+    const thumbnail = thumbnailParts.join('|').trim();
+    const imageSrc = thumbnail || '/logo.jpg';
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             onClick={() => onNavigate(id)}
-            className="flex items-center gap-3 p-3 bg-white border border-pink-100 rounded-2xl my-2 cursor-pointer hover:border-pink-300 transition-all shadow-sm group text-left"
+            className="flex w-full max-w-full items-center gap-3 overflow-hidden p-3 bg-white border border-pink-100 rounded-2xl my-2 cursor-pointer hover:border-pink-300 transition-all shadow-sm group text-left"
         >
             <div className="h-16 w-16 rounded-xl overflow-hidden bg-slate-50 shrink-0">
-                <img src={thumbnail || '/placeholder-product.png'} alt={name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <img
+                    src={imageSrc}
+                    alt={name}
+                    className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(event) => {
+                        const target = event.currentTarget;
+                        if (target.src.endsWith('/logo.jpg')) return;
+                        target.src = '/logo.jpg';
+                    }}
+                />
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-800 truncate mb-0.5">{name}</p>
