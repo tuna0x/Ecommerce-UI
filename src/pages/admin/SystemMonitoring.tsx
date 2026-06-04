@@ -86,26 +86,32 @@ const formatUptime = (seconds?: number | null) => {
   return `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(secs)}s`;
 };
 
-const getMeasurementValue = (payload: any, statistic = "VALUE") => {
-  const metricPayload = unwrapActuatorPayload(payload);
-  const measurements = metricPayload?.measurements;
-  if (!Array.isArray(measurements)) return null;
-  const exact = measurements.find((item) => item?.statistic === statistic);
-  const fallback = measurements[0];
-  const value = exact?.value ?? fallback?.value;
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-};
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
-const unwrapActuatorPayload = (payload: any) => {
-  if (payload?.data && (payload.statusCode != null || payload.message != null || payload.error !== undefined)) {
+const unwrapActuatorPayload = (payload: unknown): unknown => {
+  if (isRecord(payload) && payload.data && (payload.statusCode != null || payload.message != null || payload.error !== undefined)) {
     return payload.data;
   }
   return payload;
 };
 
-const getComponentStatus = (components: any, ...names: string[]): HealthStatus => {
+const getMeasurementValue = (payload: unknown, statistic = "VALUE") => {
+  const metricPayload = unwrapActuatorPayload(payload);
+  if (!isRecord(metricPayload)) return null;
+  const measurements = metricPayload.measurements;
+  if (!Array.isArray(measurements)) return null;
+  const exact = measurements.find((item) => isRecord(item) && item.statistic === statistic);
+  const fallback = measurements.find(isRecord);
+  const value = (isRecord(exact) ? exact.value : undefined) ?? (isRecord(fallback) ? fallback.value : undefined);
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+};
+
+const getComponentStatus = (components: unknown, ...names: string[]): HealthStatus => {
+  if (!isRecord(components)) return "UNKNOWN";
   for (const name of names) {
-    const status = components?.[name]?.status;
+    const component = components[name];
+    const status = isRecord(component) ? component.status : undefined;
     if (status === "UP" || status === "DOWN" || status === "UNKNOWN") return status;
   }
   return "UNKNOWN";
@@ -167,16 +173,17 @@ export const SystemMonitoring: React.FC = () => {
 
     let latency: number | null = null;
     let nextHealth: HealthStatus = "UNKNOWN";
-    let nextComponents: any = null;
+    let nextComponents: unknown = null;
 
     try {
       const healthResponse = await axios.get(`${serverRoot}/actuator/health`, { timeout: 3000 });
       latency = Math.round(performance.now() - startedAt);
       const healthPayload = unwrapActuatorPayload(healthResponse.data);
-      nextHealth = healthPayload?.status === "UP" ? "UP" : healthPayload?.status === "DOWN" ? "DOWN" : "UNKNOWN";
-      nextComponents = healthPayload?.components;
+      const status = isRecord(healthPayload) ? healthPayload.status : undefined;
+      nextHealth = status === "UP" ? "UP" : status === "DOWN" ? "DOWN" : "UNKNOWN";
+      nextComponents = isRecord(healthPayload) ? healthPayload.components : null;
       setHealthStatus(nextHealth);
-    } catch (error) {
+    } catch {
       setHealthStatus("UNKNOWN");
       addLog("ERROR", "Không gọi được /actuator/health. Kiểm tra backend, CORS hoặc cấu hình actuator.");
     }
@@ -260,7 +267,8 @@ export const SystemMonitoring: React.FC = () => {
   }, [addLog, fetchMetric, serverRoot]);
 
   useEffect(() => {
-    void fetchData();
+    const timer = window.setTimeout(() => void fetchData(), 0);
+    return () => window.clearTimeout(timer);
   }, [fetchData]);
 
   useEffect(() => {

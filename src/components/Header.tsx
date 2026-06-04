@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../context/PermissionContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCategories } from '../hooks/useCategories';
+import type { FrontendCategory } from '../hooks/useCategories';
 import { Link, useNavigate } from 'react-router-dom';
 import { NavLink } from './NavLink';
 import { useWishlist } from '../hooks/useWishlist';
@@ -327,16 +328,18 @@ const Header: React.FC = () => {
 };
 
 interface MobileCategoryAccordionProps {
-  category: any;
+  category: FrontendCategory;
   onClose: () => void;
 }
+
+const CategoryIcon = ({ name }: { name: string }) => {
+  return React.createElement(getCategoryIcon(name), { className: "w-4 h-4" });
+};
 
 const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ category, onClose }) => {
   const [isOpen, setIsOpen] = useState(false);
   const categorySlug = category.slug || category.name.toLowerCase().replace(/\s+/g, '-');
   const hasChildren = category.children && category.children.length > 0;
-
-  const Icon = getCategoryIcon(category.name);
   
   return (
     <div className="group">
@@ -347,7 +350,7 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
           onClick={onClose}
         >
           <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            <Icon className="w-4 h-4" />
+            <CategoryIcon name={category.name} />
           </div>
           <span>{category.name}</span>
         </Link>
@@ -376,7 +379,7 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
             className="overflow-hidden bg-secondary/30 rounded-lg mb-2"
           >
             <div className="p-3 space-y-3">
-              {category.children.map((sub: any, index: number) => (
+              {category.children.map((sub, index: number) => (
                 <div key={index} className="space-y-2">
                   <Link
                     to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}`}
@@ -387,7 +390,7 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
                   </Link>
                   {sub.children && sub.children.length > 0 && (
                     <div className="flex flex-wrap gap-2 ml-1">
-                      {sub.children.map((child: any, cIndex: number) => (
+                      {sub.children.map((child, cIndex: number) => (
                         <Link
                           key={cIndex}
                           to={`/category/${categorySlug}?sub=${encodeURIComponent(sub.name)}&sub2=${encodeURIComponent(child.name)}`}

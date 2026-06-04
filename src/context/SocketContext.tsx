@@ -13,14 +13,13 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const [isConnected, setIsConnected] = useState(false);
-    const [stompClient, setStompClient] = useState<Client | null>(null);
+    const stompClient = useMemo(() => {
+        if (!user) return null;
 
-    useEffect(() => {
-        if (user) {
             const socketUrl = import.meta.env.VITE_WS_BASE_URL || "http://localhost:8080/websocket";
             const token = localStorage.getItem("access_token");
 
-            const client = new Client({
+            return new Client({
                 webSocketFactory: () => new SockJS(socketUrl),
                 connectHeaders: {
                     Authorization: `Bearer ${token}`
@@ -43,22 +42,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     setIsConnected(false);
                 },
             });
-
-            client.activate();
-            setStompClient(client);
-
-            return () => {
-                client.deactivate();
-                setStompClient(null);
-            };
-        } else {
-            setIsConnected(false);
-            if (stompClient) {
-                stompClient.deactivate();
-                setStompClient(null);
-            }
-        }
     }, [user]);
+
+    useEffect(() => {
+        if (!stompClient) {
+            return;
+        }
+
+        stompClient.activate();
+        return () => {
+            stompClient.deactivate();
+        };
+    }, [stompClient]);
 
     const value = useMemo(() => ({
         stompClient,
@@ -72,6 +67,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => {
     const context = useContext(SocketContext);
     if (!context) throw new Error('useSocket must be used within SocketProvider');

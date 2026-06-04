@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { ReactNode } from "react";
 import type { IProduct, IVariantAttribute } from "../types/product.type";
 import { useAuth } from "./AuthContext";
@@ -39,6 +39,16 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const FREE_SHIPPING_THRESHOLD = 500000;
+
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+    if (typeof error === "object" && error !== null && "response" in error) {
+        const response = (error as { response?: { data?: { message?: unknown } } }).response;
+        if (typeof response?.data?.message === "string") {
+            return response.data.message;
+        }
+    }
+    return fallback;
+};
 
 const getInitialCart = (): CartItem[] => {
     const savedCart = localStorage.getItem("BÔNGCOSMETIC_cart");
@@ -161,8 +171,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 toast.success("Đã thêm sản phẩm vào giỏ hàng");
             } catch (err) {
                 console.error("API addToCart failed", err);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                toast.error((err as any)?.response?.data?.message || "Thêm vào giỏ hàng thất bại. Vui lòng thử lại.");
+                toast.error(getApiErrorMessage(err, "Thêm vào giỏ hàng thất bại. Vui lòng thử lại."));
             } finally {
                 setIsLoading(false);
             }
@@ -206,8 +215,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 }
             } catch (err) {
                 console.error("API removeFromCart failed", err);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                toast.error((err as any)?.response?.data?.message || "Xóa sản phẩm thất bại.");
+                toast.error(getApiErrorMessage(err, "Xóa sản phẩm thất bại."));
                 // Revert local state delete if API fails
                 if (itemToRemove) {
                     setCartItems((prev) => [...prev, itemToRemove]);
@@ -272,9 +280,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 } catch (err: unknown) {
                     console.error("API updateQuantity failed", err);
                     delete updateTimeoutsRef.current[cartItemId];
-                    
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    toast.error((err as any)?.response?.data?.message || "Cập nhật số lượng thất bại.");
+                toast.error(getApiErrorMessage(err, "Cập nhật số lượng thất bại."));
                     
                     // On failure, ALWAYS refetch to revert to the true backend state
                     const res = await getCartApi();
@@ -340,7 +346,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({
                 toast.success(`Đã xóa ${itemsToRemove.length} sản phẩm khỏi giỏ hàng`);
             } catch (err) {
                 console.error("API removeSelectedItems failed", err);
-                toast.error((err as any)?.response?.data?.message || "Xóa sản phẩm thất bại.");
+                toast.error(getApiErrorMessage(err, "Xóa sản phẩm thất bại."));
                 // Revert on failure
                 setCartItems(prev => [...prev, ...itemsToRemove]);
             } finally {
@@ -406,3 +412,6 @@ export const useCart = () => {
 };
 
 export { FREE_SHIPPING_THRESHOLD };
+
+
+

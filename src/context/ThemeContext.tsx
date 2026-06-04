@@ -56,7 +56,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const nextTheme = theme === 'light' ? 'dark' : 'light';
 
-    (document as any).startViewTransition(() => {
+    document.startViewTransition(() => {
       flushSync(() => {
         // Update DOM class synchronously inside the transition callback
         root.classList.remove('light', 'dark');

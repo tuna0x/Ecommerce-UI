@@ -12,6 +12,7 @@ import { useMyVouchers, useAvailableVouchers, useCollectVoucher } from '../hooks
 const VoucherWallet: React.FC = () => {
     const { toast } = useToast();
     const [copiedId, setCopiedId] = useState<number | null>(null);
+    const [now] = useState(() => Date.now());
 
     // React Query Hooks
     const { data: myVouchers = [], isLoading: isMyLoading } = useMyVouchers();
@@ -55,7 +56,7 @@ const VoucherWallet: React.FC = () => {
     }) => {
         const coupon = isUserVoucher ? (voucher as UserCoupon).coupon : (voucher as Coupon);
         const isUsed = isUserVoucher && (voucher as UserCoupon).isUsed;
-        const diff = new Date(coupon.endDate).getTime() - Date.now();
+        const diff = new Date(coupon.endDate).getTime() - now;
         const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24)) > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0;
 
         return (

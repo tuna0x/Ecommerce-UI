@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { Clock, Calendar as CalendarIcon, Zap, Check } from "lucide-react";
 import { Button } from "./button";
 import { Label } from "./label";
@@ -18,16 +18,14 @@ export const FlashSaleTimePicker: React.FC<FlashSaleTimePickerProps> = ({
   onChange,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(format(startDate, "yyyy-MM-dd"));
-  const [activeSlot, setActiveSlot] = useState<number | null>(null);
 
-  // Check if current start/end matches any pre-defined slot
-  useEffect(() => {
+  const activeSlot = useMemo(() => {
     const startStr = format(startDate, "HH:mm:ss");
     const endStr = format(endDate, "HH:mm:ss");
     const slotIndex = FLASH_SALE_SLOTS.findIndex(
       (slot) => slot.start === startStr && slot.end === endStr
     );
-    setActiveSlot(slotIndex !== -1 ? slotIndex : null);
+    return slotIndex !== -1 ? slotIndex : null;
   }, [startDate, endDate]);
 
   const handleDateChange = (dateStr: string) => {
@@ -46,7 +44,6 @@ export const FlashSaleTimePicker: React.FC<FlashSaleTimePickerProps> = ({
 
     if (isValid(newStart) && isValid(newEnd)) {
       onChange(newStart, newEnd);
-      setActiveSlot(index);
     }
   };
 

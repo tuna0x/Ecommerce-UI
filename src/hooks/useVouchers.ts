@@ -2,14 +2,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { voucherService, type UserCoupon, type Coupon } from '../service/voucherService';
 import { useToast } from '../hooks/use-toast';
 
+type PaginatedResponse<T> = {
+  result?: T[];
+};
+
+const getListData = <T,>(data: T[] | PaginatedResponse<T> | undefined): T[] => {
+  if (Array.isArray(data)) return data;
+  return data?.result || [];
+};
+
 export const useMyVouchers = () => {
   return useQuery<UserCoupon[]>({
     queryKey: ['vouchers-my'],
     queryFn: async () => {
       const res = await voucherService.getMyVouchers();
-      if (Array.isArray(res.data)) return res.data;
-      // Handle pagination if needed
-      return (res.data as any)?.result || [];
+      return getListData<UserCoupon>(res.data);
     },
     staleTime: 60 * 1000, // 1 minute
   });
@@ -20,8 +27,7 @@ export const useAvailableVouchers = () => {
     queryKey: ['vouchers-available'],
     queryFn: async () => {
       const res = await voucherService.getAvailableVouchers();
-      if (Array.isArray(res.data)) return res.data;
-      return (res.data as any)?.result || [];
+      return getListData<Coupon>(res.data);
     },
     staleTime: 60 * 1000,
   });

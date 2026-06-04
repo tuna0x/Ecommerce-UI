@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wishlistService } from '../service/wishlistService';
 import { toast } from 'sonner';
@@ -46,20 +46,23 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const wishlistIds = useMemo(() => new Set(wishlist.map((p: IProduct) => p.id)), [wishlist]);
 
-  const isInWishlist = (productId: number) => {
+  const isInWishlist = useCallback((productId: number) => {
     return wishlistIds.has(productId);
-  };
+  }, [wishlistIds]);
 
   const wishlistCount = wishlist.length;
+  const toggleWishlist = useCallback((productId: number, isWishlisted: boolean) => {
+    toggleWishlistMutation.mutate({ productId, isWishlisted });
+  }, [toggleWishlistMutation]);
 
   const value = useMemo(() => ({
     wishlist,
     wishlistCount,
     isLoading,
-    toggleWishlist: (productId: number, isWishlisted: boolean) => toggleWishlistMutation.mutate({ productId, isWishlisted }),
+    toggleWishlist,
     isToggling: toggleWishlistMutation.isPending,
     isInWishlist,
-  }), [wishlist, wishlistIds, isLoading, toggleWishlistMutation.isPending]);
+  }), [wishlist, wishlistCount, isLoading, toggleWishlist, toggleWishlistMutation.isPending, isInWishlist]);
 
   return (
     <WishlistContext.Provider value={value}>
@@ -68,6 +71,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useWishlist = () => {
   const context = useContext(WishlistContext);
   if (context === undefined) {

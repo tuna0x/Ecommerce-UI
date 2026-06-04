@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Search, Eye, Loader2, RefreshCw, Calendar, X, Filter, RotateCcw, BarChart3, ReceiptText, CreditCard, Wallet, Banknote, ListRestart, Info } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,7 +30,7 @@ const STATUS_OPTIONS = [
   { value: "REFUNDED",  label: "Đã hoàn tiền", color: "bg-blue-100 text-blue-800 border-blue-200" },
 ];
 
-const METHOD_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+const METHOD_CONFIG: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   COD: { label: "COD", icon: Banknote, color: "text-orange-600 bg-orange-50" },
   VNPAY: { label: "VNPAY", icon: Wallet, color: "text-blue-600 bg-blue-50" },
   PAYOS: { label: "PayOS", icon: CreditCard, color: "text-indigo-600 bg-indigo-50" },
@@ -171,7 +172,7 @@ const TransactionsManagement: React.FC = () => {
           );
       }
       return <div className="p-4 bg-muted/30 rounded-lg font-mono text-sm break-all w-full">{data}</div>;
-    } catch (e) {
+    } catch {
       return <div className="p-4 bg-muted/30 rounded-lg font-mono text-sm break-all w-full">{data}</div>;
     }
   };

@@ -202,10 +202,34 @@ interface ConfettiItem {
     id: number;
     x: number;
     y: number;
+    targetX: number;
+    targetY: number;
     color: string;
     size: number;
     rotate: number;
+    duration: number;
+    borderRadius: string;
 }
+
+const createConfettiItems = (): ConfettiItem[] => {
+    const colors = ['#ec4899', '#f43f5e', '#a855f7', '#6366f1', '#10b981', '#f59e0b'];
+    return Array.from({ length: 60 }, (_, index) => {
+        const x = 100 + Math.random() * 200;
+        const y = 200 + Math.random() * 100;
+        return {
+            id: Date.now() + index,
+            x,
+            y,
+            targetX: x + (Math.random() - 0.5) * 300,
+            targetY: y + 400 + Math.random() * 200,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: 5 + Math.random() * 8,
+            rotate: Math.random() * 360,
+            duration: 2.5 + Math.random(),
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+        };
+    });
+};
 
 export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClose }) => {
     const { user } = useAuth();
@@ -227,7 +251,7 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
 
     const storageKey = useMemo(() => {
         return user?.email ? `BONGCOSMETIC-checkin-${user.email}` : 'BONGCOSMETIC-checkin-guest';
-    }, [user?.email]);
+    }, [user]);
 
     // Fetch initial state from database (if authenticated) or local storage
     useEffect(() => {
@@ -354,19 +378,7 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
 
     // Confetti effect generator
     const triggerConfetti = () => {
-        const colors = ['#ec4899', '#f43f5e', '#a855f7', '#6366f1', '#10b981', '#f59e0b'];
-        const newConfettis: ConfettiItem[] = [];
-        for (let i = 0; i < 60; i++) {
-            newConfettis.push({
-                id: Math.random(),
-                x: 100 + Math.random() * 200, // Spawn around center-ish of drawer
-                y: 200 + Math.random() * 100,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                size: 5 + Math.random() * 8,
-                rotate: Math.random() * 360
-            });
-        }
-        setConfettis(newConfettis);
+        setConfettis(createConfettiItems());
         setTimeout(() => setConfettis([]), 3500); // Clean up after animation
     };
 
@@ -459,17 +471,17 @@ export const SkincareCheckIn: React.FC<SkincareCheckInProps> = ({ isOpen, onClos
                                         initial={{ opacity: 1, x: c.x, y: c.y, scale: 0.2, rotate: c.rotate }}
                                         animate={{
                                             opacity: [1, 1, 0],
-                                            x: c.x + (Math.random() - 0.5) * 300,
-                                            y: c.y + 400 + Math.random() * 200,
+                                            x: c.targetX,
+                                            y: c.targetY,
                                             scale: [0.2, 1.2, 0.5],
                                             rotate: c.rotate + 720
                                         }}
-                                        transition={{ duration: 2.5 + Math.random(), ease: 'easeOut' }}
+                                        transition={{ duration: c.duration, ease: 'easeOut' }}
                                         style={{
                                             position: 'absolute',
                                             width: c.size,
                                             height: c.size,
-                                            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+                                            borderRadius: c.borderRadius,
                                             backgroundColor: c.color,
                                             zIndex: 999
                                         }}

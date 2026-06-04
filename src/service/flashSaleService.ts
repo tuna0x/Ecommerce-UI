@@ -62,7 +62,7 @@ export const flashSaleService = {
         try {
             const response = await axiosInstance.get<IApiResponse<FlashSaleCampaign>>('/flash-sales/active');
             return response.data.data ?? null;
-        } catch (error) {
+        } catch {
             return null;
         }
     }

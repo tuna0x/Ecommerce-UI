@@ -195,7 +195,7 @@ const SessionTimeline: React.FC<SessionTimelineProps> = memo(({ logs }) => {
                     </Badge>
                     {session.hasPurchase && (
                       <Badge className="bg-green-500 text-white border-none text-[10px] h-5 px-1.5 animate-pulse">
-                        ĐÃ MUA HÀNG
+                        ĐàMUA HÀNG
                       </Badge>
                     )}
                   </div>

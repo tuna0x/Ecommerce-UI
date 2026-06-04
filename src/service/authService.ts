@@ -6,6 +6,12 @@ import type {
   IRegister,
 } from "../types/auth.type";
 
+interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
 export const loginApi = async (data: ILoginPayload) => {
   const response = await axiosInstance.post<IApiResponse<ILoginResponse>>(
     "/auth/login",
@@ -61,7 +67,7 @@ export const forgotPasswordApi = async (email: string) => {
   return response.data;
 };
 
-export const resetPasswordApi = async (data: any) => {
+export const resetPasswordApi = async (data: ResetPasswordPayload) => {
   const response = await axiosInstance.post<IApiResponse<void>>(
     "/auth/reset-password",
     data,

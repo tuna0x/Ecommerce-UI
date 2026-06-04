@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, ArrowRight, Loader2, Mic } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +9,28 @@ import { logActivity } from "../service/trackingService";
 interface SearchDropdownProps {
   className?: string;
   isMobile?: boolean;
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onresult: ((event: {
+    resultIndex: number;
+    results: ArrayLike<ArrayLike<{ transcript: string }>>;
+  }) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+interface SpeechRecognitionWindow extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
 }
 
 const SearchDropdown: React.FC<SearchDropdownProps> = ({
@@ -23,14 +44,14 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { } = useAuth(); // No longer need isAuthenticated here
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   // Initialize Speech Recognition
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechWindow = window as SpeechRecognitionWindow;
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setIsSupported(false);
       return;
@@ -49,7 +70,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
       setIsListening(false);
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event) => {
       setIsListening(false);
       if (!['no-speech', 'aborted'].includes(event.error)) {
         console.error('🎤 Mic Error:', event.error);
@@ -59,7 +80,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
       }
     };
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       let currentTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         currentTranscript += event.results[i][0].transcript;
@@ -67,8 +88,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
       
       if (currentTranscript) {
         setQuery(currentTranscript);
-        // Auto open dropdown when text is recognized
-        if (!isOpen) setIsOpen(true);
+        setIsOpen(true);
       }
     };
 

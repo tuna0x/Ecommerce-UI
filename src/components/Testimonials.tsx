@@ -4,7 +4,17 @@ import { Star, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import ScrollReveal from './ScrollReveal';
 import { reviewService, type IReview } from '../service/reviewService';
 
-const mockTestimonials = [
+interface Testimonial {
+    id: number;
+    name: string;
+    avatar: string;
+    rating: number;
+    text: string;
+    product: string;
+    verified: boolean;
+}
+
+const mockTestimonials: Testimonial[] = [
     {
         id: 1,
         name: 'Nguyễn Thị Minh Anh',
@@ -45,14 +55,14 @@ const mockTestimonials = [
 
 const Testimonials: React.FC = () => {
     const [current, setCurrent] = useState(0);
-    const [testimonials, setTestimonials] = useState<any[]>(mockTestimonials);
+    const [testimonials, setTestimonials] = useState<Testimonial[]>(mockTestimonials);
 
     useEffect(() => {
         const fetchReviews = async () => {
             try {
                 const res = await reviewService.getFeaturedReviews(5, 1, 10);
                 if (res.data?.result && res.data.result.length > 0) {
-                    const realReviews = res.data.result.map((rev: IReview) => ({
+                    const realReviews: Testimonial[] = res.data.result.map((rev: IReview) => ({
                         id: rev.id,
                         name: rev.userName,
                         avatar: rev.userImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(rev.userName)}&background=random`,

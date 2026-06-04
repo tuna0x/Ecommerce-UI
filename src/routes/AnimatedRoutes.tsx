@@ -64,9 +64,14 @@ const About = lazy(() => import("../pages/About"));
 const AnimatedRoutes = () => {
   const location = useLocation();
   const lastLocationStr = useRef(location.pathname);
-  const startTime = useRef(Date.now());
+  const startTime = useRef(0);
 
   useEffect(() => {
+    if (startTime.current === 0) {
+      startTime.current = Date.now();
+      return;
+    }
+
     if (lastLocationStr.current !== location.pathname) {
       const timeSpent = Date.now() - startTime.current;
       logActivity('TIME_ON_PAGE', { path: lastLocationStr.current, durationMs: timeSpent });

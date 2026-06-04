@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   ShoppingCart, Users, DollarSign,
   TrendingUp, TrendingDown, ArrowUpRight, AlertTriangle, Loader2, RefreshCcw,
@@ -220,7 +220,7 @@ const Dashboard: React.FC = () => {
                   <XAxis dataKey="month" className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <YAxis tickFormatter={formatShortCurrency} className="text-xs" tick={{ fill: 'currentColor', opacity: 0.5 }} />
                   <Tooltip
-                    formatter={(value: any) => [formatCurrency(Number(value) || 0), 'Doanh thu'] as [string, string]}
+                    formatter={(value: unknown) => [formatCurrency(Number(value) || 0), 'Doanh thu'] as [string, string]}
                     contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="var(--primary)" fill="url(#colorRevenue)" strokeWidth={2} />
@@ -245,14 +245,15 @@ const Dashboard: React.FC = () => {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: any, name: any) => {
-                      const cat = data.categoryDistribution.find(c => c.category === name);
+                    formatter={(value: unknown, name: unknown) => {
+                      const categoryName = String(name);
+                      const cat = data.categoryDistribution.find(c => c.category === categoryName);
                       return [
-                        <div key={name} className="flex flex-col gap-1">
+                        <div key={categoryName} className="flex flex-col gap-1">
                           <div>{Number(value) || 0} đơn hàng</div>
                           <div className="text-xs text-primary">AOV: {formatCurrency(cat?.aov || 0)}</div>
                         </div>,
-                        name
+                        categoryName
                       ];
                     }}
                   />
@@ -282,7 +283,7 @@ const Dashboard: React.FC = () => {
                     tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                     tickFormatter={(v: string) => v.length > 18 ? v.slice(0, 18) + '…' : v}
                   />
-                  <Tooltip formatter={(value: any) => [`${Number(value) || 0} đã bán`, 'Số lượng'] as [string, string]} />
+                  <Tooltip formatter={(value: unknown) => [`${Number(value) || 0} đã bán`, 'Số lượng'] as [string, string]} />
                   <Bar dataKey="quantity" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -367,3 +368,5 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
+

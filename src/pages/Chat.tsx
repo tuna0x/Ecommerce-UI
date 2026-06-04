@@ -40,7 +40,7 @@ const Chat: React.FC = () => {
     ]);
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [displayContent, setDisplayContent] = useState<Record<number, string>>({});
-    const typingIntervals = useRef<Record<number, any>>({});
+    const typingIntervals = useRef<Record<number, ReturnType<typeof setInterval>>>({});
     const [input, setInput] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -252,12 +252,12 @@ const Chat: React.FC = () => {
                                             {msg.role === 'assistant' ? (
                                                 <ReactMarkdown
                                                     components={{
-                                                        a: ({ node, ...props }) => (
+                                                        a: ({ href, children }) => (
                                                             <Link 
-                                                                to={props.href || "#"} 
+                                                                to={href || "#"} 
                                                                 className="text-pink-600 underline hover:text-pink-700 font-bold"
                                                             >
-                                                                {props.children}
+                                                                {children}
                                                             </Link>
                                                         )
                                                     }}

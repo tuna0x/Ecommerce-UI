@@ -420,8 +420,9 @@ const InventoryManagement: React.FC = () => {
             setBulkItems([]);
             setAdjustNote('');
             fetchInventorySummary(true);
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Có lỗi khi nhập kho hàng loạt');
+        } catch (error: unknown) {
+            const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+            toast.error(message || 'Có lỗi khi nhập kho hàng loạt');
         } finally {
             setIsSubmitting(false);
         }

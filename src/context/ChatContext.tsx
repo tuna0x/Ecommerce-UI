@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { IMessage, StompSubscription } from '@stomp/stompjs';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import { getChatHistory, getConversations, markMessagesAsRead } from '../service/chatService';
@@ -15,6 +16,10 @@ export interface Conversation {
     lastMessage: string;
     lastMessageTime: string;
     unreadCount: number;
+}
+
+interface BackendChatMessage extends ChatMessage {
+    unreadCount?: number;
 }
 
 interface ChatContextType {
@@ -79,7 +84,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             const res = await getConversations(); // res is RestResponse
             if (res && res.data) {
-                const mapped: Conversation[] = res.data.map((m: any) => {
+                const mapped: Conversation[] = (res.data as BackendChatMessage[]).map((m) => {
                     const partner = m.senderEmail === user.email ? m.receiverEmail : m.senderEmail;
                     return {
                         partnerEmail: partner,
@@ -151,9 +156,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (isConnected && stompClient && stompClient.connected && user) {
-            let sub: any = null;
+            let sub: StompSubscription | null = null;
             try {
-                sub = stompClient.subscribe("/user/queue/messages", (message) => {
+                sub = stompClient.subscribe("/user/queue/messages", (message: IMessage) => {
                     const newMsg: ChatMessage = JSON.parse(message.body);
                     
                     const partnerOfNewMsg = newMsg.senderEmail === user.email ? newMsg.receiverEmail : newMsg.senderEmail;
@@ -270,6 +275,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useChat = () => {
     const context = useContext(ChatContext);
     if (!context) throw new Error('useChat must be used within ChatProvider');
