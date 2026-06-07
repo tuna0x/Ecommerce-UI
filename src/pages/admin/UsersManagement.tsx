@@ -284,6 +284,7 @@ const UsersManagement: React.FC = () => {
           email: formData.email,
           password: formData.password,
           name: formData.name,
+          phoneNumber: formData.phoneNumber,
           userProfile: {
             name: formData.name,
             age: formData.age,
@@ -547,7 +548,7 @@ const UsersManagement: React.FC = () => {
                           </Badge>
                        </div>
 
-                       <div className="grid grid-cols-2 gap-3 mb-4 bg-muted/30 rounded-xl p-3">
+                       <div className="grid grid-cols-3 gap-3 mb-4 bg-muted/30 rounded-xl p-3">
                           <div className="space-y-0.5">
                              <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Vai trò</p>
                              <p className="text-xs font-black text-primary uppercase">{user.role?.name.replace('ROLE_', '')}</p>
@@ -555,6 +556,10 @@ const UsersManagement: React.FC = () => {
                           <div className="space-y-0.5">
                              <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Tuổi</p>
                              <p className="text-xs font-black text-foreground">{user.age || 'N/A'}</p>
+                          </div>
+                          <div className="space-y-0.5">
+                             <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">SĐT</p>
+                             <p className="text-xs font-black text-foreground">{user.phoneNumber || 'N/A'}</p>
                           </div>
                        </div>
 
