@@ -12,6 +12,8 @@ import {
 import ProductCard from "../components/ProductCard";
 import type { IProduct } from "../types/product.type";
 import { ProductService } from "../service/productService";
+import { categoryService } from "../service/categoryService";
+import type { ICategory } from "../types/category.type";
 import {
   Select,
   SelectContent,
@@ -34,6 +36,7 @@ const SearchResults: React.FC = () => {
   const [priceRange, setPriceRange] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
+  const [categories, setCategories] = useState<ICategory[]>([]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -79,9 +82,23 @@ const SearchResults: React.FC = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  const uniqueCategories = useMemo(() => {
-    return ["Skin Care", "Makeup", "Hair Care", "Body Care", "Fragrance"];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await categoryService.getAll(0, 100);
+        if (res.data) {
+          setCategories(res.data.result);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
   }, []);
+
+  const uniqueCategories = useMemo(() => {
+    return categories.map(c => c.name);
+  }, [categories]);
 
   const clearFilters = () => {
     const newParams = new URLSearchParams(searchParams);
