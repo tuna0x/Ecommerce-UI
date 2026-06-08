@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -12,8 +12,8 @@ import {
 import ProductCard from "../components/ProductCard";
 import type { IProduct } from "../types/product.type";
 import { ProductService } from "../service/productService";
-import { categoryService } from "../service/categoryService";
-import type { ICategory } from "../types/category.type";
+import { BrandService } from "../service/brandService";
+import type { IBrand } from "../types/brand.type";
 import {
   Select,
   SelectContent,
@@ -32,11 +32,12 @@ const SearchResults: React.FC = () => {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("id,desc");
-  const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || "all");
+  const [selectedBrand, setSelectedBrand] = useState<string>(brandParam || "all");
+  const [selectedSkinType, setSelectedSkinType] = useState<string>("all");
   const [priceRange, setPriceRange] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
-  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [brands, setBrands] = useState<IBrand[]>([]);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -44,9 +45,19 @@ const SearchResults: React.FC = () => {
       let filter = "";
       const conditions: string[] = ["active:true"];
 
-      if (brandParam) conditions.push(`brand.name:'${brandParam}'`);
-      if (categoryParam) conditions.push(`category.name:'${categoryParam}'`);
-      if (selectedCategory !== "all" && !categoryParam) conditions.push(`category.name:'${selectedCategory}'`);
+      if (brandParam) {
+        conditions.push(`brand.name:'${brandParam}'`);
+      } else if (selectedBrand !== "all") {
+        conditions.push(`brand.name:'${selectedBrand}'`);
+      }
+
+      if (categoryParam) {
+        conditions.push(`category.name:'${categoryParam}'`);
+      }
+
+      if (selectedSkinType !== "all") {
+        conditions.push(`(skinType:'${selectedSkinType}' or skinType:'Mọi loại da')`);
+      }
 
       if (priceRange !== "all") {
         if (priceRange === "under200") conditions.push("price < 200000");
@@ -61,7 +72,8 @@ const SearchResults: React.FC = () => {
         query.trim() &&
         !brandParam &&
         !categoryParam &&
-        selectedCategory === "all" &&
+        selectedBrand === "all" &&
+        selectedSkinType === "all" &&
         priceRange === "all" &&
         sortBy === "id,desc";
 
@@ -76,29 +88,25 @@ const SearchResults: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, brandParam, categoryParam, selectedCategory, priceRange, sortBy]);
+  }, [query, brandParam, categoryParam, selectedBrand, selectedSkinType, priceRange, sortBy]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchBrands = async () => {
       try {
-        const res = await categoryService.getAll(0, 100);
+        const res = await BrandService.getAll(0, 100);
         if (res.data) {
-          setCategories(res.data.result);
+          setBrands(res.data.result);
         }
       } catch (error) {
-        console.error("Error fetching categories:", error);
+        console.error("Error fetching brands:", error);
       }
     };
-    fetchCategories();
+    fetchBrands();
   }, []);
-
-  const uniqueCategories = useMemo(() => {
-    return categories.map(c => c.name);
-  }, [categories]);
 
   const clearFilters = () => {
     const newParams = new URLSearchParams(searchParams);
@@ -106,12 +114,13 @@ const SearchResults: React.FC = () => {
     newParams.delete("category");
     setSearchParams(newParams);
 
-    setSelectedCategory("all");
+    setSelectedBrand("all");
+    setSelectedSkinType("all");
     setPriceRange("all");
     setSortBy("id,desc");
   };
 
-  const hasActiveFilters = selectedCategory !== "all" || priceRange !== "all" || brandParam || categoryParam;
+  const hasActiveFilters = selectedBrand !== "all" || selectedSkinType !== "all" || priceRange !== "all" || brandParam || categoryParam;
   const filteredProducts = products;
 
   return (
@@ -154,20 +163,40 @@ const SearchResults: React.FC = () => {
             </button>
 
             <div className="hidden md:flex items-center gap-3">
+              {/* Brand Filter */}
               <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
+                value={selectedBrand}
+                onValueChange={setSelectedBrand}
               >
                 <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Danh mục" />
+                  <SelectValue placeholder="Thương hiệu" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {uniqueCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  <SelectItem value="all">Tất cả thương hiệu</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b.id} value={b.name}>
+                      {b.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              {/* Skin Type Filter */}
+              <Select
+                value={selectedSkinType}
+                onValueChange={setSelectedSkinType}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Loại da" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả loại da</SelectItem>
+                  <SelectItem value="Mọi loại da">Mọi loại da</SelectItem>
+                  <SelectItem value="Da dầu">Da dầu</SelectItem>
+                  <SelectItem value="Da khô">Da khô</SelectItem>
+                  <SelectItem value="Da hỗn hợp">Da hỗn hợp</SelectItem>
+                  <SelectItem value="Da nhạy cảm">Da nhạy cảm</SelectItem>
+                  <SelectItem value="Da mụn">Da mụn</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -239,21 +268,42 @@ const SearchResults: React.FC = () => {
             className="md:hidden mb-6 p-4 bg-secondary/50 rounded-xl space-y-4"
           >
             <div>
-              <label className="text-sm font-medium mb-2 block">Danh mục</label>
+              <label className="text-sm font-medium mb-2 block">Thương hiệu</label>
               <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
+                value={selectedBrand}
+                onValueChange={setSelectedBrand}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Danh mục" />
+                  <SelectValue placeholder="Thương hiệu" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả danh mục</SelectItem>
-                  {uniqueCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  <SelectItem value="all">Tất cả thương hiệu</SelectItem>
+                  {brands.map((b) => (
+                    <SelectItem key={b.id} value={b.name}>
+                      {b.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Loại da</label>
+              <Select
+                value={selectedSkinType}
+                onValueChange={setSelectedSkinType}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Loại da" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả loại da</SelectItem>
+                  <SelectItem value="Mọi loại da">Mọi loại da</SelectItem>
+                  <SelectItem value="Da dầu">Da dầu</SelectItem>
+                  <SelectItem value="Da khô">Da khô</SelectItem>
+                  <SelectItem value="Da hỗn hợp">Da hỗn hợp</SelectItem>
+                  <SelectItem value="Da nhạy cảm">Da nhạy cảm</SelectItem>
+                  <SelectItem value="Da mụn">Da mụn</SelectItem>
                 </SelectContent>
               </Select>
             </div>
