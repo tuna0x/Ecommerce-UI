@@ -8,6 +8,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../hooks/use-toast";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
+import GoogleAuthProvider from "../components/auth/GoogleAuthProvider";
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -219,7 +220,8 @@ const Login: React.FC = () => {
           </div>
 
           {/* Social Login */}
-          <div className="flex justify-center w-full">
+          <GoogleAuthProvider>
+            <div className="flex justify-center w-full">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => {
@@ -234,7 +236,8 @@ const Login: React.FC = () => {
               size="large"
               width="100%"
             />
-          </div>
+            </div>
+          </GoogleAuthProvider>
 
           {/* Register Link */}
           <p className="text-center text-sm text-muted-foreground mt-6">

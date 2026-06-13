@@ -74,6 +74,12 @@ const BlogDetail = () => {
                 description={blog.excerpt}
                 url={`/blog/${blog.id}`}
                 image={blog.image}
+                type="article"
+                breadcrumbs={[
+                    { name: "Trang chủ", url: "/" },
+                    { name: "Blog", url: "/blog" },
+                    { name: blog.title },
+                ]}
             />
 
             {/* Breadcrumb & Subnav */}

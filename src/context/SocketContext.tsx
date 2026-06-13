@@ -9,6 +9,10 @@ interface SocketContextType {
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
+const defaultSocketContext: SocketContextType = {
+    stompClient: null,
+    isConnected: false,
+};
 
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
@@ -70,6 +74,5 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 // eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => {
     const context = useContext(SocketContext);
-    if (!context) throw new Error('useSocket must be used within SocketProvider');
-    return context;
+    return context ?? defaultSocketContext;
 };

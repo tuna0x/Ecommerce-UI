@@ -1140,7 +1140,7 @@ const UsersManagement: React.FC = () => {
                         ) : (
                           <div className="py-24 text-center space-y-4">
                             <div className="relative mx-auto w-20 h-20">
-                               <Activity className="absolute inset-0 w-full h-full text-muted/10 animate-ping duration-[3s]" />
+                               <Activity className="absolute inset-0 w-full h-full text-muted/10 animate-ping [animation-duration:3s]" />
                                <Activity className="relative w-full h-full text-muted/20" />
                             </div>
                             <div className="space-y-1">

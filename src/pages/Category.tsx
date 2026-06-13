@@ -487,6 +487,12 @@ const Category = () => {
         title={activeCategoryNode ? activeCategoryNode.name : (category ? category.name : "Tất cả sản phẩm")}
         description={`Khám phá bộ sưu tập ${activeCategoryNode?.name || category?.name || "sản phẩm"} tại Bông Cosmetic. Hiện có ${meta.total} sản phẩm chất lượng, chính hãng.`}
         url={`/category/${slug}`}
+        breadcrumbs={[
+          { name: "Trang chủ", url: "/" },
+          ...(category ? [{ name: category.name, url: `/category/${category.slug}` }] : [{ name: "Tất cả sản phẩm", url: "/category/all" }]),
+          ...(subcategoryName ? [{ name: subcategoryName, url: `/category/${slug}?sub=${encodeURIComponent(subcategoryName)}` }] : []),
+          ...(subSubcategoryName ? [{ name: subSubcategoryName }] : []),
+        ]}
       />
 
       <main className="container mx-auto px-4 py-6">

@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { logActivity } from "../service/trackingService";
 import UserLayout from "../components/layout/UserLayout";
-import ProductDetail from "../pages/ProductDetail";
 
 // Lazy load all pages
 const Index = lazy(() => import("../pages/Index"));
@@ -17,6 +16,7 @@ const PaymentResult = lazy(() => import("../pages/PaymentResult"));
 const Account = lazy(() => import("../pages/Account"));
 const Orders = lazy(() => import("../pages/Orders"));
 const Category = lazy(() => import("../pages/Category"));
+const ProductDetail = lazy(() => import("../pages/ProductDetail"));
 const Chat = lazy(() => import("../pages/Chat"));
 const NotFound = lazy(() => import("../pages/NotFound"));
 const FlashSalePage = lazy(() => import("../pages/FlashSale"));

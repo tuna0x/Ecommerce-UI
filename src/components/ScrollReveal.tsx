@@ -1,5 +1,4 @@
-import React, { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ScrollRevealProps {
     children: React.ReactNode;
@@ -15,32 +14,49 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
     direction = 'up',
 }) => {
     const ref = useRef(null);
-    const isInView = useInView(ref, { once: true, margin: '-80px' });
+    const [isInView, setIsInView] = useState(false);
+
+    useEffect(() => {
+        const node = ref.current;
+        if (!node) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsInView(true);
+                    observer.disconnect();
+                }
+            },
+            {
+                rootMargin: '-80px',
+                threshold: 0.1,
+            }
+        );
+
+        observer.observe(node);
+
+        return () => observer.disconnect();
+    }, []);
 
     const directionOffset = {
-        up: { y: 40, x: 0 },
-        down: { y: -40, x: 0 },
-        left: { x: 40, y: 0 },
-        right: { x: -40, y: 0 },
+        up: 'translate-y-6',
+        down: '-translate-y-6',
+        left: 'translate-x-6',
+        right: '-translate-x-6',
     };
 
     return (
-        <motion.div
+        <div
             ref={ref}
-            initial={{
-                opacity: 0,
-                ...directionOffset[direction],
-            }}
-            animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}
-            transition={{
-                duration: 0.6,
-                delay,
-                ease: [0.22, 1, 0.36, 1],
-            }}
-            className={className}
+            style={{ transitionDelay: `${delay}s` }}
+            className={[
+                'transition-all duration-700 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] will-change-transform',
+                isInView ? 'translate-x-0 translate-y-0 opacity-100' : `opacity-0 ${directionOffset[direction]}`,
+                className,
+            ].join(' ')}
         >
             {children}
-        </motion.div>
+        </div>
     );
 };
 
