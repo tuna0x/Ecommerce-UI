@@ -442,10 +442,9 @@ const Register: React.FC = () => {
                   variant: "destructive",
                 });
               }}
-              useOneTap
               theme="outline"
               size="large"
-              width="100%"
+              width={320}
             />
             </div>
           </GoogleAuthProvider>

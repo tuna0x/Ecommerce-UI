@@ -234,7 +234,7 @@ const Login: React.FC = () => {
               useOneTap
               theme="outline"
               size="large"
-              width="100%"
+              width={320}
             />
             </div>
           </GoogleAuthProvider>

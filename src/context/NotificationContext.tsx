@@ -20,6 +20,22 @@ interface NotificationContextType {
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const defaultNotificationContext: NotificationContextType = {
+    notifications: [],
+    notificationMeta: {
+        page: 1,
+        pageSize: 10,
+        pages: 1,
+        total: 0,
+    },
+    isLoadingNotifications: false,
+    unreadCount: 0,
+    markAsRead: () => { },
+    markAllAsRead: () => { },
+    clearAll: () => { },
+    deleteNotification: () => { },
+    fetchNotifications: async () => { },
+};
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
@@ -233,6 +249,5 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
-    if (!context) throw new Error('useNotifications must be used within NotificationProvider');
-    return context;
+    return context ?? defaultNotificationContext;
 };
