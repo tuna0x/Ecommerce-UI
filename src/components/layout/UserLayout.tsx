@@ -1,11 +1,11 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopBar from '../TopBar';
 import Header from '../Header';
-import CartSidebar from '../CartSidebar';
 import Footer from '../Footer';
-import MobileNavBar from '../MobileNavBar';
-import ChatBot from '../ChatBot';
+const CartSidebar = lazy(() => import('../CartSidebar'));
+const MobileNavBar = lazy(() => import('../MobileNavBar'));
+const ChatBot = lazy(() => import('../ChatBot'));
 
 const UserLayout: React.FC = () => {
   return (
@@ -24,10 +24,14 @@ const UserLayout: React.FC = () => {
           <Outlet />
         </Suspense>
       </main>
-      <CartSidebar />
+      <Suspense fallback={null}>
+        <CartSidebar />
+      </Suspense>
       <Footer />
-      <MobileNavBar />
-      <ChatBot />
+      <Suspense fallback={null}>
+        <MobileNavBar />
+        <ChatBot />
+      </Suspense>
     </div>
   );
 };

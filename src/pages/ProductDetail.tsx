@@ -315,6 +315,11 @@ const ProductDetail: React.FC = () => {
         type="product"
         url={`/product/${product.id}`}
         keywords={`${product.name}, ${brandName}, ${categoryName}`}
+        breadcrumbs={[
+          { name: "Trang chủ", url: "/" },
+          { name: categoryName, url: `/search?category=${encodeURIComponent(categoryName)}` },
+          { name: product.name },
+        ]}
         productData={{
           name: product.name,
           description: (detailContent?.description || "").replace(/<[^>]*>?/gm, '').slice(0, 200) || product.name,

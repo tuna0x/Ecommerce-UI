@@ -37,6 +37,19 @@ interface ChatContextType {
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+const defaultChatContext: ChatContextType = {
+    conversations: [],
+    activeMessages: [],
+    activePartner: null,
+    totalUnreadCount: 0,
+    setActivePartner: () => undefined,
+    sendMessage: () => undefined,
+    fetchConversations: async () => undefined,
+    resetUnreadCount: () => undefined,
+    loadMoreHistory: async () => undefined,
+    hasMoreHistory: false,
+    isLoadingHistory: false,
+};
 
 const sortConversations = (list: Conversation[]): Conversation[] => {
     return [...list].sort((a, b) => {
@@ -278,6 +291,5 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 // eslint-disable-next-line react-refresh/only-export-components
 export const useChat = () => {
     const context = useContext(ChatContext);
-    if (!context) throw new Error('useChat must be used within ChatProvider');
-    return context;
+    return context ?? defaultChatContext;
 };

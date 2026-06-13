@@ -1,8 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import NotificationDropdown from './NotificationDropdown';
+import React, { Suspense, lazy, useState } from 'react';
 import { User, ShoppingBag, Menu, X, LogOut, MessageCircle, Sun, Moon, Wallet, ChevronDown, Flame, BookOpen, Info, Phone, HelpCircle, Package, Heart, CalendarCheck } from 'lucide-react';
-import SkincareCheckIn from './SkincareCheckIn';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermission } from '../context/PermissionContext';
@@ -20,8 +17,11 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import SearchDropdown from './SearchDropdown';
-import CategoryDropdown from './CategoryDropdown';
 import { getCategoryIcon } from '../lib/icons';
+
+const CategoryDropdown = lazy(() => import('./CategoryDropdown'));
+const NotificationDropdown = lazy(() => import('./NotificationDropdown'));
+const SkincareCheckIn = lazy(() => import('./SkincareCheckIn'));
 
 const Header: React.FC = () => {
   const { cartCount, setIsCartOpen } = useCart();
@@ -159,7 +159,11 @@ const Header: React.FC = () => {
             </button>
 
             {/* Notifications */}
-            <NotificationDropdown />
+            {isAuthenticated ? (
+              <Suspense fallback={null}>
+                <NotificationDropdown />
+              </Suspense>
+            ) : null}
 
             {/* Chat with Admin */}
             <Link to="/chat" className="relative p-2 hover:bg-secondary rounded-lg transition-colors group">
@@ -180,13 +184,9 @@ const Header: React.FC = () => {
             >
               <ShoppingBag className="w-5 h-5" />
               {cartCount > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background"
-                >
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-background animate-fade-in-scale">
                   {cartCount > 99 ? '99+' : cartCount}
-                </motion.span>
+                </span>
               )}
             </button>
           </div>
@@ -197,7 +197,9 @@ const Header: React.FC = () => {
       <nav className="hidden md:block border-t border-border">
         <div className="container mx-auto">
           <div className="flex items-center gap-1 py-2">
-            <CategoryDropdown />
+            <Suspense fallback={<div className="h-[46px] w-[228px] rounded-lg bg-primary/5" aria-hidden="true" />}>
+              <CategoryDropdown />
+            </Suspense>
             <NavLink
               to="/category/all"
               className="flex items-center px-4 py-2.5 text-sm font-semibold hover:text-primary transition-colors"
@@ -257,14 +259,11 @@ const Header: React.FC = () => {
       </div>
 
       {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border overflow-y-auto max-h-[85vh] custom-scrollbar bg-background/95 backdrop-blur-xl shadow-2xl"
-          >
+      <div
+        className={`md:hidden border-t border-border overflow-y-auto custom-scrollbar bg-background/95 backdrop-blur-xl shadow-2xl transition-all duration-300 ease-out ${
+          isMenuOpen ? 'max-h-[85vh] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+        }`}
+      >
             <div className="p-4 space-y-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-2 mb-3">Danh mục sản phẩm</p>
               {categories.map((category) => (
@@ -317,12 +316,12 @@ const Header: React.FC = () => {
                 </NavLink>
               ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
 
       {/* Skincare Check-in Right Drawer */}
-      <SkincareCheckIn isOpen={isSkincareOpen} onClose={() => setIsSkincareOpen(false)} />
+      <Suspense fallback={null}>
+        <SkincareCheckIn isOpen={isSkincareOpen} onClose={() => setIsSkincareOpen(false)} />
+      </Suspense>
     </header>
   );
 };
@@ -359,25 +358,16 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
             onClick={() => setIsOpen(!isOpen)}
             className="p-2 hover:bg-secondary rounded-md transition-colors"
           >
-            <motion.div
-              animate={{ rotate: isOpen ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </motion.div>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         )}
       </div>
 
-      <AnimatePresence>
-        {isOpen && hasChildren && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden bg-secondary/30 rounded-lg mb-2"
-          >
+      <div
+        className={`overflow-hidden bg-secondary/30 rounded-lg mb-2 transition-all duration-200 ${
+          isOpen && hasChildren ? 'max-h-[480px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
             <div className="p-3 space-y-3">
               {category.children.map((sub, index: number) => (
                 <div key={index} className="space-y-2">
@@ -405,9 +395,7 @@ const MobileCategoryAccordion: React.FC<MobileCategoryAccordionProps> = ({ categ
                 </div>
               ))}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };

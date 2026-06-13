@@ -10,6 +10,7 @@ import { useToast } from "../hooks/use-toast";
 import { sendOtpApi, verifyOtpApi, checkEmailApi } from "../service/authService";
 import { cn } from "../lib/utils";
 import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
+import GoogleAuthProvider from "../components/auth/GoogleAuthProvider";
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -430,7 +431,8 @@ const Register: React.FC = () => {
           </div>
 
           {/* Social Register */}
-          <div className="flex justify-center w-full">
+          <GoogleAuthProvider>
+            <div className="flex justify-center w-full">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={() => {
@@ -445,7 +447,8 @@ const Register: React.FC = () => {
               size="large"
               width="100%"
             />
-          </div>
+            </div>
+          </GoogleAuthProvider>
 
           {/* Login Link */}
           <p className="text-center text-sm text-muted-foreground mt-6">

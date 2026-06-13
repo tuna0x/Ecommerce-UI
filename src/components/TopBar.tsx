@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Gift, Truck, Shield } from "lucide-react";
 function TopBar() {
   const promos = [
@@ -13,16 +12,14 @@ function TopBar() {
           {/* Desktop: Show all promos */}
           <div className="hidden md:flex items-center gap-8">
             {promos.map((promo, index) => (
-              <motion.div
+              <div
                 key={index}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-2"
+                style={{ animationDelay: `${index * 120}ms` }}
+                className="flex items-center gap-2 animate-fade-in-down"
               >
                 <promo.icon className="w-3.5 h-3.5 text-primary" />
                 <span>{promo.text}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
           {/* Mobile: Marquee */}

@@ -8,10 +8,11 @@ const FeaturedCategories: React.FC = () => {
     const [categories, setCategories] = useState<IBanner[]>([]);
 
     useEffect(() => {
+        let isCancelled = false;
         const fetchCategoryBanners = async () => {
             try {
                 const res = await BannerService.getAll(0, 100);
-                if (res.data?.result) {
+                if (!isCancelled && res.data?.result) {
                     const categoryBanners = res.data.result
                         .filter(b => b.isActive && b.position === 'category')
                         .sort((a, b) => a.order - b.order);
@@ -21,7 +22,23 @@ const FeaturedCategories: React.FC = () => {
                 console.error("Failed to fetch category banners", error);
             }
         };
-        fetchCategoryBanners();
+
+        const idleCallback = window.requestIdleCallback?.(() => {
+            fetchCategoryBanners();
+        }, { timeout: 1500 });
+
+        if (!idleCallback) {
+            const timer = window.setTimeout(fetchCategoryBanners, 400);
+            return () => {
+                isCancelled = true;
+                window.clearTimeout(timer);
+            };
+        }
+
+        return () => {
+            isCancelled = true;
+            window.cancelIdleCallback?.(idleCallback);
+        };
     }, []);
 
     if (categories.length === 0) return null;
@@ -54,6 +71,8 @@ const FeaturedCategories: React.FC = () => {
                                 <img
                                     src={cat.image}
                                     alt={cat.title}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 />
 

@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,10 +92,68 @@
     @apply bg-background text-foreground antialiased;
     font-family:
       "Inter",
+      ui-sans-serif,
       system-ui,
       -apple-system,
       BlinkMacSystemFont,
+      "Segoe UI",
       sans-serif;
+  }
+
+  img {
+    content-visibility: auto;
+  }
+
+  section {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 720px;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  code,
+  pre {
+    font-family:
+      "SFMono-Regular",
+      Consolas,
+      "Liberation Mono",
+      Menlo,
+      monospace;
+  }
+
+  body,
+  input,
+  textarea,
+  select,
+  button {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @supports not (content-visibility: auto) {
+    section,
+    img {
+      content-visibility: visible;
+    }
   }
 
   h1,
@@ -230,6 +287,97 @@
 
 .animate-marquee {
   animation: marquee 20s linear infinite;
+}
+
+:root {
+  --ease-soft-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.985);
+    filter: blur(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.975) translate3d(0, 10px, 0);
+    filter: blur(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes hero-float {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 650ms var(--ease-soft-out) both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 760ms var(--ease-soft-spring) both;
+}
+
+.animate-fade-in-down {
+  animation: fade-in-down 560ms var(--ease-soft-out) both;
+}
+
+.animate-fade-in-scale {
+  animation: fade-in-scale 820ms var(--ease-soft-spring) both;
+}
+
+.animate-hero-float {
+  animation: hero-float 6s ease-in-out infinite;
 }
 
 /* Custom circular expanding dark/light mode transition via View Transitions API */

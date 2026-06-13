@@ -1,5 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React from "react";
 import { Helmet } from "react-helmet-async";
+
+interface BreadcrumbItem {
+  name: string;
+  url?: string;
+}
 
 interface SEOProps {
   title?: string | null;
@@ -8,6 +13,8 @@ interface SEOProps {
   image?: string | null;
   url?: string | null;
   type?: "website" | "article" | "product";
+  includeWebsiteSchema?: boolean;
+  breadcrumbs?: BreadcrumbItem[];
   productData?: {
     name: string;
     description: string;
@@ -23,6 +30,20 @@ interface SEOProps {
   };
 }
 
+const SITE_URL = "https://bongcosmetic.id.vn";
+const SITE_NAME = "Bong Cosmetic";
+const SITE_TITLE = "Bong Cosmetic - My pham chinh hang & Cham soc sac dep";
+const DEFAULT_DESCRIPTION =
+  "Bong Cosmetic chuyen cung cap cac dong my pham chinh hang, cham soc da, makeup tu cac thuong hieu hang dau the gioi. Giao hang nhanh, cam ket chat luong.";
+const DEFAULT_IMAGE = `${SITE_URL}/logo.jpg`;
+const DEFAULT_KEYWORDS =
+  "my pham, cham soc da, son moi, nuoc hoa, Bong Cosmetic, skincare, makeup";
+
+const toAbsoluteUrl = (value?: string | null) => {
+  if (!value) return undefined;
+  return value.startsWith("http") ? value : `${SITE_URL}${value}`;
+};
+
 const SEO: React.FC<SEOProps> = ({
   title,
   description,
@@ -30,127 +51,106 @@ const SEO: React.FC<SEOProps> = ({
   image,
   url,
   type = "website",
+  includeWebsiteSchema = false,
+  breadcrumbs,
   productData,
 }) => {
-  const siteTitle = "Bông Cosmetic - Mỹ phẩm chính hãng & Chăm sóc sắc đẹp";
-  const defaultDescription = "Bông Cosmetic chuyên cung cấp các dòng mỹ phẩm chính hãng, chăm sóc da, makeup từ các thương hiệu hàng đầu thế giới. Giao hàng nhanh, cam kết chất lượng.";
-  const defaultImage = "/og-image.jpg";
-  const defaultKeywords = "mỹ phẩm, chăm sóc da, son môi, nước hoa, Bông Cosmetic, skincare, makeup";
+  const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_TITLE;
+  const pageDescription = description || DEFAULT_DESCRIPTION;
+  const pageImage = toAbsoluteUrl(image) || DEFAULT_IMAGE;
+  const pageUrl = toAbsoluteUrl(url) || SITE_URL;
+  const pageKeywords = keywords ? `${keywords}, ${DEFAULT_KEYWORDS}` : DEFAULT_KEYWORDS;
 
-  const displayTitle = title ? `${title} | Bông Cosmetic` : siteTitle;
-  const [activeTitle, setActiveTitle] = useState(displayTitle);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isHiddenRef = useRef(false);
+  const schemas: object[] = [];
 
-  const funnyMessages = [
-    "Đừng bỏ rơi em mà... 🥺",
-    "Quay lại chốt đơn thôi! 💄",
-    "Giỏ hàng vẫn đợi bạn nè! ❤️",
-    "Sale sắp hết rồi, quay lại đi! 🔥",
-    "Ơ kìa, đừng đi mà... 🌸"
-  ];
+  if (includeWebsiteSchema) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: SITE_URL,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${SITE_URL}/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    });
+  }
 
-  useEffect(() => {
-    if (!isHiddenRef.current) {
-      setActiveTitle(displayTitle);
-    }
-  }, [displayTitle]);
+  if (breadcrumbs && breadcrumbs.length > 1) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbs.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        ...(item.url ? { item: toAbsoluteUrl(item.url) } : {}),
+      })),
+    });
+  }
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        isHiddenRef.current = true;
-        const showNextMessage = () => {
-          const randomMessage = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
-          setActiveTitle(randomMessage);
-        };
-        
-        showNextMessage();
-        intervalRef.current = setInterval(showNextMessage, 1500);
-      } else {
-        isHiddenRef.current = false;
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        setActiveTitle(displayTitle);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayTitle]);
-
-  const seo = {
-    title: activeTitle,
-    description: description || defaultDescription,
-    image: image || defaultImage,
-    url: url ? `https://bongcosmetic.id.vn${url}` : "https://bongcosmetic.id.vn",
-    keywords: keywords ? `${keywords}, ${defaultKeywords}` : defaultKeywords,
-  };
-
-  // Structured Data (JSON-LD) for Products
-  const jsonLd = type === "product" && productData ? {
-    "@context": "https://schema.org/",
-    "@type": "Product",
-    "name": productData.name,
-    "image": productData.images,
-    "description": productData.description,
-    "sku": productData.sku,
-    "brand": {
-      "@type": "Brand",
-      "name": productData.brand
-    },
-    "category": productData.category,
-    "offers": {
-      "@type": "Offer",
-      "url": seo.url,
-      "priceCurrency": productData.currency,
-      "price": productData.price,
-      "availability": productData.availability === "InStock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      "itemCondition": "https://schema.org/NewCondition"
-    },
-    ...(productData.ratingValue && productData.reviewCount ? {
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": productData.ratingValue,
-        "reviewCount": productData.reviewCount
-      }
-    } : {})
-  } : null;
+  if (type === "product" && productData) {
+    schemas.push({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: productData.name,
+      image: productData.images.map((item) => toAbsoluteUrl(item) || item),
+      description: productData.description,
+      sku: productData.sku,
+      brand: {
+        "@type": "Brand",
+        name: productData.brand,
+      },
+      category: productData.category,
+      offers: {
+        "@type": "Offer",
+        url: pageUrl,
+        priceCurrency: productData.currency,
+        price: productData.price,
+        availability:
+          productData.availability === "InStock"
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        itemCondition: "https://schema.org/NewCondition",
+      },
+      ...(productData.ratingValue && productData.reviewCount
+        ? {
+            aggregateRating: {
+              "@type": "AggregateRating",
+              ratingValue: productData.ratingValue,
+              reviewCount: productData.reviewCount,
+            },
+          }
+        : {}),
+    });
+  }
 
   return (
     <Helmet>
-      {/* Standard metadata tags */}
-      <title>{seo.title}</title>
-      <meta name="description" content={seo.description} />
-      <meta name="keywords" content={seo.keywords} />
-      <link rel="canonical" href={seo.url} />
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDescription} />
+      <meta name="keywords" content={pageKeywords} />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href={pageUrl} />
 
-      {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:title" content={title ? `${title} | Bông Cosmetic` : siteTitle} />
-      <meta property="og:description" content={seo.description} />
-      <meta property="og:image" content={seo.image} />
-      <meta property="og:url" content={seo.url} />
-      <meta property="og:site_name" content="Bông Cosmetic" />
+      <meta property="og:title" content={pageTitle} />
+      <meta property="og:description" content={pageDescription} />
+      <meta property="og:image" content={pageImage} />
+      <meta property="og:url" content={pageUrl} />
+      <meta property="og:site_name" content={SITE_NAME} />
 
-      {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title ? `${title} | Bông Cosmetic` : siteTitle} />
-      <meta name="twitter:description" content={seo.description} />
-      <meta name="twitter:image" content={seo.image} />
+      <meta name="twitter:title" content={pageTitle} />
+      <meta name="twitter:description" content={pageDescription} />
+      <meta name="twitter:image" content={pageImage} />
 
-      {/* Structured Data */}
-      {jsonLd && (
-        <script type="application/ld+json">
-          {JSON.stringify(jsonLd)}
+      {schemas.map((schema, index) => (
+        <script key={index} type="application/ld+json">
+          {JSON.stringify(schema)}
         </script>
-      )}
+      ))}
     </Helmet>
   );
 };

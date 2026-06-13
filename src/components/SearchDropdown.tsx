@@ -47,14 +47,18 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const speechReadyRef = useRef(false);
 
-  // Initialize Speech Recognition
-  useEffect(() => {
+  const ensureSpeechRecognition = () => {
+    if (speechReadyRef.current) {
+      return recognitionRef.current;
+    }
+
     const speechWindow = window as SpeechRecognitionWindow;
     const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setIsSupported(false);
-      return;
+      return null;
     }
 
     const recognition = new SpeechRecognition();
@@ -93,7 +97,11 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
     };
 
     recognitionRef.current = recognition;
+    speechReadyRef.current = true;
+    return recognition;
+  };
 
+  useEffect(() => {
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -102,11 +110,14 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   }, []);
 
   const toggleListening = () => {
+    const recognition = ensureSpeechRecognition();
+    if (!recognition) return;
+
     if (isListening) {
-      recognitionRef.current?.stop();
+      recognition.stop();
     } else {
       try {
-        recognitionRef.current?.start();
+        recognition.start();
       } catch (error) {
         console.error('Failed to start recognition:', error);
       }
