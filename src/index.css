@@ -184,17 +184,26 @@
     overflow: hidden;
   }
 
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+    scroll-behavior: smooth;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+    width: 8px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--muted) / 0.35);
+    border-radius: 9999px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 9999px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {

@@ -598,7 +598,7 @@ const Checkout: React.FC = () => {
             <span className="hidden sm:inline">Quay lại</span>
           </Link>
           <h1 className="text-xl font-bold">
-            BEAUTY<span className="text-primary">LUX</span>
+            BÔNG<span className="text-primary">COSMETIC</span>
           </h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="w-4 h-4 text-accent" />

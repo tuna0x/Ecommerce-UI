@@ -1371,7 +1371,7 @@ const InventoryManagement: React.FC = () => {
             {/* History Modal */}
             <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
+                    <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6">
                         <DialogTitle className="flex items-center gap-2">
                             <History className="h-5 w-5 text-primary" /> Lịch sử biến động: {selectedItem?.productVariant?.product?.name}
                         </DialogTitle>
@@ -1703,7 +1703,7 @@ const InventoryManagement: React.FC = () => {
 
             {/* Adjust Stock Modal */}
             <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] gap-0 overflow-hidden p-0">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 font-bold text-xl">
                             <Settings className="h-6 w-6 text-primary" /> Điều chỉnh kho hàng
@@ -1720,7 +1720,7 @@ const InventoryManagement: React.FC = () => {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-6 py-6 px-1">
+                    <div className="custom-scrollbar grid max-h-[calc(100vh-220px)] gap-6 overflow-y-auto scroll-smooth px-4 py-4 sm:max-h-[calc(100vh-240px)] sm:px-6 sm:py-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-3">
                                 <Label className="text-sm font-bold flex items-center gap-2">
@@ -1799,7 +1799,7 @@ const InventoryManagement: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 p-5 bg-muted/20 rounded-2xl border border-border/50 shadow-inner">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 bg-muted/20 rounded-2xl border border-border/50 shadow-inner">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-orange-600 flex items-center gap-1.5">
                                     <AlertTriangle className="h-3.5 w-3.5" /> Ngưỡng báo thấp
