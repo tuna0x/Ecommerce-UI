@@ -31,8 +31,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const displayOriginalPrice = product.originalPrice || 0;
   const discount = product.discount || (displayOriginalPrice > displayPrice && displayOriginalPrice > 0 ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
 
-  const sold = isFlashSale ? product.flashSale!.soldQuantity : (product.stock ? Math.max(0, 50 - product.stock) : 0);
-  const total = isFlashSale ? product.flashSale!.limitQuantity : 50;
+  const sold = isFlashSale ? product.flashSale!.soldQuantity : (product.soldCount || 0);
+  const total = isFlashSale ? product.flashSale!.limitQuantity : Math.max(sold, (product.stock || 0), 1);
   const soldPercent = Math.min(100, (sold / total) * 100);
 
   const handleQuickView = (e: React.MouseEvent) => {
